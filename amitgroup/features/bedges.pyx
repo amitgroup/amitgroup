@@ -1,3 +1,6 @@
+#!python
+#cython: boundscheck=False
+#cython: wraparound=False
 import cython
 import numpy as np
 cimport numpy as np
@@ -8,7 +11,6 @@ ctypedef np.float64_t DTYPE_t
 cdef inline DTYPE_t dabs(DTYPE_t x) nogil: 
     return x if x >= 0 else -x 
 
-@cython.boundscheck(False)
 cdef inline void checkedge(DTYPE_t[:,:,:] images, np.uint8_t[:,:,:,:] ret, int ii, int vi, int z0, int z1, int v0, int v1, int w0, int w1) nogil:
     cdef int y0 = z0 + v0
     cdef int y1 = z1 + v1
@@ -25,7 +27,6 @@ cdef inline void checkedge(DTYPE_t[:,:,:] images, np.uint8_t[:,:,:,:] ret, int i
         d > dabs(images[ii, y0+v0, y1+v1] - Iy):
         ret[ii, z0, z1, vi + 4*<int>(Iy > Iz)] = 1 
 
-@cython.boundscheck(False)
 def bedges(np.ndarray[DTYPE_t, ndim=3] _images):
     """
     Extracts binary edge features for each pixel according to [1].

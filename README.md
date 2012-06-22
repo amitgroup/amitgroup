@@ -6,7 +6,7 @@ Code For Yali Amit's Research Group written in Python.
 Requirements
 ------------
 
- * [Cython](https://github.com/cython/cython)
+ * [Cython](https://github.com/cython/cython) (0.16>=)
  * [Numpy](https://github.com/numpy/numpy)
  * [Scipy](https://github.com/scipy/scipy)
 
