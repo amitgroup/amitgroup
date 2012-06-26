@@ -1,5 +1,9 @@
 *.py[co]
 
+# pyx generated files
+amitgroup/features/bedges.c
+amitgroup/features/bedges.so
+
 # Packages
 *.egg
 *.egg-info

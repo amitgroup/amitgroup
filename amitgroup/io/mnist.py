@@ -8,9 +8,9 @@ def read(dataset = "training", path = ".", digits=None, asbytes=False):
 
     Parameters
     ----------
-    dataset : string
+    dataset : str 
         Either "training" or "testing", depending on which dataset you want to load. 
-    path : string
+    path : str 
         Path to your MNIST datafiles. Can be downloaded here: http://yann.lecun.com/exdb/mnist/
     digits : list 
         Integer list of digits to load. The entire database is loaded if set to None. Default is None.
