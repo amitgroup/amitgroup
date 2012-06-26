@@ -5,6 +5,12 @@
 amitgroup/features/bedges.c
 amitgroup/features/bedges.so
 
+doc/build
+
+# Until we have some genuine c files, this will do it
+*.c
+*.so
+
 # Packages
 *.egg
 *.egg-info
