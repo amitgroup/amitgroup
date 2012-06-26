@@ -30,8 +30,6 @@ def read(dataset = "training", path = ".", digits=None, asbytes=False):
     >>> images, labels = read('training', '/path/to/mnist')
 
     >>> sevens, _ = read('testing', '/path/to/mnist', [7])
-
-    Adapted from: http://abel.ee.ucla.edu/cvxopt/_downloads/mnist.py 
     """
 
     # The files are assumed to have these names and should be found in 'path'
