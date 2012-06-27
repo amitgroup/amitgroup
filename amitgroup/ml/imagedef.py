@@ -45,7 +45,7 @@ def _gen_xs(shape):
     return xs
     
 
-def imagedef(F, I):
+def imagedef(F, I, A=4):
     """
     F: Prototype
     I: Image that will be deformed
@@ -60,7 +60,6 @@ def imagedef(F, I):
      
     # 1.
     rho = 0.1 
-    A = 4 
     d = scriptN(A)
     u = np.zeros((2, d, d))
     ks1, ks2 = np.mgrid[0:d, 0:d]
@@ -78,7 +77,7 @@ def imagedef(F, I):
     for a in range(1, A+1):
         n = scriptN(a)
         allk = list(product(range(n), repeat=2))
-        for loop_inner in range(3000):
+        for loop_inner in range(500):
             # 2.
 
             # Calculate deformed xs
@@ -109,7 +108,7 @@ def imagedef(F, I):
             lmbks = invvar * (ks1**2 + ks2**2)**rho
 
             # Calculate cost, just for sanity check
-            if 1:
+            if 0:
                 logprior = 0.0
                 for k1, k2 in allk: 
                     logprior += lmbks[k1,k2] * (u[:,k1,k2]**2).sum()
@@ -131,33 +130,9 @@ def imagedef(F, I):
                 logpriors.append(logprior)
                 loglikelihoods.append(loglikelihood)
 
-            #print "========= U (pixels) ==========="
-            #print u[:,0:n,0:n] * F.shape[0] * twopi
-
-            #print 'lmbk', lmbks[1,0]
-            #print 'u', u[0,1,0]# * F.shape[0] * twopi
-            #print 'v', v[0,1,0]
 
             # 5. Gradient descent
             u -= stepsize * (lmbks * u + v)
-
-
-            #print "========= U (pixels) ==========="
-            #print u[:,0:n,0:n] * F.shape[0] * twopi
-
-            #import sys; sys.exit(0)
-
-            # Print the new deformation as a vector field
-            if 0:
-                Uvx = np.empty(F.shape)
-                Uvy = np.empty(F.shape)
-                for x0 in range(F.shape[0]):
-                    for x1 in range(F.shape[1]):
-                        x = xs[x0,x1]
-                        ux = Um(x)
-                        Uvx[x0,x1] = ux[0]
-                        Uvy[x0,x1] = ux[1]
-
 
     return u, costs, logpriors, loglikelihoods
      

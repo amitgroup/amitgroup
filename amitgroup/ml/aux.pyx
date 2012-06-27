@@ -3,10 +3,10 @@
 # cython: wraparound=False
 # cython: embedsignature=True
 # cython: cdivision=True
+# cython: profile=True
 import cython
 import numpy as np
 cimport numpy as np
-#from cython.parallel import prange
 from math import fabs
 DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
@@ -22,6 +22,7 @@ def deform_x(np.ndarray[DTYPE_t, ndim=3] xs, np.ndarray[DTYPE_t, ndim=3] u, int 
         int sx1 = xs.shape[1]
         DTYPE_t u0, u1
         DTYPE_t ps
+        int x0, x1, k1, k2
     
     with nogil:
         for x0 in range(sx0):
