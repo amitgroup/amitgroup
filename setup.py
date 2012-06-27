@@ -27,8 +27,7 @@ setup(name='amitgroup',
     ],
     ext_modules = [
         CythonExtension("amitgroup.features.bedges", mp=True),
-        CythonExtension("amitgroup.math.interp2d", mp=True),
-        #Extension("amitgroup.features.bedges", ["amitgroup/features/bedges.pyx"], extra_compile_args=['-fopenmp'],extra_link_args=['-fopenmp']),
-        #Extension("amitgroup.math.interp2d", ["amitgroup/math/interp2d.pyx"], extra_compile_args=['-fopenmp'],extra_link_args=['-fopenmp']),
+        CythonExtension("amitgroup.math.interp2d"),
+        CythonExtension("amitgroup.ml.aux"),
     ]
 )

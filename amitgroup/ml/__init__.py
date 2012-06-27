@@ -1,0 +1,2 @@
+
+from imagedef import *
