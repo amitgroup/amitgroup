@@ -28,7 +28,7 @@ cdef inline void checkedge(DTYPE_t[:,:,:] images, np.uint8_t[:,:,:,:] ret, int i
         d > dabs(images[ii, y0+v0, y1+v1] - Iy):
         ret[ii, z0, z1, vi + 4*<int>(Iy > Iz)] = 1 
 
-def bedges(np.ndarray[DTYPE_t, ndim=3] _images):
+def bedges(np.ndarray[DTYPE_t, ndim=3] images):
     """
     Extracts binary edge features for each pixel according to [1].
 
@@ -46,13 +46,13 @@ def bedges(np.ndarray[DTYPE_t, ndim=3] _images):
     ----------
     [1] Y. Amit : 2D Object Detection and Recognition: Models, Algorithms and Networks. Chapter 5.4.
     """
-    assert(_images.dtype == DTYPE)
-    cdef int N = _images.shape[0]
-    cdef int rows = _images.shape[1]
-    cdef int cols = _images.shape[2] 
-    cdef np.ndarray[np.uint8_t, ndim=4] _ret = np.zeros((N, rows, cols, 8), dtype=np.uint8)
-    cdef np.uint8_t[:,:,:,:] ret = _ret
-    cdef DTYPE_t[:,:,:] images = _images
+    assert(images.dtype == DTYPE)
+    cdef int N = images.shape[0]
+    cdef int rows = images.shape[1]
+    cdef int cols = images.shape[2] 
+    cdef np.ndarray[np.uint8_t, ndim=4] ret = np.zeros((N, rows, cols, 8), dtype=np.uint8)
+    cdef np.uint8_t[:,:,:,:] ret_mv = ret
+    cdef DTYPE_t[:,:,:] images_mv = images
     cdef Py_ssize_t i
     cdef int z0
     cdef int z1
@@ -60,11 +60,11 @@ def bedges(np.ndarray[DTYPE_t, ndim=3] _images):
     #for i in xrange(N):
         for z0 in range(2, rows-2):
             for z1 in range(2, cols-2):
-                checkedge(images, ret, i, 0, z0, z1, 1, 0, 0, -1)
-                checkedge(images, ret, i, 1, z0, z1, 1, 1, 1, -1)
-                checkedge(images, ret, i, 2, z0, z1, 0, 1, 1, 0)
-                checkedge(images, ret, i, 3, z0, z1, -1, 1, 1, 1)
+                checkedge(images_mv, ret_mv, i, 0, z0, z1, 1, 0, 0, -1)
+                checkedge(images_mv, ret_mv, i, 1, z0, z1, 1, 1, 1, -1)
+                checkedge(images_mv, ret_mv, i, 2, z0, z1, 0, 1, 1, 0)
+                checkedge(images_mv, ret_mv, i, 3, z0, z1, -1, 1, 1, 1)
 
-    return _ret
+    return ret
       
 

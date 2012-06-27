@@ -16,9 +16,10 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   io
-   io.mnist
    features
+   io.mnist
+   math
+   ml
 
 .. automodule:: amitgroup
 

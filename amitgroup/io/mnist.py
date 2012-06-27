@@ -26,8 +26,12 @@ def read(dataset = "training", path = ".", digits=None, asbytes=False):
 
     Examples
     --------
+    Load all images and labels from the training set:
+
     >>> from amitgroup.io.mnist import read 
     >>> images, labels = read('training', '/path/to/mnist')
+
+    Load all sevens from the testing set:    
 
     >>> sevens, _ = read('testing', '/path/to/mnist', [7])
     """
