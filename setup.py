@@ -3,6 +3,16 @@
 from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
+import os.path
+
+def CythonExtension(modpath, mp=False):
+    extra_compile_args = []
+    extra_link_args = []
+    if mp:
+        extra_compile_args.append('-fopenmp')
+        extra_link_args.append('-fopenmp') 
+    filepath = os.path.join(*modpath.split('.')) + ".pyx"
+    return Extension(modpath, [filepath], extra_compile_args=extra_compile_args, extra_link_args=extra_link_args)
 
 setup(name='amitgroup',
     cmdclass = {'build_ext': build_ext},
@@ -16,6 +26,9 @@ setup(name='amitgroup',
         'amitgroup.stats'
     ],
     ext_modules = [
-        Extension("amitgroup.features.bedges", ["amitgroup/features/bedges.pyx"], extra_compile_args=['-fopenmp'],extra_link_args=['-fopenmp']),
+        CythonExtension("amitgroup.features.bedges", mp=True),
+        CythonExtension("amitgroup.math.interp2d", mp=True),
+        #Extension("amitgroup.features.bedges", ["amitgroup/features/bedges.pyx"], extra_compile_args=['-fopenmp'],extra_link_args=['-fopenmp']),
+        #Extension("amitgroup.math.interp2d", ["amitgroup/math/interp2d.pyx"], extra_compile_args=['-fopenmp'],extra_link_args=['-fopenmp']),
     ]
 )
