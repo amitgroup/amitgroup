@@ -6,6 +6,7 @@ amitgroup/features/bedges.c
 amitgroup/features/bedges.so
 
 doc/build
+doc/source/generated
 
 # Until we have some genuine c files, this will do it
 *.c

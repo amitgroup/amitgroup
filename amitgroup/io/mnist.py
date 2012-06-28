@@ -2,7 +2,7 @@ import os, struct
 from array import array as pyarray 
 from numpy import append, array, int8, uint8, zeros
 
-def read(dataset = "training", path = ".", digits=None, asbytes=False):
+def load_mnist(dataset = "training", path = ".", digits=None, asbytes=False):
     """
     Loads MNIST files into a 3D numpy arrays.
 
@@ -26,14 +26,14 @@ def read(dataset = "training", path = ".", digits=None, asbytes=False):
 
     Examples
     --------
-    Load all images and labels from the training set:
+    Assuming that you have downloaded the MNIST database and put it into `/path/to/mnist`, this will looad all images and labels from the training set:
 
-    >>> from amitgroup.io.mnist import read 
-    >>> images, labels = read('training', '/path/to/mnist')
+    >>> images, labels = ag.io.load_mnist('training', '/path/to/mnist') # doctest: +SKIP
 
     Load all sevens from the testing set:    
 
-    >>> sevens, _ = read('testing', '/path/to/mnist', [7])
+    >>> sevens, _ = ag.io.load_mnist('testing', '/path/to/mnist', [7]) # doctest: +SKIP
+
     """
 
     # The files are assumed to have these names and should be found in 'path'

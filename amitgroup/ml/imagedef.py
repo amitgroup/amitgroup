@@ -1,7 +1,7 @@
 
 import numpy as np
 import amitgroup as ag
-from aux import deform_x
+from amitgroup.ml.aux import deform_x
 from itertools import product
 from math import cos
 
@@ -49,6 +49,12 @@ def imagedef(F, I, A=4):
     """
     F: Prototype
     I: Image that will be deformed
+    
+    >>> import matplotlib.pylab as plt
+    >>> plt.plot([1,2,3]) 
+    [<matplotlib.lines.Line2D object at 0x...>]
+    >>> plt.show()
+
     """
     xs = _gen_xs(F.shape)
 

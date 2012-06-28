@@ -16,17 +16,11 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   features
-   io.mnist
-   math
-   ml
-
-.. automodule:: amitgroup
+   reference
 
 Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
 
