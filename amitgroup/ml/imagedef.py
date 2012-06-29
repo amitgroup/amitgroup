@@ -108,7 +108,7 @@ def imagedef(F, I, A=4):
             lmbks = invvar * (ks1**2 + ks2**2)**rho
 
             # Calculate cost, just for sanity check
-            if 0:
+            if 1:
                 logprior = 0.0
                 for k1, k2 in allk: 
                     logprior += lmbks[k1,k2] * (u[:,k1,k2]**2).sum()

@@ -1,5 +1,5 @@
 
-# cython: boundscheck=False
+# cython: boundscheck=True
 # cython: wraparound=False
 # cython: embedsignature=True
 # cython: cdivision=True
@@ -22,6 +22,8 @@ cdef inline DTYPE_t lerp(DTYPE_t a, DTYPE_t x, DTYPE_t y) nogil:
 def interp2d(np.ndarray[DTYPE_t, ndim=3] xs, z, dx=None, startx=None, fill_value=None): 
     """
     Calculates bilinear interpolated points of ``z`` at ``xs`` positions.
+    
+    The motivation of this function is that ``scipy.interpolate.interp2d(..., kind='linear')`` produces unwanted results.
 
     Parameters
     ----------
@@ -54,19 +56,21 @@ def interp2d(np.ndarray[DTYPE_t, ndim=3] xs, z, dx=None, startx=None, fill_value
         DTYPE_t dx0 = dx[0]
         DTYPE_t dx1 = dx[1]
 
-        np.ndarray[DTYPE_t, ndim=2] _output = np.empty(z.shape, dtype=DTYPE)
+        int sx0 = xs.shape[0]
+        int sx1 = xs.shape[1]
+        int sz0 = z.shape[0]
+        int sz1 = z.shape[1]
+        np.ndarray[DTYPE_t, ndim=2] _output = np.empty((sx0, sx1), dtype=DTYPE)
         DTYPE_t[:,:] output = _output
 
         DTYPE_t[:,:,:] xs_mv = xs
         DTYPE_t[:,:] z_mv = z
 
-        int sx = xs.shape[0]
-        int sy = xs.shape[1]
         int x0, x1
         DTYPE_t eps = 1e-10
-        DTYPE_t px0, px1
-        DTYPE_t sxmax = sx-1-eps
-        DTYPE_t symax = sy-1-eps
+        DTYPE_t pz0, pz1
+        DTYPE_t sz0max = sz0-1-eps
+        DTYPE_t sz1max = sz1-1-eps
         int i, j
         DTYPE_t a, intp
         int fill = fill_value == None
@@ -76,29 +80,29 @@ def interp2d(np.ndarray[DTYPE_t, ndim=3] xs, z, dx=None, startx=None, fill_value
     if fill_value:
         ctype_fill_value = fill_value
     with nogil:
-        for x0 in range(sx):
-            for x1 in range(sy):
-                px0 = startx0 + xs_mv[x0, x1, 0] / dx0
-                px1 = startx1 + xs_mv[x0, x1, 1] / dx1
+        for x0 in range(sx0):
+            for x1 in range(sx1):
+                pz0 = startx0 + xs_mv[x0, x1, 0] / dx0
+                pz1 = startx1 + xs_mv[x0, x1, 1] / dx1
                 if fill:
-                    if px0 < 0.0: px0 = 0.0
-                    elif px0 > sxmax: px0 = sxmax
+                    if pz0 < 0.0: pz0 = 0.0
+                    elif pz0 > sz0max: pz0 = sz0max
 
-                    if px1 < 0.0: px1 = 0.0
-                    elif px1 > symax: px1 = symax
+                    if pz1 < 0.0: pz1 = 0.0
+                    elif pz1 > sz1max: pz1 = sz1max
                 else:
-                    if dabs(px0-(sx-1)) < 0.0001:
-                        px0 = sx-1-eps 
-                    if dabs(px1-(sy-1)) < 0.0001:
-                        px1 = sy-1-eps
+                    if dabs(pz0-(sz0-1)) < 0.0001:
+                        pz0 = sz0-1-eps 
+                    if dabs(pz1-(sz1-1)) < 0.0001:
+                        pz1 = sz1-1-eps
             
-                if 0.0 <= px0 < sx-1 and 0.0 <= px1 < sy-1:
-                    i = <int>px0
-                    j = <int>px1
-                    a = px0-i
+                if 0.0 <= pz0 < sz0-1 and 0.0 <= pz1 < sz1-1:
+                    i = <int>pz0
+                    j = <int>pz1
+                    a = pz0-i
                     xp1 = lerp(a, z_mv[i,j], z_mv[i+1,j])
                     xp2 = lerp(a, z_mv[i,j+1], z_mv[i+1,j+1])
-                    a = px1-j
+                    a = pz1-j
                     intp = lerp(a, xp1, xp2)
                 else: 
                     intp = ctype_fill_value
