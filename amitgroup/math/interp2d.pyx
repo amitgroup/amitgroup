@@ -47,7 +47,7 @@ def interp2d(np.ndarray[DTYPE_t, ndim=3] xs, z, dx=None, startx=None, fill_value
     
     assert(xs.dtype == DTYPE)
     assert(z.dtype == DTYPE)
-    dx = dx if dx is not None else 1.0/np.array(z.shape) #np.array([xs[1,0,0]-xs[0,0,0], xs[0,1,1]-xs[0,0,1]])
+    dx = dx if dx is not None else 1.0/(np.array(z.shape)-np.ones(2)) #np.array([xs[1,0,0]-xs[0,0,0], xs[0,1,1]-xs[0,0,1]])
     startx = startx if startx is not None else np.zeros(2) 
 
     cdef:
@@ -109,6 +109,4 @@ def interp2d(np.ndarray[DTYPE_t, ndim=3] xs, z, dx=None, startx=None, fill_value
 
                 output[x0,x1] = intp
     return _output 
-    
-
     
