@@ -29,7 +29,7 @@ def _unpack_image(buf, index, asbytes):
 
 def load_image(filename, index, asbytes=False):
     """
-    Load file from Yali Amit's book, specifically the FACES data.
+    Load one image from Yali Amit's book, specifically the FACES data.
 
     Parameters
     ----------
@@ -56,7 +56,7 @@ def load_image(filename, index, asbytes=False):
 
 def load_all_images(filename, asbytes=False):
     """
-    Load file from Yali Amit's book, specifically the FACES data.
+    Load images from Yali Amit's book, specifically the FACES data.
 
     Parameters
     ----------

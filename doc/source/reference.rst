@@ -25,8 +25,10 @@ Input/Output (:mod:`amitgroup.io`)
 .. autosummary::
    :toctree: generated/
 
-   load_mnist
+   load_all_images
+   load_example
    load_image
+   load_mnist
 
 
 Machine Learning (:mod:`amitgroup.ml`)

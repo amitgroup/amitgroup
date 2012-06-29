@@ -28,17 +28,25 @@ sys.path = [os.path.abspath('..')] + sys.path
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
+    'matplotlib.sphinxext.plot_directive',
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.autosummary',
     'sphinx.ext.pngmath', 
     'sphinx.ext.autodoc', 
     'numpydoc', 
-    'matplotlib.sphinxext.plot_directive'
 ]
 
 import numpy
-from matplotlib.sphinxext import plot_directive
+try:
+    from matplotlib.sphinxext import plot_directive
+except ImportError:
+    use_matplotlib_plot_directive = False
+else:
+    try:
+        use_matplotlib_plot_directive = (plot_directive.__version__ >= 2)
+    except AttributeError:
+        use_matplotlib_plot_directive = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -53,8 +61,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'amitgroup'
-copyright = u'2012, Amit Group'
+project = 'amitgroup'
+copyright = '2012, Amit Group'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -81,7 +89,7 @@ release = ag.__version__
 exclude_patterns = []
 
 # The reST default role (used for this markup: `text`) to use for all documents.
-#default_role = None
+default_role = 'autolink' 
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
 #add_function_parentheses = True
@@ -215,11 +223,11 @@ plot_rcparams = {
     'ytick.labelsize': 8,
     'legend.fontsize': 8,
     'figure.figsize': (3*phi, 3),
-    'figure.subplot.bottom': 0.2,
-    'figure.subplot.left': 0.2,
+    'figure.subplot.bottom': 0.1,
+    'figure.subplot.left': 0.125,
     'figure.subplot.right': 0.9,
-    'figure.subplot.top': 0.85,
-    'figure.subplot.wspace': 0.4,
+    'figure.subplot.top': 0.9,
+    'figure.subplot.wspace': 0.2,
     'text.usetex': False,
 }
 
