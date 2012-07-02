@@ -5,9 +5,10 @@ from amitgroup.ml.aux import deform_x as deform_x_old
 from itertools import product
 from math import cos
 import pywt
+from copy import deepcopy
 
 
-__all__ = ['imagedef', 'deform']
+__all__ = ['imagedef', 'deform', 'deform_x', 'deform_map']
 
 twopi = 2.0 * np.pi
 
@@ -19,17 +20,17 @@ def scriptN(a):
 
 
 def deform_map(xs, u):
-    defx0 = pywt.waverec2(u[0], 'db1')
-    defx1 = pywt.waverec2(u[1], 'db1')
+    defx0 = pywt.waverec2(u[0], 'haar')
+    defx1 = pywt.waverec2(u[1], 'haar')
 
-    print defx0
-    print defx1
+    #print defx0
+    #print defx1
 
     # Interpolated defx at xs 
-    #Ux0 = ag.math.interp2d(xs, defx0, dx=np.array([1.0/(defx0.shape[0]-1), 1.0/(defx0.shape[1]-1)]))
-    #Ux1 = ag.math.interp2d(xs, defx1, dx=np.array([1.0/(defx1.shape[0]-1), 1.0/(defx1.shape[1]-1)]))
-    Ux0 = ag.math.interp2d(xs, defx0)
-    Ux1 = ag.math.interp2d(xs, defx1)
+    Ux0 = ag.math.interp2d(xs, defx0, dx=np.array([1.0/(defx0.shape[0]-1), 1.0/(defx0.shape[1]-1)]))
+    Ux1 = ag.math.interp2d(xs, defx1, dx=np.array([1.0/(defx1.shape[0]-1), 1.0/(defx1.shape[1]-1)]))
+    #Ux0 = ag.math.interp2d(xs, defx0)
+    #Ux1 = ag.math.interp2d(xs, defx1)
     defx = np.zeros(xs.shape)
     #print xs.shape
     #print Ux.shape
@@ -61,6 +62,16 @@ def deform_x(xs, u):
     #        zs[x0,x1] += np.array([u0, u1])
     return zs
 
+def fix2(x):
+    L = len(x)
+    x[0] /= 2.0**((L-1)/1.0)
+    for i in range(1, L):
+        x[i] = list(x[i])
+        for alpha in range(3):
+            x[i][alpha] /= 2.0**((L-i)/1.0)
+        x[i] = tuple(x[i])
+    return x
+
 def _calc_psis(d, xs):
     psis = np.empty((d,d) + xs.shape[:2])
     for x0, x1 in product(range(xs.shape[0]), range(xs.shape[1])):
@@ -81,11 +92,6 @@ def imagedef(F, I, A=4):
     F: Prototype
     I: Image that will be deformed
     
-    >>> import matplotlib.pylab as plt
-    >>> plt.plot([1,2,3]) 
-    [<matplotlib.lines.Line2D object at 0x...>]
-    >>> plt.show()
-
     """
     xs = _gen_xs(F.shape)
 
@@ -96,16 +102,19 @@ def imagedef(F, I, A=4):
     allx = list(product(range(xs.shape[0]), range(xs.shape[1])))
      
     # 1.
-    rho = 0.1 
+    rho = 1.0 
     d = scriptN(A)
+    A = 2 
     #u = np.zeros((2, d, d))
     u = []
     for q in range(2):
         u0 = [np.zeros((1,1))]
-        for s in range(1, A):
-            u0.append((np.zeros((s,s)), np.zeros((s,s)), np.zeros((s,s))))
+        for s in range(0, A):
+            sh = (2**s, 2**s)
+            u0.append((np.zeros(sh), np.zeros(sh), np.zeros(sh)))
         u.append(u0)
     
+    #print u
     ks1, ks2 = np.mgrid[0:d, 0:d]
     psis = _calc_psis(d, xs)
     m = 0
@@ -118,10 +127,11 @@ def imagedef(F, I, A=4):
     costs = []
     logpriors = []
     loglikelihoods = []
-    for S in range(1, A):
+    for S in range(0, A):
+        print "-------- S = {0} ---------".format(S)
         #n = scriptN(S)
         #allk = list(product(range(n), repeat=2))
-        for loop_inner in range(500):
+        for loop_inner in range({0:100, 1:500}[S]):
             # 2.
 
             # Calculate deformed xs
@@ -138,19 +148,22 @@ def imagedef(F, I, A=4):
             v = np.zeros((2,)+(d,)*2)
             # 4.
             terms = Fzs - I
-            v = np.zeros((2,)+(d,)*2)
-            for q in range(2):
-                #for k1, k2 in allk: 
-                #    v[q,k1,k2] = (delFzs[q] * terms * psis[k1,k2]).sum()
-                pass  
+            #v = np.zeros((2,)+(d,)*2)
+            #for q in range(2):
+            #    for s in range(A):
+            #        L = 2**s
+            #        for l1 in range(L):
+            #            for l2 in range(L):
+            #                v[q,k1,k2] = (delFzs[q] * terms * psis[k1,k2]).sum()
+            #    pass  
             
                 # This little puppy requires numpy 1.7 - replace when appropriate
                 #v[q] = (delFzs[q] * terms * psis2).sum((0,1))
                 
             # We didn't multiply by this yet
-            v *= dx
+            #v *= dx
 
-            lmbks = invvar * (ks1**2 + ks2**2)**rho
+            #lmbks = invvar * (ks1**2 + ks2**2)**rho
 
             # Calculate cost, just for sanity check
             if 0:
@@ -177,7 +190,84 @@ def imagedef(F, I, A=4):
 
 
             # 5. Gradient descent
+            new_u = deepcopy(u)
+        
+            #lmbks = invvar * (ks1**2 + ks2**2)**rho
+            
+            for q in range(2):
+                f = delFzs[q] * terms
+                level = 1
+                while True:
+                    coef = pywt.wavedec2(f, 'db1', level=level)
+                    if len(coef[0]) == 1:
+                        break
+                    level += 1
+
+                coef = fix2(coef)
+                    
+                lmbk = invvar * 2.0**(rho * 0)
+                vqk = 0.0
+                for x0 in range(xs.shape[0]):
+                    for x1 in range(xs.shape[1]):
+                        p = 1.0
+                        vqk += delFzs[q,x0,x1] * (Fzs[x0,x1] - I[x0,x1]) * p * dx
+
+                print 'HERE:' 
+                print vqk
+                print coef[0][0,0]
+                print 'QQ', coef[0][0,0]/vqk
+                print '......'
+
+                # boost?
+                vqk *= 100.0
+            
+                #print vqk
+                new_u[q][0] -= stepsize * (lmbk * u[q][0] + vqk)
+
+                def psi(t):
+                    if 0 <= t < 0.5:
+                        return 1
+                    elif 0.5 <= t < 1:
+                        return -1
+                    else:
+                        return 0
+    
+                if 0:
+                    import matplotlib.pylab as plt
+                    plt.imshow(f, interpolation='nearest', cmap=plt.cm.gray)
+                    plt.colorbar()
+                    plt.show()
+                    import sys
+                    sys.exit(0)
+    
+                for s in range(1, S+1):
+                    for alpha in range(3):
+                        L = 2**(s-1)
+                        lmbk =  2.0**(rho * s)
+                        for l1 in range(L):
+                            for l2 in range(L):
+                                #vqk = 0.0
+                                #for x0 in range(xs.shape[0]):
+                                #    for x1 in range(xs.shape[1]):
+                                #        x = xs[x0,x1]
+                                #        p = psi(x[0]) * psi(x[1])
+                                #        vqk += delFzs[q,x0,x1] * terms[x0,x1] * p * dx
+                                #v[q,k1,k2] = (delFzs[q] * terms * psis[k1,k2]).sum()
+                                #pass#u[q][
+                                vqk = coef[s][alpha][l1,l2]
+                                if (q, alpha, l1, l2) == (1, 1, 0, 0):
+                                    print 'vqk', vqk
+                                #vqk *= 100.0
+
+                                #vqk *= 1000.0
+                                new_u[q][s][alpha][l1,l2] -= stepsize * (lmbk * u[q][s][alpha][l1,l2] + vqk)
+            
             #u -= stepsize * (lmbks * u + v)
+            u = new_u
+            #print u[0][0], u[1][0]
+            print S
+            print u[0][0], u[0][1:S+1]
+            print u[1][0], u[1][1:S+1]
 
     return u, costs, logpriors, loglikelihoods
      
