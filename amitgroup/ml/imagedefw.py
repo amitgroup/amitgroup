@@ -10,6 +10,8 @@ from copy import deepcopy
 
 __all__ = ['imagedef', 'deform', 'deform_x', 'deform_map']
 
+wl_name = 'db2'
+
 twopi = 2.0 * np.pi
 
 def psi(k1, k2, x):
@@ -20,8 +22,8 @@ def scriptN(a):
 
 
 def deform_map(xs, u):
-    defx0 = pywt.waverec2(u[0], 'haar')
-    defx1 = pywt.waverec2(u[1], 'haar')
+    defx0 = pywt.waverec2(u[0], wl_name) 
+    defx1 = pywt.waverec2(u[1], wl_name)
 
     #print defx0
     #print defx1
@@ -104,13 +106,15 @@ def imagedef(F, I, A=4):
     # 1.
     rho = 1.0 
     d = scriptN(A)
-    A = 2 
+
+    minA = 2
+    A = 4 
     #u = np.zeros((2, d, d))
     u = []
     for q in range(2):
-        u0 = [np.zeros((1,1))]
-        for s in range(0, A):
-            sh = (2**s, 2**s)
+        u0 = [np.zeros((2**(minA-1),2**(minA-1)))]
+        for s in range(minA, A):
+            sh = (2**max(0, s-1), 2**max(0, s-1))
             u0.append((np.zeros(sh), np.zeros(sh), np.zeros(sh)))
         u.append(u0)
     
@@ -127,11 +131,13 @@ def imagedef(F, I, A=4):
     costs = []
     logpriors = []
     loglikelihoods = []
-    for S in range(0, A):
+
+    ll_boost = 1.0
+    for S in range(minA, A):
         print "-------- S = {0} ---------".format(S)
         #n = scriptN(S)
         #allk = list(product(range(n), repeat=2))
-        for loop_inner in range({0:100, 1:500}[S]):
+        for loop_inner in xrange(500): 
             # 2.
 
             # Calculate deformed xs
@@ -197,13 +203,14 @@ def imagedef(F, I, A=4):
             for q in range(2):
                 f = delFzs[q] * terms
                 level = 1
-                while True:
-                    coef = pywt.wavedec2(f, 'db1', level=level)
-                    if len(coef[0]) == 1:
-                        break
-                    level += 1
+                #while True:
+                #    coef = pywt.wavedec2(f, wl_name, level=level)
+                #    if len(coef[0]) == 1:
+                #        break
+                #    level += 1
 
-                coef = fix2(coef)
+                coef = pywt.wavedec2(f, wl_name)
+                #coef = fix2(coef)
                     
                 lmbk = invvar * 2.0**(rho * 0)
                 vqk = 0.0
@@ -214,15 +221,15 @@ def imagedef(F, I, A=4):
 
                 print 'HERE:' 
                 print vqk
-                print coef[0][0,0]
-                print 'QQ', coef[0][0,0]/vqk
-                print '......'
+                #print coef[0][0,0]
+                #print 'QQ', coef[0][0,0]/vqk
+                #print '......'
 
                 # boost?
-                vqk *= 100.0
+                vqk *= ll_boost 
             
                 #print vqk
-                new_u[q][0] -= stepsize * (lmbk * u[q][0] + vqk)
+                #new_u[q][0] -= stepsize * (lmbk * u[q][0] + vqk)
 
                 def psi(t):
                     if 0 <= t < 0.5:
@@ -240,34 +247,25 @@ def imagedef(F, I, A=4):
                     import sys
                     sys.exit(0)
     
-                for s in range(1, S+1):
+                for s in range(minA, S+1):
                     for alpha in range(3):
-                        L = 2**(s-1)
-                        lmbk =  2.0**(rho * s)
+                        L = 2**max(0, s-1)
+                        lmbk =  invvar * 2.0**(rho * s)
                         for l1 in range(L):
                             for l2 in range(L):
-                                #vqk = 0.0
-                                #for x0 in range(xs.shape[0]):
-                                #    for x1 in range(xs.shape[1]):
-                                #        x = xs[x0,x1]
-                                #        p = psi(x[0]) * psi(x[1])
-                                #        vqk += delFzs[q,x0,x1] * terms[x0,x1] * p * dx
-                                #v[q,k1,k2] = (delFzs[q] * terms * psis[k1,k2]).sum()
-                                #pass#u[q][
-                                vqk = coef[s][alpha][l1,l2]
-                                if (q, alpha, l1, l2) == (1, 1, 0, 0):
-                                    print 'vqk', vqk
-                                #vqk *= 100.0
-
-                                #vqk *= 1000.0
-                                new_u[q][s][alpha][l1,l2] -= stepsize * (lmbk * u[q][s][alpha][l1,l2] + vqk)
+                                if s == minA:
+                                    vqk = coef[s-minA][l1,l2] * ll_boost 
+                                    new_u[q][s-minA][l1,l2] -= stepsize * (lmbk * u[q][s-minA][l1,l2] + vqk)
+                                else:
+                                    vqk = coef[s-minA][alpha][l1,l2] * ll_boost 
+                                    new_u[q][s-minA][alpha][l1,l2] -= stepsize * (lmbk * u[q][s-minA][alpha][l1,l2] + vqk)
             
             #u -= stepsize * (lmbks * u + v)
             u = new_u
             #print u[0][0], u[1][0]
-            print S
-            print u[0][0], u[0][1:S+1]
-            print u[1][0], u[1][1:S+1]
+            #print S
+            #print u[0][0], u[0][1:S+1]
+            #print u[1][0], u[1][1:S+1]
 
     return u, costs, logpriors, loglikelihoods
      
