@@ -88,8 +88,17 @@ def _gen_xs(shape):
     for x0, x1 in product(range(shape[0]), range(shape[1])): 
         xs[x0,x1] = np.array([float(x0)/(shape[0]), float(x1)/shape[1]])
     return xs
-    
 
+def empty_u(levels):
+    u = []
+    for q in range(2):
+        u0 = [np.zeros((scriptNs[0],)*2)]
+        for a in range(1, levels+1):
+            sh = (scriptNs[a],)*2
+            u0.append((np.zeros(sh), np.zeros(sh), np.zeros(sh)))
+        u.append(u0)
+    return u 
+    
 def imagedef(F, I, A=4):
     """
     F: Prototype
@@ -106,27 +115,13 @@ def imagedef(F, I, A=4):
      
     # 1.
     rho = 1.5 
-    d = scriptN(A)
 
     # Arrange scriptNs
     levels = len(pywt.wavedec(range(32), wl_name)) - 1
     scriptNs = map(len, pywt.wavedec(range(32), wl_name, level=levels)) + [0]
 
-    u = []
-    for q in range(2):
-        u0 = [np.zeros((scriptNs[0],)*2)]
-        for a in range(1, levels+1):
-            sh = (scriptNs[a],)*2
-            u0.append((np.zeros(sh), np.zeros(sh), np.zeros(sh)))
-        u.append(u0)
+    u = empty_u(levels)
 
-    #u[0][0][2,0] = -1.0 + 0.01
-    
-    #print u
-    ks1, ks2 = np.mgrid[0:d, 0:d]
-    psis = _calc_psis(d, xs)
-    m = 0
-    S = 0 
     dx = 1.0/(xs.shape[0]*xs.shape[1])
     # Ratio between prior and likelihood is done here. Basically this boils down to the
     # variance of the prior.
@@ -140,7 +135,7 @@ def imagedef(F, I, A=4):
 
     lmbks = np.zeros(levels+1)
     for i in range(levels+1):
-        lmbks[i] = 0.1 * invvar * 2.0**(rho * i) 
+        lmbks[i] = 1.0 * invvar * 2.0**(rho * i) 
 
     for a in range(0, 20): 
         if scriptNs[a] == 0 :#or a == 3:
