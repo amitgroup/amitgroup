@@ -3,6 +3,11 @@
 import io
 import math
 import ml
+from deformation import ImageDeformation
+from id_wavelet import IDWavelet
+
+def __call__():
+    print "test"
 
 VERSION = (0,0,0)
 ISRELEASED  = False

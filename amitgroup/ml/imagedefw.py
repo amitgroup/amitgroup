@@ -121,6 +121,8 @@ def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
     delF = np.gradient(F)
     delF[0] /= F.shape[0]
     delF[1] /= F.shape[1]
+    
+    imdef = ag.IDWavelet()
 
     # 1. 
 
@@ -129,6 +131,8 @@ def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
     levels = tlevels - 1
     scriptNs = map(len, pywt.wavedec(range(32), wl_name, level=levels))
     biggest = scriptNs[-1]
+
+    imdef.scriptNs = scriptNs
     
     # Shape of the coefficients array. This array will be largely under-utilized, since
     # not all levels will have biggest*biggest coefficients. This could be optimized to a
@@ -136,6 +140,7 @@ def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
     ushape = (2, tlevels, 3, biggest, biggest)
 
     u = np.zeros(ushape)
+    imdef.u = u
 
     dx = 1.0/(x0.shape[0]*x0.shape[1])
     # Ratio between prior and likelihood is done here. Basically this boils down to the
@@ -152,12 +157,16 @@ def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
         if a == A:
             break
         print "-------- a = {0} ---------".format(a)
-        for loop_inner in xrange(500): 
+        for loop_inner in xrange(20): 
             total_iterations += 1
             # 2.
 
             # Calculate deformed xs
-            z0, z1 = _deformed_x(x0, x1, u, scriptNs)
+            #z0, z1 = _deformed_x(x0, x1, u, scriptNs)
+            Ux, Uy = imdef.deform_map(x0, x1)
+            z0 = x0 + Ux
+            z1 = x1 + Uy
+            
 
             # Interpolate F at zs
             Fzs = ag.math.interp2d(z0, z1, F)
@@ -182,7 +191,10 @@ def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
                 _pywt2array(pywt.wavedec2(delFzs[q] * terms, wl_name, level=levels), scriptNs, a+1) for q in range(2)
             ])
 
+            #imdef.reestimate(stepsize, 
+            #u = u.reestimate(stepsize, lmbks, u)
             u -= stepsize * (lmbks * u + vqks)
+    
                
     info = {}
     info['iterations'] = total_iterations
