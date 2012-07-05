@@ -30,7 +30,7 @@ def interp2d(np.ndarray[DTYPE_t, ndim=2] x, np.ndarray[DTYPE_t, ndim=2] y, z, dx
     x, y : ndarray
         Points at which to interpolate data. Array of shape ``(A, B)``, where ``A`` and ``B`` are the rows and columns.
     z : ndarray
-        The original array that should be interpolated. Array of size ``(cols, rows)``.
+        The original array that should be interpolated. Array of size ``(A, B)``.
     dx : ndarray or None
         The distance between points in ``z``. Array of size 2.
         If None, even spacing that range from 0.0 to 1.0 is assumed.
