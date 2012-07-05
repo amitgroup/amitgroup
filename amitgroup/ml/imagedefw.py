@@ -1,81 +1,53 @@
 
 import numpy as np
 import amitgroup as ag
-from amitgroup.ml.aux import deform_x as deform_x_old
 from itertools import product
 from math import cos
 import pywt
 from copy import deepcopy
 
 
-__all__ = ['imagedef', 'deform', 'deform_x', 'deform_map']
+__all__ = ['imagedef', 'deform', '_deformed_x', 'deform_map']
 
 wl_name = 'db2'
 
 twopi = 2.0 * np.pi
 
-def deform_map__new(xs, u, scriptNs):
-    #print u[0][0].shape
-    
-    defx0 = pywt.waverec2(denumpyfy_u(u[0], scriptNs), wl_name) 
-    defx1 = pywt.waverec2(denumpyfy_u(u[1], scriptNs), wl_name)
-    #defx0 = pywt.waverec2(u[0], wl_name) 
-    #defx1 = pywt.waverec2(u[1], wl_name)
+def deform_map(x, y, u, scriptNs):
+    """
+    Creates a deformation array according the coefficients from imagedef. 
 
-    #print defx0
-    #print defx1
+    Parameters
+    ----------
+    x, y : ndarray
+        Arrays of `x` and `y` values. Generate these by ``numpy.mgrid``. Array of shape ``(L, L)``.
+    u : ndarray
+        Array of coefficients. Returns by amitgroup.ml.imagedef.
+    scriptNs:
+        TODO: Should be described inside ``u``, and thus not be needed.
+    
+    Returns
+    -------
+    Ux : ndarray
+        Deformation along the `x` axis. Array of shape ``(L, L)``. 
+    Uy : ndarray
+        Same as above, along `y` axis. 
+    """
+    defx0 = pywt.waverec2(_array2pywt(u[0], scriptNs), wl_name) 
+    defx1 = pywt.waverec2(_array2pywt(u[1], scriptNs), wl_name)
 
     # Interpolated defx at xs 
-    Ux0 = ag.math.interp2d(xs, defx0, dx=np.array([1.0/(defx0.shape[0]-1), 1.0/(defx0.shape[1]-1)]))
-    Ux1 = ag.math.interp2d(xs, defx1, dx=np.array([1.0/(defx1.shape[0]-1), 1.0/(defx1.shape[1]-1)]))
-    #Ux0 = ag.math.interp2d(xs, defx0)
-    #Ux1 = ag.math.interp2d(xs, defx1)
-    defx = np.zeros(xs.shape)
-    #print xs.shape
-    #print Ux.shape
-    #zs = xs + Ux
-    # TODO: Do this with numpy operations
-    for x0 in range(xs.shape[0]):
-        for x1 in range(xs.shape[1]):
-            defx[x0,x1] = np.array([Ux0[x0,x1], Ux1[x0,x1]])
-    return defx
-def deform_map(xs, u, scriptNs):
-    #print u[0][0].shape
-    
-    #defx0 = pywt.waverec2(denumpyfy_u(u[0], scriptNs), wl_name) 
-    #defx1 = pywt.waverec2(denumpyfy_u(u[1], scriptNs), wl_name)
-    defx0 = pywt.waverec2(u[0], wl_name) 
-    defx1 = pywt.waverec2(u[1], wl_name)
+    Ux = ag.math.interp2d(x, y, defx0, dx=np.array([1.0/(defx0.shape[0]-1), 1.0/(defx0.shape[1]-1)]))
+    Uy = ag.math.interp2d(x, y, defx1, dx=np.array([1.0/(defx1.shape[0]-1), 1.0/(defx1.shape[1]-1)]))
+    return Ux, Uy 
 
-    #print defx0
-    #print defx1
-
-    # Interpolated defx at xs 
-    Ux0 = ag.math.interp2d(xs, defx0, dx=np.array([1.0/(defx0.shape[0]-1), 1.0/(defx0.shape[1]-1)]))
-    Ux1 = ag.math.interp2d(xs, defx1, dx=np.array([1.0/(defx1.shape[0]-1), 1.0/(defx1.shape[1]-1)]))
-    #Ux0 = ag.math.interp2d(xs, defx0)
-    #Ux1 = ag.math.interp2d(xs, defx1)
-    defx = np.zeros(xs.shape)
-    #print xs.shape
-    #print Ux.shape
-    #zs = xs + Ux
-    # TODO: Do this with numpy operations
-    for x0 in range(xs.shape[0]):
-        for x1 in range(xs.shape[1]):
-            defx[x0,x1] = np.array([Ux0[x0,x1], Ux1[x0,x1]])
-    return defx
-
-# Use ag.ml.deform_x instead
-def deform_x__new(xs, u, scriptNs):
-    return xs + deform_map__new(xs, u, scriptNs)
-def deform_x(xs, u, scriptNs):
-    return xs + deform_map(xs, u, scriptNs)
+# Use ag.ml._deformed_x instead
+def _deformed_x(x0, x1, u, scriptNs):
+    Ux0, Ux1 = deform_map(x0, x1, u, scriptNs)
+    return x0+Ux0, x1+Ux1
 
 def _gen_xs(shape):
-    xs = np.empty(shape + (2,))
-    for x0, x1 in product(range(shape[0]), range(shape[1])): 
-        xs[x0,x1] = np.array([float(x0)/(shape[0]), float(x1)/shape[1]])
-    return xs
+    return np.mgrid[0:1.0:shape[0]*1j, 0:1.0:shape[1]*1j]
 
 def empty_u(tlevels, scriptNs):
     u = []
@@ -87,28 +59,23 @@ def empty_u(tlevels, scriptNs):
         u.append(u0)
     return u 
 
-def numpyfy_u(coef, scriptNs):
+def _pywt2array(coef, scriptNs, maxL=1000):
     L = len(scriptNs)#len(coef)
     N = scriptNs[-1]#len(coef[-1][0])
     new_u = np.zeros((L, 3, N, N))
-    for i in range(L):
-        for l1 in range(scriptNs[i]):
-            for l1 in range(scriptNs[i]):
-                if i == 0:
-                    Nx, Ny = coef[i].shape
-                    #print Nx, Ny
-                    #print new_u[i,0].shape #,0:Nx,0:Ny].shape
-                    #print coef[i].shape
-                    new_u[i,0,:Nx,:Ny] = coef[i]
-                else:
-                    for alpha in range(3):
-                        Nx, Ny = coef[i][alpha].shape
-                        new_u[i,alpha,:Nx,:Ny] = coef[i][alpha]
+    for i in range(min(maxL, L)):
+        if i == 0:
+            Nx, Ny = coef[i].shape
+            new_u[i,0,:Nx,:Ny] = coef[i]
+        else:
+            for alpha in range(3):
+                Nx, Ny = coef[i][alpha].shape
+                new_u[i,alpha,:Nx,:Ny] = coef[i][alpha]
     return new_u
 
-def denumpyfy_u(coef, scriptNs):
+def _array2pywt(coef, scriptNs):
     new_u = []
-    for i, N in enumerate(scriptNs[:-1]): 
+    for i, N in enumerate(scriptNs): 
         if i == 0:
             new_u.append(coef[i,0,:N,:N])
         else:
@@ -118,177 +85,121 @@ def denumpyfy_u(coef, scriptNs):
             new_u.append(tuple(als))
     return new_u
 
-def imagedef(F, I, A=4):
+def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
     """
-    F: Prototype
-    I: Image that will be deformed
+    Deforms an image ``I`` into a prototype image ``F`` using a Daubechies wavelet basis and minimizing the posterior distribution. 
+
+    Parameters
+    ----------
+    F : ndarray
+        Prototype image. Array of shape ``(L, L)`` with normalized intensitites. So far, ``L`` has to be a power of two.
+    I : ndarray
+        Image that will be deformed. Array of shape ``(L, L)``. 
+    A : int
+        Coefficient depth limit. If None, unlimited.
+    rho : float
+        Determines the penalty of more granular coefficients. Increase to smoothen.
+    calc_costs : bool
+        If True, then ``info`` will contain `logprior` and `loglikelihood`. The cost function `J` is simply the sum of these two. 
     
+    Returns
+    -------
+    u : ndarray
+        The deformation coefficients of the Daubechies (D4) wavelet.
+    info : dict
+        Dictionary with info:
+        - `iteratons`: Total number of iterations, ``N``.
+        - `logprior`: The value of the log-prior for each iteration. Array of length ``N``.
+        - `loglikelihood`: The value of the log-likelihood for each iteration. Array of length ``N``.
+
     """
-    xs = _gen_xs(F.shape)
+    logpriors = []
+    loglikelihoods = []
+
+    x0, x1 = _gen_xs(F.shape)
 
     delF = np.gradient(F)
     delF[0] /= F.shape[0]
     delF[1] /= F.shape[1]
 
-    allx = list(product(range(xs.shape[0]), range(xs.shape[1])))
-     
-    # 1.
-    rho = 1.5 
+    # 1. 
 
     # Arrange scriptNs
     tlevels = len(pywt.wavedec(range(32), wl_name))
     levels = tlevels - 1
-    #print levels
     scriptNs = map(len, pywt.wavedec(range(32), wl_name, level=levels))
-    #scriptNs = map(len, pywt.wavedec(range(32), wl_name, level=levels)) + [0]
     biggest = scriptNs[-1]
-    #biggest = scriptNs[-2]
-
+    
+    # Shape of the coefficients array. This array will be largely under-utilized, since
+    # not all levels will have biggest*biggest coefficients. This could be optimized to a
+    # a single list, but at a small scale, this does not require too much memory.
     ushape = (2, tlevels, 3, biggest, biggest)
 
-    u__new = np.zeros(ushape)
-    u = empty_u(tlevels, scriptNs)
+    u = np.zeros(ushape)
 
-    dx = 1.0/(xs.shape[0]*xs.shape[1])
+    dx = 1.0/(x0.shape[0]*x0.shape[1])
     # Ratio between prior and likelihood is done here. Basically this boils down to the
     # variance of the prior.
     invvar = dx
     stepsize = 0.1
-    costs = []
-    logpriors = []
-    loglikelihoods = []
 
-    lmbks = np.zeros(tlevels)
-    lmbks__new = np.zeros(ushape)
+    lmbks = np.zeros(ushape)
     for i in range(tlevels):
-        lmbks[i] = 1.0 * invvar * 2.0**(rho * i)
-        lmbks__new[:,i,:,:,:] = 1.0 * invvar * 2.0**(rho * i) 
+        lmbks[:,i,:,:,:] = invvar * 2.0**(rho * i) 
 
-    print scriptNs
-    #import sys; sys.exit(0)
+    total_iterations = 0
     for a, N in enumerate(scriptNs): 
-        if N == 0:
+        if a == A:
             break
         print "-------- a = {0} ---------".format(a)
-        #n = scriptN(S)
-        #allk = list(product(range(n), repeat=2))
-        for loop_inner in xrange(50): 
+        for loop_inner in xrange(500): 
+            total_iterations += 1
             # 2.
 
             # Calculate deformed xs
-            zs = deform_x(xs, u, scriptNs)
+            z0, z1 = _deformed_x(x0, x1, u, scriptNs)
 
-            # Interpolated F at zs
-            Fzs = ag.math.interp2d(zs, F)
+            # Interpolate F at zs
+            Fzs = ag.math.interp2d(z0, z1, F)
 
             # Interpolate delF at zs 
             delFzs = np.empty((2,) + F.shape) 
             for q in range(2):
-                delFzs[q] = ag.math.interp2d(zs, delF[q], fill_value=0.0)
+                delFzs[q] = ag.math.interp2d(z0, z1, delF[q], fill_value=0.0)
 
             # 4.
             terms = Fzs - I
             # Calculate cost, just for sanity check
-            if 0:
-                logprior = 0.0
-                if 1:
-                    for q in range(2):
-                        for i in range(a+1):
-                            L = scriptNs[i] 
-                            for l1 in range(L):
-                                for l2 in range(L):
-                                    if i == 0:
-                                        logprior += lmbks[i] * (u[q][i][l1,l2]**2)
-                                    else:
-                                        for alpha in range(3):
-                                            logprior += lmbks[i] * (u[q][i][alpha][l1,l2]**2)
-                                        
-                logprior /= 2.0
+            if calc_costs:
+                logprior = (lmbks * (u**2)).sum() / 2.0
+                logpriors.append(logprior)
 
                 loglikelihood = (terms**2).sum() * dx
-
-                #if False and loop_outer == 10:
-                #    plt.quiver(defs[:,:,1], defs[:,:,0])
-                #    plt.show() 
-
-                # Cost function
-                J = logprior + loglikelihood
-                #print "Cost:", J, logprior, loglikelihood
-                costs.append(J)
-                logpriors.append(logprior)
                 loglikelihoods.append(loglikelihood)
 
             # 5. Gradient descent
-        
-            #lmbks = invvar * (ks1**2 + ks2**2)**rho
+            vqks = np.array([
+                _pywt2array(pywt.wavedec2(delFzs[q] * terms, wl_name, level=levels), scriptNs, a+1) for q in range(2)
+            ])
 
-            #vqks = np.zeros(ushape)
-            
-            if 1:
-                new_u = deepcopy(u)
-                for q in range(2):
-                    f = delFzs[q] * terms
-                    coef = pywt.wavedec2(f, wl_name, level=levels)
-                        
-                    for i in range(a+1):
-                        lmbk = lmbks[i]
-                        L = scriptNs[i]
-                        for l1 in range(L):
-                            for l2 in range(L):
-                                if i == 0:
-                                    #vqks[q,i,0,l1,l2] = coef[i][l1,l2]
-                                    vqk = coef[i][l1,l2]
-                                    #print new_u, q, i, l1, l2
-                                    #print new_u[q][i][l1,l2]
-                                    new_u[q][i][l1,l2] -= stepsize * (lmbk * u[q][i][l1,l2] + vqk)
-                                elif i != 0:
-                                    for alpha in range(3):
-                                        #vqks[q,i,alpha,l1,l2] = coef[i][alpha][l1,l2]
-                                        vqk = coef[i][alpha][l1,l2]
-                                        #print q, i, alpha, l1, l2
-                                        #print len(new_u[q])
-                                        new_u[q][i][alpha][l1,l2] -= stepsize * (lmbk * u[q][i][alpha][l1,l2] + vqk)
-                u = new_u
-
-            if 1: 
-                vqks = np.array([
-                    numpyfy_u(pywt.wavedec2(delFzs[q] * terms, wl_name, level=levels), scriptNs) for q in range(2)
-                ])
-
-                #print u.shape, lmbks.shape, vqks.shape
-                u__new -= stepsize * (lmbks__new * u__new + vqks)
+            u -= stepsize * (lmbks * u + vqks)
                
-        
+    info = {}
+    info['iterations'] = total_iterations
+    if calc_costs:
+        info['logpriors'] = np.array(logpriors)
+        info['loglikelihoods'] = np.array(loglikelihoods)
 
-    #print u[0][0]
-    #import pickle
-    #pickle.dump(u, open('u.p', 'wb'))  
-    return u, costs, logpriors, loglikelihoods#, u__new
+    return u, info 
      
-     
-def deform__new(I, u, scriptNs):
-    """Deform I according to u"""
-    im = np.zeros(I.shape)
-
-    xs = _gen_xs(im.shape)
-
-    xs0 = xs[:,:,0]
-    xs1 = xs[:,:,1]
-
-    zs = deform_x__new(xs, u, scriptNs)
-    im = ag.math.interp2d(zs, I)
-    return im
-
 def deform(I, u, scriptNs):
-    """Deform I according to u"""
+    """
+    Deform I according to Daubechies coefficients u.
+    """
     im = np.zeros(I.shape)
 
-    xs = _gen_xs(im.shape)
+    x0, x1 = _gen_xs(im.shape)
 
-    xs0 = xs[:,:,0]
-    xs1 = xs[:,:,1]
-
-    zs = deform_x(xs, u, scriptNs)
-    im = ag.math.interp2d(zs, I)
+    z0, z1 = _deformed_x(x0, x1, u, scriptNs)
+    im = ag.math.interp2d(z0, z1, I)
     return im
-

@@ -1,4 +1,4 @@
 
-from imagedef import *
+from imagedefw import *
 
-__all__ = ['imagedef', 'deform']
+__all__ = ['imagedef', 'deform', 'deform_map']
