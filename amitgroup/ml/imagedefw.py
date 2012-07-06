@@ -79,6 +79,38 @@ def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
         - `logprior`: The value of the log-prior for each iteration. Array of length ``N``.
         - `loglikelihood`: The value of the log-likelihood for each iteration. Array of length ``N``.
 
+    Examples
+    --------
+    Deform an image into a prototype image:
+
+    >>> import amitgroup as ag
+    >>> import numpy as np
+    >>> import matplotlib.pylab as plt
+    >>> ims = ag.io.load_example('faces2')
+    >>> im1 = ims[0]
+    >>> im2 = ims[1]
+    >>> im1 = im1[::-1,:]
+    >>> im2 = im2[::-1,:]
+    >>> imgdef, info = ag.ml.imagedef(im1, im2, rho=3.0)
+    >>> im3 = imgdef.deform(im1)
+    >>> x, y = imgdef.get_x(im1.shape)
+    >>> Ux, Uy = imgdef.deform_map(x, y) 
+    >>> d = dict(origin='lower', interpolation='nearest', cmap=plt.cm.gray)
+    >>> plt.figure(figsize=(9,9))
+    >>> plt.subplot(221)
+    >>> plt.title("Prototype")
+    >>> plt.imshow(im1, **d)
+    >>> plt.subplot(222)
+    >>> plt.title("Original")
+    >>> plt.imshow(im2, **d) 
+    >>> plt.subplot(223)
+    >>> plt.title("Deformed")
+    >>> plt.imshow(im3, **d)
+    >>> plt.subplot(224)
+    >>> plt.title("Deformation map")
+    >>> plt.quiver(y, x, Uy, Ux)
+    >>> plt.show()
+     
     """
     logpriors = []
     loglikelihoods = []
@@ -105,7 +137,7 @@ def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
         if a == A:
             break
         print "-------- a = {0} ---------".format(a)
-        for loop_inner in xrange(20): 
+        for loop_inner in xrange(2000): 
             total_iterations += 1
             # 2.
 

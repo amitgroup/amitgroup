@@ -37,6 +37,7 @@ def _gen_xs(shape):
 class IDWavelet(ag.ImageDeformation):
     def __init__(self, shape, rho=1.5):
         super(IDWavelet, self).__init__(shape)
+        self.shape = shape
         self.rho = rho 
         self.invvar = 1.0/(shape[0]*shape[1])
         biggest = self.scriptNs[-1]        
@@ -60,6 +61,9 @@ class IDWavelet(ag.ImageDeformation):
     def _deformed_x(self, x0, x1):
         Ux0, Ux1 = self.deform_map(x0, x1)
         return x0+Ux0, x1+Ux1
+
+    def get_x(self, shape):
+        return np.mgrid[0:1.0:shape[0]*1j, 0:1.0:shape[1]*1j]
  
     def deform_map(self, x, y):
         """
