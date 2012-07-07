@@ -14,7 +14,9 @@ twopi = 2.0 * np.pi
 # Use ag.ml._deformed_x instead
 
 def _gen_xs(shape):
-    return np.mgrid[0:1.0:shape[0]*1j, 0:1.0:shape[1]*1j]
+    dx = 1./shape[0]
+    dy = 1./shape[1]
+    return np.mgrid[0:1.0-dx:shape[0]*1j, 0:1.0-dy:shape[1]*1j]
 
 def empty_u(tlevels, scriptNs):
     u = []
@@ -54,7 +56,7 @@ def _array2pywt(coef, scriptNs):
 
 def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
     """
-    Deforms an image ``I`` into a prototype image ``F`` using a Daubechies wavelet basis and minimizing the posterior distribution. 
+    Deforms an image ``I`` into a prototype image ``F`` using a Daubechies wavelet basis and maximimum a posteriori. 
 
     Parameters
     ----------
@@ -86,17 +88,17 @@ def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
     >>> import amitgroup as ag
     >>> import numpy as np
     >>> import matplotlib.pylab as plt
-    >>> ims = ag.io.load_example('faces2')
-    >>> im1 = ims[0]
-    >>> im2 = ims[1]
-    >>> im1 = im1[::-1,:]
-    >>> im2 = im2[::-1,:]
-    >>> imgdef, info = ag.ml.imagedef(im1, im2, rho=3.0)
+
+    Load two example faces and perform the deformation:
+
+    >>> im1, im2 = ag.io.load_example('faces2')
+    >>> imgdef, info = ag.ml.imagedef(im1, im2)
     >>> im3 = imgdef.deform(im1)
-    >>> x, y = imgdef.get_x(im1.shape)
-    >>> Ux, Uy = imgdef.deform_map(x, y) 
-    >>> d = dict(origin='lower', interpolation='nearest', cmap=plt.cm.gray)
-    >>> plt.figure(figsize=(9,9))
+
+    Output the results:
+
+    >>> d = dict(interpolation='nearest', cmap=plt.cm.gray)
+    >>> plt.figure(figsize=(8,8))
     >>> plt.subplot(221)
     >>> plt.title("Prototype")
     >>> plt.imshow(im1, **d)
@@ -108,7 +110,9 @@ def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
     >>> plt.imshow(im3, **d)
     >>> plt.subplot(224)
     >>> plt.title("Deformation map")
-    >>> plt.quiver(y, x, Uy, Ux)
+    >>> x, y = imgdef.get_x(im1.shape)
+    >>> Ux, Uy = imgdef.deform_map(x, y) 
+    >>> plt.quiver(y, -x, Uy, -Ux)
     >>> plt.show()
      
     """
@@ -118,17 +122,15 @@ def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
     x0, x1 = _gen_xs(F.shape)
 
     delF = np.gradient(F)
+    # Normalize since the image covers the square around [0, 1].
     delF[0] /= F.shape[0]
     delF[1] /= F.shape[1]
     
     imdef = ag.IDWavelet(x0.shape, rho=rho)
 
     # 1. 
-
     dx = 1.0/(x0.shape[0]*x0.shape[1])
-    # Ratio between prior and likelihood is done here. Basically this boils down to the
-    # variance of the prior.
-    invvar = dx
+
     stepsize = 0.1
 
     total_iterations = 0
