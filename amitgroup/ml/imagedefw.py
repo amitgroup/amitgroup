@@ -96,7 +96,6 @@ def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
     >>> x, y = imgdef.get_x(im1.shape)
     >>> Ux, Uy = imgdef.deform_map(x, y) 
     >>> d = dict(origin='lower', interpolation='nearest', cmap=plt.cm.gray)
-    >>> plt.figure(figsize=(9,9))
     >>> plt.subplot(221)
     >>> plt.title("Prototype")
     >>> plt.imshow(im1, **d)
