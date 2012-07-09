@@ -63,7 +63,9 @@ class IDWavelet(ag.ImageDeformation):
         return x0+Ux0, x1+Ux1
 
     def get_x(self, shape):
-        return np.mgrid[0:1.0:shape[0]*1j, 0:1.0:shape[1]*1j]
+        dx = 1./shape[0]
+        dy = 1./shape[1]
+        return np.mgrid[0:1.0-dx:shape[0]*1j, 0:1.0-dy:shape[1]*1j]
  
     def deform_map(self, x, y):
         """
@@ -97,7 +99,7 @@ class IDWavelet(ag.ImageDeformation):
         """
         im = np.zeros(I.shape)
 
-        x0, x1 = np.mgrid[0:1.0:I.shape[0]*1j, 0:1.0:I.shape[1]*1j]
+        x0, x1 = self.get_x(I.shape) 
         z0, z1 = self._deformed_x(x0, x1)
         im = ag.math.interp2d(z0, z1, I)
         return im

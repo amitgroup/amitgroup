@@ -16,9 +16,10 @@ def load_example(name):
     Parameters
     ----------
     name : str
-        - ``"faces"``: loads ``N`` faces into an array of shape ``(N, rows, cols)``.
-        - ``"faces2"``: loads 2 faces into an array of shape ``(2, rows, cols)``.
-        - ``"mnist"``: loads 10 MNIST nines into an array of shape ``(10, rows, cols)``.
+        * `"faces"`: loads ``N`` faces into an array of shape ``(N, rows, cols)``.
+        * `"faces2"`: loads 2 faces into an array of shape ``(2, rows, cols)``.
+        * `"oldfaithful"`: loads the classic Old Faithful eruption data as an array of shape ``(N, 2)``.
+        * `"mnist"`: loads 10 MNIST nines into an array of shape ``(10, rows, cols)``.
 
     Examples
     --------
@@ -43,11 +44,13 @@ def load_example(name):
 
     """
     if name == 'faces':
-        return ag.io.load_all_images(datapath('../data/Images_0'))
+        return ag.io.load_all_images(datapath('Images_0'))
     if name == 'faces2':
-        data = np.load(datapath('../data/twoface.npz'))
+        data = np.load(datapath('twoface.npz'))
         return np.array([data['im1'], data['im2']])
+    if name == 'oldfaithful':
+        return np.genfromtxt(datapath('oldfaithful'))
     if name == 'mnist':
-        return np.load(datapath('../data/nines.npz'))['images']
+        return np.load(datapath('nines.npz'))['images']
     else:
         raise ValueError("Example data does not exist")
