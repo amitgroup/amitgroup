@@ -56,7 +56,7 @@ def _array2pywt(coef, scriptNs):
 
 def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
     """
-    Deforms an image ``I`` into a prototype image ``F`` using a Daubechies wavelet basis and maximimum a posteriori. 
+    Deforms an image ``I`` into a prototype image ``F`` using a Daubechies wavelet basis and maximum a posteriori. 
 
     Parameters
     ----------
