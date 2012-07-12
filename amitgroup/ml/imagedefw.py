@@ -133,7 +133,7 @@ def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
     # 1. 
     dx = 1/(x0.shape[0]*x0.shape[1])
 
-    last_loglikelihood = np.NINF
+    last_loglikelihood = -np.inf 
 
     num_iterations = 0
     iterations_per_level = []
