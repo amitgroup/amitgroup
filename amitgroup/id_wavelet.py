@@ -35,11 +35,11 @@ def _gen_xs(shape):
     return np.mgrid[0:1.0:shape[0]*1j, 0:1.0:shape[1]*1j]
 
 class IDWavelet(ag.ImageDeformation):
-    def __init__(self, shape, rho=1.5):
+    def __init__(self, shape, coef=1e-3, rho=1.5):
         super(IDWavelet, self).__init__(shape)
         self.shape = shape
         self.rho = rho 
-        self.invvar = 1.0/(shape[0]*shape[1])
+        self.coef = coef
         biggest = self.scriptNs[-1]        
         self.ushape = (2, self.levels+1, 3, biggest, biggest)
         self.u = np.zeros(self.ushape)
@@ -48,7 +48,7 @@ class IDWavelet(ag.ImageDeformation):
     def _init_lmbks(self):
         self.lmbks = np.zeros(self.ushape)
         for i in range(self.levels+1):
-            self.lmbks[:,i,:,:,:] = self.invvar * 2.0**(self.rho * i) 
+            self.lmbks[:,i,:,:,:] = self.coef * 2.0**(self.rho * i) 
 
     def _wl_name(self):
         return 'db2'

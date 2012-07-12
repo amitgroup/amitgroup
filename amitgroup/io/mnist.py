@@ -46,7 +46,7 @@ def load_mnist(dataset = "training", path = ".", digits=None, asbytes=False):
         images_fname = os.path.join(path, files[dataset][0])
         labels_fname = os.path.join(path, files[dataset][1])
     except KeyError:
-        raise ValueError, "dataset must be 'testing' or 'training'"
+        raise ValueError("dataset must be 'testing' or 'training'")
 
     flbl = open(labels_fname, 'rb')
     magic_nr, size = struct.unpack(">II", flbl.read(8))

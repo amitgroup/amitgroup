@@ -1,11 +1,9 @@
 
+from __future__ import division
+
 import numpy as np
 import amitgroup as ag
-from itertools import product
-from math import cos
 import pywt
-from copy import deepcopy
-
 
 __all__ = ['imagedef']
 
@@ -14,8 +12,8 @@ twopi = 2.0 * np.pi
 # Use ag.ml._deformed_x instead
 
 def _gen_xs(shape):
-    dx = 1./shape[0]
-    dy = 1./shape[1]
+    dx = 1/shape[0]
+    dy = 1/shape[1]
     return np.mgrid[0:1.0-dx:shape[0]*1j, 0:1.0-dy:shape[1]*1j]
 
 def empty_u(tlevels, scriptNs):
@@ -54,7 +52,7 @@ def _array2pywt(coef, scriptNs):
             new_u.append(tuple(als))
     return new_u
 
-def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
+def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_costs=False):
     """
     Deforms an image ``I`` into a prototype image ``F`` using a Daubechies wavelet basis and maximum a posteriori. 
 
@@ -66,10 +64,14 @@ def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
         Image that will be deformed. Array of shape ``(L, L)``. 
     A : int
         Coefficient depth limit. If None, unlimited.
+    stepsize : float
+        Gradient descent step size.
+    coef : float
+        Determines the weight of the prior (proportional to the inverse variance of the gaussian deformations).
     rho : float
         Determines the penalty of more granular coefficients. Increase to smoothen.
     calc_costs : bool
-        If True, then ``info`` will contain `logprior` and `loglikelihood`. The cost function `J` is simply the sum of these two. 
+        If True, then ``info`` will contain `logprior` and `loglikelihood`. The cost function `J` is the negative sum of these two. 
     
     Returns
     -------
@@ -126,21 +128,23 @@ def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
     delF[0] /= F.shape[0]
     delF[1] /= F.shape[1]
     
-    imdef = ag.IDWavelet(x0.shape, rho=rho)
+    imdef = ag.IDWavelet(x0.shape, coef=coef, rho=rho)
 
     # 1. 
-    dx = 1.0/(x0.shape[0]*x0.shape[1])
+    dx = 1/(x0.shape[0]*x0.shape[1])
 
-    stepsize = 0.1
+    last_loglikelihood = np.NINF
 
-    total_iterations = 0
+    num_iterations = 0
+    iterations_per_level = []
     # TODO: bad access of imdef.scriptNs
     for a, N in enumerate(imdef.scriptNs): 
         if a == A:
             break
-        print "-------- a = {0} ---------".format(a)
-        for loop_inner in xrange(2000): 
-            total_iterations += 1
+        # TODO: Add a ag.VERBOSE, or better yet, a ag.verbose(...)
+        ag.info("Running coarse-to-fine level", a)
+        for loop_inner in xrange(4000): # This number is just a maximum
+            num_iterations += 1
             # 2.
 
             # Calculate deformed xs
@@ -159,19 +163,29 @@ def imagedef(F, I, A=None, rho=1.5, calc_costs=False):
             # 4.
             terms = Fzs - I
             # Calculate cost, just for sanity check
+            loglikelihood = -(terms**2).sum() * dx
+
             if calc_costs:
-                logprior = imdef.logprior() 
+                logprior = -imdef.logprior() 
                 logpriors.append(logprior)
 
-                loglikelihood = (terms**2).sum() * dx
                 loglikelihoods.append(loglikelihood)
+            
+            # Check termination
+            if loglikelihood - last_loglikelihood <= tol and loop_inner > 100: # Require at least 100
+                 break
+            last_loglikelihood = loglikelihood
 
             # 5. Gradient descent
             imdef.reestimate(stepsize, delFzs, Fzs, I, a+1)
+
+        iterations_per_level.append(num_iterations)
+        num_iterations = 0
     
                
     info = {}
-    info['iterations'] = total_iterations
+    info['iterations_per_level'] = iterations_per_level
+    info['iterations'] = sum(iterations_per_level) 
     if calc_costs:
         info['logpriors'] = np.array(logpriors)
         info['loglikelihoods'] = np.array(loglikelihoods)
