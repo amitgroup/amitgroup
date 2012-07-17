@@ -2,7 +2,7 @@ import os, struct
 from array import array as pyarray 
 from numpy import append, array, int8, uint8, zeros
 
-def load_mnist(dataset = "training", path = ".", digits=None, asbytes=False):
+def load_mnist(dataset = "training", digits=None, path = None, asbytes=False):
     """
     Loads MNIST files into a 3D numpy arrays.
 
@@ -10,10 +10,10 @@ def load_mnist(dataset = "training", path = ".", digits=None, asbytes=False):
     ----------
     dataset : str 
         Either "training" or "testing", depending on which dataset you want to load. 
-    path : str 
-        Path to your MNIST datafiles. Can be downloaded here: http://yann.lecun.com/exdb/mnist/
     digits : list 
-        Integer list of digits to load. The entire database is loaded if set to None. Default is None.
+        Integer list of digits to load. The entire database is loaded if set to ``None``. Default is ``None``.
+    path : str 
+        Path to your MNIST datafiles. The default is ``None``, which will try to take the path from your environment variable ``MNIST``. The data can be downloaded from http://yann.lecun.com/exdb/mnist/.
     asbytes : bool
         If True, returns data as ``numpy.uint8`` in [0, 255] as opposed to ``numpy.float64`` in [0.0, 1.0].
 
@@ -22,17 +22,17 @@ def load_mnist(dataset = "training", path = ".", digits=None, asbytes=False):
     images : ndarray
         Image data of shape ``(N, rows, cols)``, where ``N`` is the number of images. 
     labels : ndarray
-        Array of size ``N`` describing .
+        Array of size ``N`` describing the labels.
 
     Examples
     --------
-    Assuming that you have downloaded the MNIST database and put it into `/path/to/mnist`, this will looad all images and labels from the training set:
+    Assuming that you have downloaded the MNIST database and set the environment variable ``$MNIST`` point to the folder, this will load all images and labels from the training set:
 
-    >>> images, labels = ag.io.load_mnist('training', '/path/to/mnist') # doctest: +SKIP
+    >>> images, labels = ag.io.load_mnist('training') # doctest: +SKIP
 
     Load all sevens from the testing set:    
 
-    >>> sevens, _ = ag.io.load_mnist('testing', '/path/to/mnist', [7]) # doctest: +SKIP
+    >>> sevens, _ = ag.io.load_mnist('testing', [7]) # doctest: +SKIP
 
     """
 
@@ -42,11 +42,17 @@ def load_mnist(dataset = "training", path = ".", digits=None, asbytes=False):
         'testing': ('t10k-images-idx3-ubyte', 't10k-labels-idx1-ubyte'),
     }
 
+    if path is None:
+        try:
+            path = os.environ['MNIST']
+        except KeyError:
+            raise ValueError("Unspecified path requires environment variable $MNIST to be set")
+
     try:
         images_fname = os.path.join(path, files[dataset][0])
         labels_fname = os.path.join(path, files[dataset][1])
     except KeyError:
-        raise ValueError("dataset must be 'testing' or 'training'")
+        raise ValueError("Data set must be 'testing' or 'training'")
 
     flbl = open(labels_fname, 'rb')
     magic_nr, size = struct.unpack(">II", flbl.read(8))

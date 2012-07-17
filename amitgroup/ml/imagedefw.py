@@ -1,8 +1,8 @@
-
 from __future__ import division
 
 import numpy as np
 import amitgroup as ag
+import amitgroup.util
 import pywt
 
 __all__ = ['imagedef']
@@ -52,7 +52,7 @@ def _array2pywt(coef, scriptNs):
             new_u.append(tuple(als))
     return new_u
 
-def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_costs=False):
+def imagedef(I, F, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_costs=False):
     """
     Deforms an image ``I`` into a prototype image ``F`` using a Daubechies wavelet basis and maximum a posteriori. 
 
@@ -128,7 +128,7 @@ def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
     delF[0] /= F.shape[0]
     delF[1] /= F.shape[1]
     
-    imdef = ag.IDWavelet(x0.shape, coef=coef, rho=rho)
+    imdef = ag.util.DisplacementFieldWavelet(x0.shape, coef=coef, rho=rho)
 
     # 1. 
     dx = 1/(x0.shape[0]*x0.shape[1])
@@ -177,7 +177,10 @@ def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
             last_loglikelihood = loglikelihood
 
             # 5. Gradient descent
-            imdef.reestimate(stepsize, delFzs, Fzs, I, a+1)
+            W = np.empty((2,) + terms.shape)
+            for q in range(2):
+                W[q] = delFzs[q] * terms
+            imdef.reestimate(stepsize, W, a+1)
 
         iterations_per_level.append(num_iterations)
         num_iterations = 0

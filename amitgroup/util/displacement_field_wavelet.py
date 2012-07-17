@@ -1,7 +1,10 @@
+from __future__ import absolute_import
+
 import amitgroup as ag
 import amitgroup.math
 import numpy as np
 import pywt
+from .displacement_field import DisplacementField
 
 #TODO Move somewhere else, so as not to clog up the space
 # before the class.
@@ -34,9 +37,9 @@ def _array2pywt(coef, scriptNs):
 def _gen_xs(shape):
     return np.mgrid[0:1.0:shape[0]*1j, 0:1.0:shape[1]*1j]
 
-class IDWavelet(ag.ImageDeformation):
+class DisplacementFieldWavelet(DisplacementField):
     def __init__(self, shape, coef=1e-3, rho=1.5):
-        super(IDWavelet, self).__init__(shape)
+        super(DisplacementFieldWavelet, self).__init__(shape)
         self.shape = shape
         self.rho = rho 
         self.coef = coef
@@ -107,11 +110,10 @@ class IDWavelet(ag.ImageDeformation):
     def logprior(self):
         return (self.lmbks * self.u**2).sum() / 2.0
 
-    def reestimate(self, stepsize, delFz, Fz, I, level):
-        terms = Fz - I
+    def reestimate(self, stepsize, W, level):
         wl = pywt.Wavelet(self._wl_name())
         vqks = np.array([
-            _pywt2array(pywt.wavedec2(delFz[q] * terms, wl, level=self.levels), self.scriptNs, level) for q in range(2)
+            _pywt2array(pywt.wavedec2(W[q], wl, level=self.levels), self.scriptNs, level) for q in range(2)
         ])
 
         self.u -= stepsize * (self.lmbks * self.u + vqks)

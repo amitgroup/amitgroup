@@ -1,7 +1,7 @@
 
-class ImageDeformation(object):
+class DisplacementField(object):
     """
-    Image deformation. Base class for representing a deformation of a 2D mesh grid. 
+    Displacement field. Base class for representing a deformation of a 2D mesh grid. 
     """
     def __init__(self, shape):
         self.set_shape(shape)
