@@ -59,13 +59,16 @@ def bernoulli_train(data):
 def bernoulli_model(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_costs=False):
     """
     """
+    assert F.shape[1:] == I.shape, "F and I must match"
+    assert F.shape[0] == 8, "F must already be the means of edge features"
+
     logpriors = []
     loglikelihoods = []
 
     X_ = ag.features.bedges(np.array([I]))
     X = np.rollaxis(X_[0], 2)
 
-    x0, x1 = _gen_xs(F[0].shape)
+    x0, x1 = _gen_xs(I.shape)
     
     if 1:
         all_js = range(8)
@@ -147,10 +150,8 @@ def bernoulli_model(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, ca
                 W[q] = 0.0
                 for j in all_js: 
                     t1 = X[j] * delFjzs[j][q]/Fjzs[j]
-                    #t2 = 0.1 * -(1-X[j]) * delFjzs[j][q]/(1-Fjzs[j])
-                    t2 = 0.0
+                    t2 = -(1-X[j]) * delFjzs[j][q]/(1-Fjzs[j])
                     W[q] += t1 + t2 
-                    #X[:,:,j] #delFzs Continue here.
 
             # 5. Gradient descent
             imdef.reestimate(stepsize, W, a+1)
