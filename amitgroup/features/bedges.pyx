@@ -28,24 +28,7 @@ cdef inline void checkedge(DTYPE_t[:,:,:] images, np.uint8_t[:,:,:,:] ret, int i
         d > dabs(images[ii, y0+v0, y1+v1] - Iy):
         ret[ii, z0, z1, vi + 4*<int>(Iy > Iz)] = 1 
 
-def bedges(np.ndarray[DTYPE_t, ndim=3] images):
-    """
-    Extracts binary edge features for each pixel according to [1].
-
-    Parameters
-    ----------
-    images : ndarray
-        Input all images as an ndarray of shape ``(N, rows, cols)``, where ``N`` is the number of images, and ``rows`` and ``cols`` the size of each image.
-
-    Returns
-    -------
-    edges : ndarray
-        An array of shape ``(N, rows, cols, 8)``, where each pixel in the original image becomes a binary vector of size 8, one bit for each cardinal and diagonal direction. 
-
-    References
-    ----------
-    [1] Y. Amit : 2D Object Detection and Recognition: Models, Algorithms and Networks. Chapter 5.4.
-    """
+def _array_bedges(np.ndarray[DTYPE_t, ndim=3] images):
     assert(images.dtype == DTYPE)
     cdef int N = images.shape[0]
     cdef int rows = images.shape[1]
@@ -67,4 +50,28 @@ def bedges(np.ndarray[DTYPE_t, ndim=3] images):
 
     return ret
       
+def bedges(images):
+    """
+    Extracts binary edge features for each pixel according to [1].
+
+    Parameters
+    ----------
+    images : ndarray
+        Input an image of shape ``(rows, cols)`` or a list of images as an array of shape ``(N, rows, cols)``, where ``N`` is the number of images, and ``rows`` and ``cols`` the size of each image.
+
+    Returns
+    -------
+    edges : ndarray
+        An array of shape ``(rows, cols, 8)`` if entered as a single image, or ``(N, rows, cols, 8)`` of multiple. Each pixel in the original image becomes a binary vector of size 8, one bit for each cardinal and diagonal direction. 
+
+    References
+    ----------
+    [1] Y. Amit : 2D Object Detection and Recognition: Models, Algorithms and Networks. Chapter 5.4.
+    """
+    single = len(images.shape) == 2
+    if single:
+        return _array_bedges(np.array([images]))[0]
+    else:
+        return _array_bedges(images) 
+
 

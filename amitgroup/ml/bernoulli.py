@@ -67,9 +67,14 @@ def bernoulli_model(I, F, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, ca
 
     x0, x1 = _gen_xs(F[0].shape)
     
-    all_js = range(8)
+    if 1:
+        all_js = range(8)
+        filler = []
+    else:
+        all_js = [2]
+        filler = [None] * 2
 
-    delFjs = [] 
+    delFjs = [] + filler 
     for j in all_js:
         delF = np.gradient(F[j])
         # Normalize since the image covers the square around [0, 1].
@@ -90,9 +95,8 @@ def bernoulli_model(I, F, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, ca
     for a, N in enumerate(imdef.scriptNs): 
         if a == A:
             break
-        # TODO: Add a ag.VERBOSE, or better yet, a ag.verbose(...)
         ag.info("Running coarse-to-fine level", a)
-        for loop_inner in xrange(400): # This number is just a maximum
+        for loop_inner in xrange(2000): # This number is just a maximum
             num_iterations += 1
             # 2.
 
@@ -102,13 +106,13 @@ def bernoulli_model(I, F, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, ca
             z1 = x1 + Uy
 
             # Interpolate F at zs
-            Fjzs = []
+            Fjzs = [] + filler 
             for j in all_js: 
                 Fzs = ag.math.interp2d(z0, z1, F[j])
                 Fjzs.append(Fzs)
 
             # Interpolate delF at zs 
-            delFjzs = []
+            delFjzs = [] + filler
             for j in all_js: 
                 delFzs = np.empty((2,) + F[j].shape) 
                 for q in range(2):
@@ -134,7 +138,7 @@ def bernoulli_model(I, F, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, ca
             
             # Check termination
             #print(loglikelihood - last_loglikelihood)
-            if loglikelihood - last_loglikelihood <= tol and loop_inner >= 400: # Require at least 100
+            if loglikelihood - last_loglikelihood <= tol and loop_inner >= 100: # Require at least 100
                  break
             last_loglikelihood = loglikelihood
 
@@ -143,7 +147,8 @@ def bernoulli_model(I, F, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, ca
                 W[q] = 0.0
                 for j in all_js: 
                     t1 = X[j] * delFjzs[j][q]/Fjzs[j]
-                    t2 = 0.1 * -(1-X[j]) * delFjzs[j][q]/(1-Fjzs[j])
+                    #t2 = 0.1 * -(1-X[j]) * delFjzs[j][q]/(1-Fjzs[j])
+                    t2 = 0.0
                     W[q] += t1 + t2 
                     #X[:,:,j] #delFzs Continue here.
 

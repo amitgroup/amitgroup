@@ -5,7 +5,10 @@ import random
 #  uses helper functions
 #
 
-class Bernoulli_Mixture:
+class BernoulliMixture:
+    """
+    Bernoulli Mixture model with an EM solver.
+    """
     def __init__(self,num_mix,data_mat,init_type='unif_rand',
                  opt_type='expected'):
         self.num_mix = num_mix

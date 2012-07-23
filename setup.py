@@ -26,7 +26,7 @@ setup(name='amitgroup',
         'amitgroup.stats'
     ],
     ext_modules = [
-        CythonExtension("amitgroup.features.bedges", mp=True),
+        CythonExtension("amitgroup.features.bedges"),
         CythonExtension("amitgroup.math.interp2d"),
         CythonExtension("amitgroup.ml.aux"),
     ]

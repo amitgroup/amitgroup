@@ -30,6 +30,24 @@ Input/Output (:mod:`amitgroup.io`)
    load_image
    load_mnist
 
+Statistics (:mod:`amitgroup.stats`)
+-----------------------------------
+.. currentmodule:: amitgroup.stats
+
+.. autosummary::
+   :toctree: generated/
+
+   BernoulliMixture
+
+Utilities (:mod:`amitgroup.util`)
+---------------------------------
+.. currentmodule:: amitgroup.util
+
+.. autosummary::
+   :toctree: generated/
+
+   DisplacementField
+   DisplacementFieldWavelet
 
 Machine Learning (:mod:`amitgroup.ml`)
 --------------------------------------
@@ -39,7 +57,6 @@ Machine Learning (:mod:`amitgroup.ml`)
    :toctree: generated/
 
    imagedef
-   deform
 
 Math (:mod:`amitgroup.math`)
 ------------------------------------

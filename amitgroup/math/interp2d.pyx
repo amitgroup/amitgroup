@@ -1,9 +1,9 @@
 
-# cython: boundscheck=True
+# cython: boundscheck=False
 # cython: wraparound=False
 # cython: embedsignature=True
 # cython: cdivision=True
-# cython: profile=True
+# cython: profile=False
 import cython
 import numpy as np
 cimport numpy as np
@@ -19,7 +19,7 @@ cdef inline DTYPE_t dabs(DTYPE_t x) nogil:
 cdef inline DTYPE_t lerp(DTYPE_t a, DTYPE_t x, DTYPE_t y) nogil:
     return (1.0-a) * x + a * y
 
-def interp2d(np.ndarray[DTYPE_t, ndim=2] x, np.ndarray[DTYPE_t, ndim=2] y, z, dx=None, startx=None, fill_value=None): 
+def interp2d(x, y, z, dx=None, startx=None, fill_value=None): 
     """
     Calculates bilinear interpolated points of ``z`` at positions ``x`` and ``y``.
     
@@ -45,10 +45,11 @@ def interp2d(np.ndarray[DTYPE_t, ndim=2] x, np.ndarray[DTYPE_t, ndim=2] y, z, dx
         Array of shape ``(A, B)`` with interpolated values at positions at ``x`` and ``y``.
     """
     
-    assert(x.dtype == DTYPE)
-    assert(y.dtype == DTYPE)
-    assert(z.dtype == DTYPE)
-    assert(x.shape == y.shape, "x and y must be the same shape")
+    assert x.dtype == DTYPE, "x must be of type {0}, not {1}".format(DTYPE, x.dtype)
+    assert y.dtype == DTYPE, "y must be of type {0}, not {1}".format(DTYPE, y.dtype)
+    assert z.dtype == DTYPE, "z must be of type {0}, not {1}".format(DTYPE, z.dtype)
+    # This assert is only possible with 
+    assert x.shape == y.shape, "x and y must be the same shape ({0} != {1})".format(x.shape, y.shape)
     dx = dx if dx is not None else 1.0/(np.array(z.shape))
     startx = startx if startx is not None else np.zeros(2) 
 
