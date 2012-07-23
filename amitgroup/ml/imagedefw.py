@@ -52,18 +52,18 @@ def _array2pywt(coef, scriptNs):
             new_u.append(tuple(als))
     return new_u
 
-def imagedef(I, F, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_costs=False):
+def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_costs=False):
     """
-    Deforms an image ``I`` into a prototype image ``F`` using a Daubechies wavelet basis and maximum a posteriori. 
+    Deforms an a prototype image `F` into a data image `I` using a Daubechies wavelet basis and maximum a posteriori. 
 
     Parameters
     ----------
     F : ndarray
         Prototype image. Array of shape ``(L, L)`` with normalized intensitites. So far, ``L`` has to be a power of two.
     I : ndarray
-        Image that will be deformed. Array of shape ``(L, L)``. 
+        Data image that the prototype will try to deform into. Array of shape ``(L, L)``. 
     A : int
-        Coefficient depth limit. If None, unlimited.
+        Coefficient depth limit. If None, then naturally bounded by image size.
     stepsize : float
         Gradient descent step size.
     coef : float
@@ -75,8 +75,8 @@ def imagedef(I, F, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
     
     Returns
     -------
-    u : ndarray
-        The deformation coefficients of the Daubechies (D4) wavelet.
+    imdef : DisplacementFieldWavelet 
+        The deformation in the form of a :class:`DisplacementField`. 
     info : dict
         Dictionary with info:
         - `iteratons`: Total number of iterations, ``N``.
@@ -93,9 +93,9 @@ def imagedef(I, F, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
 
     Load two example faces and perform the deformation:
 
-    >>> im1, im2 = ag.io.load_example('faces2')
-    >>> imgdef, info = ag.ml.imagedef(im1, im2)
-    >>> im3 = imgdef.deform(im1)
+    >>> F, I = ag.io.load_example('faces2')
+    >>> imgdef, info = ag.ml.imagedef(F, I)
+    >>> Fdef = imgdef.deform(F)
 
     Output the results:
 
@@ -103,16 +103,16 @@ def imagedef(I, F, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
     >>> plt.figure(figsize=(7,7))
     >>> plt.subplot(221)
     >>> plt.title("Prototype")
-    >>> plt.imshow(im1, **d)
+    >>> plt.imshow(F, **d)
     >>> plt.subplot(222)
-    >>> plt.title("Original")
-    >>> plt.imshow(im2, **d) 
+    >>> plt.title("Data image")
+    >>> plt.imshow(I, **d) 
     >>> plt.subplot(223)
     >>> plt.title("Deformed")
-    >>> plt.imshow(im3, **d)
+    >>> plt.imshow(Fdef, **d)
     >>> plt.subplot(224)
     >>> plt.title("Deformation map")
-    >>> x, y = imgdef.get_x(im1.shape)
+    >>> x, y = imgdef.get_x(F.shape)
     >>> Ux, Uy = imgdef.deform_map(x, y) 
     >>> plt.quiver(y, -x, Uy, -Ux)
     >>> plt.show()

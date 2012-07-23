@@ -56,7 +56,7 @@ def bernoulli_train(data):
     edges = ag.features.bedges(data)
     return edges
 
-def bernoulli_model(I, F, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_costs=False):
+def bernoulli_model(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_costs=False):
     """
     """
     logpriors = []
