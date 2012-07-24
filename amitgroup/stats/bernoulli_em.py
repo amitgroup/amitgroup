@@ -12,8 +12,8 @@ class BernoulliMixture:
     def __init__(self,num_mix,data_mat,init_type='unif_rand',
                  opt_type='expected'):
         self.num_mix = num_mix
-        self.height,self.width = data_mat.shape[1:]
         self.num_data = data_mat.shape[0]
+        self.data_shape = data_mat.shape[1:]
         # flatten data to just be binary vectors
         self.data_length = np.prod(data_mat.shape[1:])
         self.data_mat = data_mat.reshape(self.num_data, self.data_length)
@@ -38,21 +38,23 @@ class BernoulliMixture:
             self.M_step()
             # E-step
             new_loglikelihood = self.compute_loglikelihoods()
+        self.set_templates()
+        
  
     def M_step(self):
         self.weights = np.mean(self.affinities,axis=0)
         for mix_id in xrange(self.num_mix):
-            self.templates[mix_id] = np.sum(self.data_mat * np.tile(self.affinities[:,mix_id],
-                                                                    (self.width,self.height,1)).transpose(),
+            self.work_templates[mix_id] = np.sum(self.data_mat * np.tile(self.affinities[:,mix_id],
+                                                                    (self.data_length,1)).transpose(),
                                             axis=0)
-            self.templates[mix_id] /= (self.weights[mix_id] * self.num_data)
+            self.work_templates[mix_id] /= (self.weights[mix_id] * self.num_data)
         self.threshold_templates()
-        self.log_templates = np.log(self.templates)
-        self.log_invtemplates = np.log(1-self.templates)
+        self.log_templates = np.log(self.work_templates)
+        self.log_invtemplates = np.log(1-self.work_templates)
 
         
     def threshold_templates(self):
-        self.templates = np.maximum(np.minimum(self.templates,.95),.05)
+        self.work_templates = np.maximum(np.minimum(self.work_templates,.95),.05)
 
     def init_affinities_templates(self,init_type):
         if init_type == 'unif_rand':
@@ -61,12 +63,11 @@ class BernoulliMixture:
             random.shuffle(idx)
             self.affinities = np.zeros((self.num_data,
                                         self.num_mix))
-            self.templates = np.zeros((self.num_mix,
-                                       self.height,
-                                       self.width))
+            self.work_templates = np.zeros((self.num_mix,
+                                       self.data_length))
             for mix_id in xrange(self.num_mix):
                 self.affinities[self.num_mix*np.arange(self.num_data/self.num_mix)+mix_id,mix_id] = 1.
-                self.templates[mix_id] = np.mean(self.data_mat[self.affinities[:,mix_id]==1],axis=0)
+                self.work_templates[mix_id] = np.mean(self.data_mat[self.affinities[:,mix_id]==1],axis=0)
                 self.threshold_templates()
         elif init_type == 'specific':
             random.seed()
@@ -74,25 +75,28 @@ class BernoulliMixture:
             random.shuffle(idx)
             self.affinities = np.zeros((self.num_data,
                                         self.num_mix))
-            self.templates = np.zeros((self.num_mix,
-                                       self.height,
-                                       self.width))
+            self.work_templates = np.zeros((self.num_mix,
+                                       self.data_length))
             for mix_id in xrange(self.num_mix):
                 self.affinities[self.num_mix*np.arange(self.num_data/self.num_mix)[1]+mix_id,mix_id] = 1.
-                self.templates[mix_id] = np.mean(self.data_mat[self.affinities[:,mix_id]==1],axis=0)
+                self.work_templates[mix_id] = np.mean(self.data_mat[self.affinities[:,mix_id]==1],axis=0)
                 self.threshold_templates()
 
-        self.log_templates = np.log(self.templates)
-        self.log_invtemplates = np.log(1-self.templates)
+        self.log_templates = np.log(self.work_templates)
+        self.log_invtemplates = np.log(1-self.work_templates)
 
 
     def get_templates(self):
         return self.templates
 
     def init_templates(self):
+        self.work_templates = np.zeros((self.num_mix,
+                                   self.data_length))
         self.templates = np.zeros((self.num_mix,
-                                   self.height,
-                                   self.width))
+                                   self.data_length))
+
+    def set_templates(self):
+        self.templates = self.work_templates.reshape((self.num_mix,)+self.data_shape)
 
     def get_num_mix(self):
         return self.num_mix
