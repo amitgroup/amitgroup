@@ -13,8 +13,11 @@ class BernoulliMixture:
                  opt_type='expected'):
         self.num_mix = num_mix
         self.height,self.width = data_mat.shape[1:]
-        self.data_mat = data_mat
         self.num_data = data_mat.shape[0]
+        # flatten data to just be binary vectors
+        self.data_length = np.prod(data_mat.shape[1:])
+        self.data_mat = data_mat.reshape(self.num_data, self.data_length)
+        
         # initializing weights
         self.weights = 1./num_mix * np.ones(num_mix)
         self.opt_type=opt_type
