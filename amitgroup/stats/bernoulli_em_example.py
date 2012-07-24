@@ -26,6 +26,6 @@ for X in XS:
     X[S < templates[np.random.randint(num_templates)]] = 1.
 
 
-bm = bernoulli_em.Bernoulli_Mixture(3,XS)
+bm = bernoulli_em.BernoulliMixture(3,XS)
 bm.run_EM(.0001)
 
