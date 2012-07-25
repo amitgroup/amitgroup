@@ -75,11 +75,12 @@ def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
     
     Returns
     -------
-    imdef : DisplacementFieldWavelet 
+    imdef : DisplacementFieldWavelet
         The deformation in the form of a :class:`DisplacementField`. 
     info : dict
         Dictionary with info:
-        - `iteratons`: Total number of iterations, ``N``.
+        - `iterations`: Total number of iterations, ``N``.
+        - `iterations_per_level`: Iterations per coarseness level.
         - `logprior`: The value of the log-prior for each iteration. Array of length ``N``.
         - `loglikelihood`: The value of the log-likelihood for each iteration. Array of length ``N``.
 
@@ -88,6 +89,7 @@ def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
     Deform an image into a prototype image:
 
     >>> import amitgroup as ag
+    >>> import amitgroup.ml
     >>> import numpy as np
     >>> import matplotlib.pylab as plt
 
@@ -141,7 +143,6 @@ def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
     for a, N in enumerate(imdef.scriptNs): 
         if a == A:
             break
-        # TODO: Add a ag.VERBOSE, or better yet, a ag.verbose(...)
         ag.info("Running coarse-to-fine level", a)
         for loop_inner in xrange(4000): # This number is just a maximum
             num_iterations += 1
@@ -170,6 +171,9 @@ def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
                 logpriors.append(logprior)
 
                 loglikelihoods.append(loglikelihood)
+        
+                if __debug__ and loop_inner%10 == 0:
+                    ag.info("cost = {0}".format(-logprior-loglikelihood))
             
             # Check termination
             if loglikelihood - last_loglikelihood <= tol and loop_inner > 100: # Require at least 100
