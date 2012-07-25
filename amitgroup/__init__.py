@@ -16,3 +16,9 @@ __version__ = '{0}.{1}.{2}'.format(*VERSION)
 if not ISRELEASED:
     __version__ += '.dev' 
 
+def test(verbose=False):
+    import amitgroup.tests
+    import unittest
+    dir(unittest)
+    unittest.main()
+
