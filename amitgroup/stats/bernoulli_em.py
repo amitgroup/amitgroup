@@ -24,7 +24,7 @@ class BernoulliMixture:
         self.init_affinities_templates(init_type)
         
 
-
+    # TODO: save_template never used!
     def run_EM(self,tol,save_template=False):
         """ EM algorithm
         First we compute the expected value of the label vector for each point
@@ -54,7 +54,7 @@ class BernoulliMixture:
 
         
     def threshold_templates(self):
-        self.work_templates = np.maximum(np.minimum(self.work_templates,.95),.05)
+        self.work_templates = np.clip(self.work_templates, 0.05, 0.95) 
 
     def init_affinities_templates(self,init_type):
         if init_type == 'unif_rand':
@@ -123,21 +123,20 @@ class BernoulliMixture:
         self.affinities/=np.tile(np.sum(self.affinities,axis=1),(self.num_mix,1)).transpose()
         return loglikelihood
         
-    def get_template_loglikelihood(self,datum):
-        return np.sum(self.log_templates[:,datum > .5],\
-                           axis=1) +\
-                           np.sum(self.log_invtemplates[:,datum < .5],\
-                                       axis=1)
-    
     def get_template_loglikelihoods(self,data_mat):
         """ Assumed to be called whenever
         """
-        return np.array(map(lambda x:\
-                                self.get_template_loglikelihood(x),\
-                                data_mat))
-
+        return np.dot(data_mat, self.log_templates.T) + \
+               np.dot(1-data_mat, self.log_invtemplates.T)
         
     def set_template_vec_likelihoods(self):
         pass
     
-
+    def save(self, filename, save_affinities=False):
+        """
+        Save mixture components to a numpy npz file.
+        """
+        entries = dict(templates=self.templates, weights=self.weights)
+        if save_affinities:
+            entries['affinities'] = self.affinities
+        np.savez(filename, **entries) 
