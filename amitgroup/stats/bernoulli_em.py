@@ -43,11 +43,10 @@ class BernoulliMixture:
  
     def M_step(self):
         self.weights = np.mean(self.affinities,axis=0)
-        for mix_id in xrange(self.num_mix):
-            self.work_templates[mix_id] = np.sum(self.data_mat * np.tile(self.affinities[:,mix_id],
-                                                                    (self.data_length,1)).transpose(),
-                                            axis=0)
-            self.work_templates[mix_id] /= (self.weights[mix_id] * self.num_data)
+        self.work_templates = np.dot(self.affinities.T, self.data_mat)
+        self.work_templates /= self.num_data 
+        self.work_templates /= self.weights.reshape((self.num_mix, 1))
+
         self.threshold_templates()
         self.log_templates = np.log(self.work_templates)
         self.log_invtemplates = np.log(1-self.work_templates)
