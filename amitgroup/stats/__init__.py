@@ -1,2 +1,2 @@
 
-from bernoulli_em import BernoulliMixture
+from bernoulli_mixture import BernoulliMixture

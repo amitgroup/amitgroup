@@ -1,43 +1,128 @@
+import amitgroup as ag
 import numpy as np
 import random
-#
-# Compute EM algorithm
-#  uses helper functions
-#
 
 class BernoulliMixture:
     """
     Bernoulli Mixture model with an EM solver.
+
+    Parameters
+    ----------
+    num_mix : int
+        Number of mixture components. 
+    data_mat : ndarray
+        Binary data array. Can be of any shape, as long as the first axis separates data entries.
+        Values in the data must be either 0 or 1 for the algorithm to work.
+    init_type : string
+        Specifies the algorithm initialization.
+         * `unif_rand` : Unified random. 
+         * `specific` : TODO: Added explanation of this.
+    
+    Attributes 
+    ----------
+    num_mix : int
+        Number of mixture components.
+    num_data : int
+        Number of data entries.
+    data_length : int
+        Length of data flattened. 
+    iterations : int
+        Number of iterations from the EM. Will be set after calling :py:func:`run_EM`.      
+    templates : ndarray 
+        Mixture components templates. Array of shape ``(num_mix, A, B, ...)``, where ``A, B, ...`` is the shape of a data entry.
+    work_templates : ndarray
+        Flattened mixture components templates. Array of shape ``(num_mix, data_length)``.
+    weights : ndarray
+        The probabilities of drawing from a certain mixture component. Array of length ``num_mix``.
+    affinities : ndarray
+        The contribution of each original data point to each mixture component. Array of shape ``(num_data, num_mix)``.
+
+    Examples
+    --------
+    Create a mixture model with 2 mixture componenents.
+    
+    >>> import amitgroup as ag
+    >>> import numpy as np
+    >>> data = np.array([[1, 1, 0], [0, 0, 1], [1, 1, 1]]) 
+    >>> mixture = ag.stats.BernoulliMixture(2, data)
+    
+    Run the algorithm until specified tolerance.
+    
+    >>> mixture.run_EM(1e-3)
+
+    Display the mixture templates and the corresponding weights.
+            
+    >>> mixture.templates
+    array([[ 0.95      ,  0.95      ,  0.50010438],
+           [ 0.05      ,  0.05      ,  0.95      ]])
+    >>> mixture.weights
+    array([ 0.66671347,  0.33328653])
+
+    Display the latent variable, describing what combination of mixture components
+    a certain data frame came from:
+    
+    >>> mixture.affinities
+    array([[  9.99861515e-01,   1.38484719e-04],
+           [  2.90861524e-03,   9.97091385e-01],
+           [  9.97376426e-01,   2.62357439e-03]])
+
     """
-    def __init__(self,num_mix,data_mat,init_type='unif_rand',
-                 opt_type='expected'):
+    def __init__(self,num_mix,data_mat,init_type='unif_rand'):
+        # TODO: opt_type='expected'
         self.num_mix = num_mix
         self.num_data = data_mat.shape[0]
         self.data_shape = data_mat.shape[1:]
         # flatten data to just be binary vectors
         self.data_length = np.prod(data_mat.shape[1:])
         self.data_mat = data_mat.reshape(self.num_data, self.data_length)
+        self.iterations = 0
+
+        self.min_probability = 0.05
+
+        # If we change this to a true bitmask, we should do ~data_mat
+        self.not_data_mat = 1 - self.data_mat
         
         # initializing weights
         self.weights = 1./num_mix * np.ones(num_mix)
-        self.opt_type=opt_type
+        #self.opt_type=opt_type TODO: Not used yet.
         self.init_affinities_templates(init_type)
-        
+
+        # Data sizes:
+        # data_mat : num_data * data_length
+        # weights : num_mix
+        # work_templates : num_mix * data_length
+        # affinities : num_data * num_mix
+
 
     # TODO: save_template never used!
-    def run_EM(self,tol,save_template=False):
-        """ EM algorithm
-        First we compute the expected value of the label vector for each point
+    def run_EM(self, tol, min_probability=0.05):
+        """ 
+        Run the EM algorithm to specified convergence.
+        
+        Parameters
+        ----------
+        tol : float
+            The tolerance gives the stopping condition for convergence. 
+            If the loglikelihood decreased with less than ``tol``, then it will break the loop.
+        min_probability : float
+            Disallow probabilities to fall below this value, and extend below one minus this value.
         """
+        self.min_probability = 0.05
         loglikelihood = -np.inf
         # First E step plus likelihood computation
         new_loglikelihood = self.compute_loglikelihoods()
+
+        self.iterations = 0
         while new_loglikelihood - loglikelihood > tol:
+            ag.info("Iteration {0}: loglikelihood {1}".format(self.iterations, loglikelihood))
             loglikelihood = new_loglikelihood
             # M-step
             self.M_step()
             # E-step
             new_loglikelihood = self.compute_loglikelihoods()
+            
+            self.iterations += 1
+
         self.set_templates()
         
  
@@ -46,14 +131,13 @@ class BernoulliMixture:
         self.work_templates = np.dot(self.affinities.T, self.data_mat)
         self.work_templates /= self.num_data 
         self.work_templates /= self.weights.reshape((self.num_mix, 1))
-
         self.threshold_templates()
         self.log_templates = np.log(self.work_templates)
         self.log_invtemplates = np.log(1-self.work_templates)
 
         
     def threshold_templates(self):
-        self.work_templates = np.clip(self.work_templates, 0.05, 0.95) 
+        self.work_templates = np.clip(self.work_templates, self.min_probability, 1-self.min_probability) 
 
     def init_affinities_templates(self,init_type):
         if init_type == 'unif_rand':
@@ -84,7 +168,6 @@ class BernoulliMixture:
         self.log_templates = np.log(self.work_templates)
         self.log_invtemplates = np.log(1-self.work_templates)
 
-
     def get_templates(self):
         return self.templates
 
@@ -110,7 +193,8 @@ class BernoulliMixture:
         
 
     def compute_loglikelihoods(self):
-        template_logscores = self.get_template_loglikelihoods(self.data_mat)
+        template_logscores = self.get_template_loglikelihoods()
+
         loglikelihoods = template_logscores + np.tile(np.log(self.weights),(self.num_data,1))
         max_vals = np.amax(loglikelihoods,axis=1)
         # adjust the marginals by a value to avoid numerical
@@ -122,18 +206,26 @@ class BernoulliMixture:
         self.affinities/=np.tile(np.sum(self.affinities,axis=1),(self.num_mix,1)).transpose()
         return loglikelihood
         
-    def get_template_loglikelihoods(self,data_mat):
+    def get_template_loglikelihoods(self):
         """ Assumed to be called whenever
         """
-        return np.dot(data_mat, self.log_templates.T) + \
-               np.dot(1-data_mat, self.log_invtemplates.T)
-        
+        return np.dot(self.data_mat, self.log_templates.T) + \
+               np.dot(self.not_data_mat, self.log_invtemplates.T)
+      
     def set_template_vec_likelihoods(self):
         pass
     
     def save(self, filename, save_affinities=False):
         """
         Save mixture components to a numpy npz file.
+        
+        Parameters
+        ----------
+        filename : str
+            Path to filename
+        save_affinities : bool
+            Save ``affinities`` or not. This is an option since this will proportional to input data size, which
+            can be much larger than simply the mixture templates. 
         """
         entries = dict(templates=self.templates, weights=self.weights)
         if save_affinities:

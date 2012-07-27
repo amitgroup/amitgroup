@@ -1,4 +1,4 @@
-import bernoulli_em
+import amitgroup as ag
 import numpy as np
 
 # generate synthetic data
@@ -26,6 +26,6 @@ for X in XS:
     X[S < templates[np.random.randint(num_templates)]] = 1.
 
 
-bm = bernoulli_em.BernoulliMixture(3,XS)
+bm = ag.stats.BernoulliMixture(3,XS)
 bm.run_EM(.0001)
 
