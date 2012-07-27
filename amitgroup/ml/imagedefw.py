@@ -7,51 +7,6 @@ import pywt
 
 __all__ = ['imagedef']
 
-twopi = 2.0 * np.pi
-
-# Use ag.ml._deformed_x instead
-
-def _gen_xs(shape):
-    dx = 1/shape[0]
-    dy = 1/shape[1]
-    return np.mgrid[0:1.0-dx:shape[0]*1j, 0:1.0-dy:shape[1]*1j]
-
-def empty_u(tlevels, scriptNs):
-    u = []
-    for q in range(2):
-        u0 = [np.zeros((scriptNs[0],)*2)]
-        for a in range(1, tlevels):
-            sh = (scriptNs[a],)*2
-            u0.append((np.zeros(sh), np.zeros(sh), np.zeros(sh)))
-        u.append(u0)
-    return u 
-
-def _pywt2array(coef, scriptNs, maxL=1000):
-    L = len(scriptNs)#len(coef)
-    N = scriptNs[-1]#len(coef[-1][0])
-    new_u = np.zeros((L, 3, N, N))
-    for i in range(min(maxL, L)):
-        if i == 0:
-            Nx, Ny = coef[i].shape
-            new_u[i,0,:Nx,:Ny] = coef[i]
-        else:
-            for alpha in range(3):
-                Nx, Ny = coef[i][alpha].shape
-                new_u[i,alpha,:Nx,:Ny] = coef[i][alpha]
-    return new_u
-
-def _array2pywt(coef, scriptNs):
-    new_u = []
-    for i, N in enumerate(scriptNs): 
-        if i == 0:
-            new_u.append(coef[i,0,:N,:N])
-        else:
-            als = []
-            for alpha in range(3):
-                als.append(coef[i,alpha,:N,:N])
-            new_u.append(tuple(als))
-    return new_u
-
 def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_costs=False):
     """
     Deforms an a prototype image `F` into a data image `I` using a Daubechies wavelet basis and maximum a posteriori. 
@@ -126,14 +81,14 @@ def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
     logpriors = []
     loglikelihoods = []
 
-    x0, x1 = _gen_xs(F.shape)
-
     delF = np.gradient(F)
     # Normalize since the image covers the square around [0, 1].
     delF[0] /= F.shape[0]
     delF[1] /= F.shape[1]
     
-    imdef = ag.util.DisplacementFieldWavelet(x0.shape, coef=coef, rho=rho)
+    imdef = ag.util.DisplacementFieldWavelet(F.shape, coef=coef, rho=rho)
+    
+    x0, x1 = imdef.get_x(F.shape)
 
     # 1. 
     dx = 1/(x0.shape[0]*x0.shape[1])

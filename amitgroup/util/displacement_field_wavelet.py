@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import amitgroup as ag
-import amitgroup.math
 import numpy as np
 import pywt
 from .displacement_field import DisplacementField
@@ -34,10 +33,12 @@ def _array2pywt(coef, scriptNs):
             new_u.append(tuple(als))
     return new_u
 
-def _gen_xs(shape):
-    return np.mgrid[0:1.0:shape[0]*1j, 0:1.0:shape[1]*1j]
-
 class DisplacementFieldWavelet(DisplacementField):
+    """
+    Displacement field using Daubechies wavelets.
+    
+    Refer to :class:`DisplacementField` for interface documentation.
+    """
     def __init__(self, shape, coef=1e-3, rho=1.5):
         super(DisplacementFieldWavelet, self).__init__(shape)
         self.shape = shape
@@ -56,7 +57,7 @@ class DisplacementFieldWavelet(DisplacementField):
     def _wl_name(self):
         return 'db2'
 
-    def set_shape(self, shape):
+    def prepare_shape(self, shape):
         wl = self._wl_name()
         self.levels = len(pywt.wavedec(range(shape[0]), wl)) - 1
         self.scriptNs = map(len, pywt.wavedec(range(shape[0]), wl, level=self.levels))
@@ -65,27 +66,7 @@ class DisplacementFieldWavelet(DisplacementField):
         Ux0, Ux1 = self.deform_map(x0, x1)
         return x0+Ux0, x1+Ux1
 
-    def get_x(self, shape):
-        dx = 1./shape[0]
-        dy = 1./shape[1]
-        return np.mgrid[0:1.0-dx:shape[0]*1j, 0:1.0-dy:shape[1]*1j]
- 
     def deform_map(self, x, y):
-        """
-        Creates a deformation array according the image deformation. 
-
-        Parameters
-        ----------
-        x, y : ndarray
-            Arrays of `x` and `y` values. Generate these by ``numpy.mgrid``. Array of shape ``(L, L)``.
-
-        Returns
-        -------
-        Ux : ndarray
-            Deformation along the `x` axis. Array of shape ``(L, L)``. 
-        Uy : ndarray
-            Same as above, along `y` axis. 
-        """
         wl = pywt.Wavelet(self._wl_name())
         defx0 = pywt.waverec2(_array2pywt(self.u[0], self.scriptNs), wl) 
         defx1 = pywt.waverec2(_array2pywt(self.u[1], self.scriptNs), wl)
@@ -95,16 +76,13 @@ class DisplacementFieldWavelet(DisplacementField):
         Uy = ag.math.interp2d(x, y, defx1, dx=np.array([1.0/(defx1.shape[0]-1), 1.0/(defx1.shape[1]-1)]))
         return Ux, Uy 
 
+    def deform(self, F):
+        #""":func:`DisplacementField.deform`"""
+        im = np.zeros(F.shape)
 
-    def deform(self, I):
-        """
-        Deform I according to Daubechies coefficients u.
-        """
-        im = np.zeros(I.shape)
-
-        x0, x1 = self.get_x(I.shape) 
+        x0, x1 = self.get_x(F.shape) 
         z0, z1 = self._deformed_x(x0, x1)
-        im = ag.math.interp2d(z0, z1, I)
+        im = ag.math.interp2d(z0, z1, F)
         return im
 
     def logprior(self):
@@ -117,4 +95,3 @@ class DisplacementFieldWavelet(DisplacementField):
         ])
 
         self.u -= stepsize * (self.lmbks * self.u + vqks)
-
