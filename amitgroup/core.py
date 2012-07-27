@@ -6,11 +6,8 @@ import sys
 
 __all__ = ['set_verbose', 'info']
 
-_is_verbose = False # Default
-
 # If any of the arguments is '--verbose', set this to true
-if '--verbose' in sys.argv:
-    _is_verbose = True
+_is_verbose = '--verbose' in sys.argv
 
 def set_verbose(is_verbose):
     """

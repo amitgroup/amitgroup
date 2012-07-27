@@ -46,8 +46,10 @@ Utilities (:mod:`amitgroup.util`)
 .. autosummary::
    :toctree: generated/
 
+   blur_image
    DisplacementField
    DisplacementFieldWavelet
+   interp2d
 
 Machine Learning (:mod:`amitgroup.ml`)
 --------------------------------------
@@ -58,11 +60,15 @@ Machine Learning (:mod:`amitgroup.ml`)
 
    imagedef
 
-Math (:mod:`amitgroup.math`)
-------------------------------------
-.. currentmodule:: amitgroup.math
+Plotting (:mod:`amitgroup.plot`)
+--------------------------------
+.. currentmodule:: amitgroup.plot
+
+The plotting module adds some convenience functions to matplotlib_, and provides plotting functions for amitgroup classes.
 
 .. autosummary::
    :toctree: generated/
+ 
+   images
 
-   interp2d
+.. _matplotlib: http://matplotlib.sourceforge.net
