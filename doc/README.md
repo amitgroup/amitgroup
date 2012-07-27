@@ -23,5 +23,5 @@ While in `amitgroup/`:
     cd doc
     make html 
 
-This will generate documentaion in `build/html`.
+This will generate documentation in `build/html`.
 

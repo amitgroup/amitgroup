@@ -29,17 +29,13 @@ def load_example(name):
     Load faces:
 
     >>> faces = ag.io.load_example("faces")
-    >>> for i in range(6):
-    >>>     plt.subplot(231+i)
-    >>>     plt.imshow(faces[i], cmap=plt.cm.gray, interpolation='nearest')
+    >>> ag.plot.images(faces[:4])
     >>> plt.show()
 
     Load MNIST:
 
     >>> digits = ag.io.load_example("mnist")
-    >>> for i in range(6):
-    >>>     plt.subplot(231+i)
-    >>>     plt.imshow(digits[i], cmap=plt.cm.gray_r, interpolation='nearest')
+    >>> ag.plot.images(digits[:4])
     >>> plt.show()
 
     """

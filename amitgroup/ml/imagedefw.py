@@ -86,6 +86,9 @@ def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
 
     Examples
     --------
+    """
+    # Speed this up. How?
+    """
     Deform an image into a prototype image:
 
     >>> import amitgroup as ag
