@@ -36,7 +36,7 @@ def _array2pywt(coef, scriptNs):
 
 class DisplacementFieldWavelet(DisplacementField):
     """
-    Displacement field using Daubechies wavelets.
+    Displacement field using Daubechies (D4) wavelets.
     
     Refer to :class:`DisplacementField` for interface documentation.
     """
@@ -68,6 +68,7 @@ class DisplacementFieldWavelet(DisplacementField):
         return x0+Ux0, x1+Ux1
 
     def deform_map(self, x, y):
+        """See :func:`DisplacementField.deform_map`"""
         wl = pywt.Wavelet(self._wl_name())
         defx0 = pywt.waverec2(_array2pywt(self.u[0], self.scriptNs), wl) 
         defx1 = pywt.waverec2(_array2pywt(self.u[1], self.scriptNs), wl)
@@ -78,7 +79,7 @@ class DisplacementFieldWavelet(DisplacementField):
         return Ux, Uy 
 
     def deform(self, F):
-        #""":func:`DisplacementField.deform`"""
+        """See :func:`DisplacementField.deform`"""
         im = np.zeros(F.shape)
 
         x0, x1 = self.get_x(F.shape) 
@@ -90,6 +91,9 @@ class DisplacementFieldWavelet(DisplacementField):
         return (self.lmbks * self.u**2).sum() / 2.0
 
     def reestimate(self, stepsize, W, level):
+        """
+         
+        """
         wl = pywt.Wavelet(self._wl_name())
         vqks = np.array([
             _pywt2array(pywt.wavedec2(W[q], wl, level=self.levels), self.scriptNs, level) for q in range(2)
