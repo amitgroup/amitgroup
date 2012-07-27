@@ -112,12 +112,12 @@ def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
             z1 = x1 + Uy
 
             # Interpolate F at zs
-            Fzs = ag.math.interp2d(z0, z1, F)
+            Fzs = ag.util.interp2d(z0, z1, F)
 
             # Interpolate delF at zs 
             delFzs = np.empty((2,) + F.shape) 
             for q in range(2):
-                delFzs[q] = ag.math.interp2d(z0, z1, delF[q], fill_value=0.0)
+                delFzs[q] = ag.util.interp2d(z0, z1, delF[q], fill_value=0.0)
 
             # 4.
             terms = Fzs - I

@@ -27,7 +27,7 @@ setup(name='amitgroup',
     ],
     ext_modules = [
         CythonExtension("amitgroup.features.features"),
-        CythonExtension("amitgroup.math.interp2d"),
+        CythonExtension("amitgroup.util.interp2d"),
         CythonExtension("amitgroup.ml.aux"),
     ]
 )

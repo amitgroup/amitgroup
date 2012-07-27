@@ -4,6 +4,7 @@ import amitgroup as ag
 import numpy as np
 import pywt
 from .displacement_field import DisplacementField
+from .interp2d import interp2d
 
 #TODO Move somewhere else, so as not to clog up the space
 # before the class.
@@ -72,8 +73,8 @@ class DisplacementFieldWavelet(DisplacementField):
         defx1 = pywt.waverec2(_array2pywt(self.u[1], self.scriptNs), wl)
 
         # Interpolated defx at xs 
-        Ux = ag.math.interp2d(x, y, defx0, dx=np.array([1.0/(defx0.shape[0]-1), 1.0/(defx0.shape[1]-1)]))
-        Uy = ag.math.interp2d(x, y, defx1, dx=np.array([1.0/(defx1.shape[0]-1), 1.0/(defx1.shape[1]-1)]))
+        Ux = interp2d(x, y, defx0, dx=np.array([1.0/(defx0.shape[0]-1), 1.0/(defx0.shape[1]-1)]))
+        Uy = interp2d(x, y, defx1, dx=np.array([1.0/(defx1.shape[0]-1), 1.0/(defx1.shape[1]-1)]))
         return Ux, Uy 
 
     def deform(self, F):
@@ -82,7 +83,7 @@ class DisplacementFieldWavelet(DisplacementField):
 
         x0, x1 = self.get_x(F.shape) 
         z0, z1 = self._deformed_x(x0, x1)
-        im = ag.math.interp2d(z0, z1, F)
+        im = interp2d(z0, z1, F)
         return im
 
     def logprior(self):
