@@ -2,6 +2,9 @@ import amitgroup as ag
 import amitgroup.ml
 import numpy as np
 import unittest
+import os
+
+def rel(x): return os.path.join(os.path.abspath(os.path.dirname(__file__)), x)
 
 class TestML(unittest.TestCase):
     def setUp(self):
@@ -12,14 +15,14 @@ class TestML(unittest.TestCase):
         self.F[2:3,0:1] = 1.0
 
     def test_imagedef(self):
-        imdef, info = ag.ml.imagedef(self.F, self.I)
+        # Set tolerance pretty high, to make it fast
+        imdef, info = ag.ml.imagedef(self.F, self.I, A=2, coef=1e-4, rho=1.0, tol=1e-2)
         Fdef = imdef.deform(self.F)
-        Fdef_correct = np.zeros((8, 8))
-        Fdef_correct[1,0] = 0.01197697
-        Fdef_correct[1,1] = 0.36150678
-        Fdef_correct[2,0] = 0.01559739
-        Fdef_correct[2,1] = 0.83793517
-        Fdef_correct[3,1] = 0.00264384
+    
+        # Save the data (when you're sure this test will succeed)
+        #np.save(rel('data/image_deformation_test.npy'), Fdef)
+
+        Fdef_correct = np.load(rel('data/image_deformation_test.npy'))
 
         np.testing.assert_array_almost_equal(Fdef, Fdef_correct)
 

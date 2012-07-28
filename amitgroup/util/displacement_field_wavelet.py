@@ -36,11 +36,28 @@ def _array2pywt(coef, scriptNs):
 
 class DisplacementFieldWavelet(DisplacementField):
     """
-    Displacement field using Daubechies (D4) wavelets.
+    Displacement field using wavelets.
+    
+    This class requires the package PyWavelets_.
     
     Refer to :class:`DisplacementField` for interface documentation.
+
+    Parameters
+    ----------
+    shape : tuple
+        Size of the displacement field.
+    coef : float
+        Coefficient signifying the size of the prior. Higher means less deformation.
+    rho : float
+        Higher value penalizes higher coarse-to-fine coefficients.
+    wavelet : string / pywt.Wavelet
+        Specify wavelet type. Read more at PyWavelets_.
+     
+    .. _PyWavelets: http://www.pybytes.com/pywavelets/
     """
-    def __init__(self, shape, coef=1e-3, rho=1.5):
+    def __init__(self, shape, coef=1e-3, rho=1.5, wavelet='db2'):
+        self.wavelet = wavelet 
+        self.mode = 'per'
         super(DisplacementFieldWavelet, self).__init__(shape)
         self.shape = shape
         self.rho = rho 
@@ -55,13 +72,10 @@ class DisplacementFieldWavelet(DisplacementField):
         for i in range(self.levels+1):
             self.lmbks[:,i,:,:,:] = self.coef * 2.0**(self.rho * i) 
 
-    def _wl_name(self):
-        return 'db2'
-
     def prepare_shape(self, shape):
-        wl = self._wl_name()
-        self.levels = len(pywt.wavedec(range(shape[0]), wl)) - 1
-        self.scriptNs = map(len, pywt.wavedec(range(shape[0]), wl, level=self.levels))
+        #self.levels = len(pywt.wavedec(range(shape[0]), wl)) - 1
+        self.levels = int(np.log2(shape[0]))
+        self.scriptNs = map(len, pywt.wavedec(range(shape[0]), self.wavelet, level=self.levels, mode=self.mode))
 
     def _deformed_x(self, x0, x1):
         Ux0, Ux1 = self.deform_map(x0, x1)
@@ -69,9 +83,8 @@ class DisplacementFieldWavelet(DisplacementField):
 
     def deform_map(self, x, y):
         """See :func:`DisplacementField.deform_map`"""
-        wl = pywt.Wavelet(self._wl_name())
-        defx0 = pywt.waverec2(_array2pywt(self.u[0], self.scriptNs), wl) 
-        defx1 = pywt.waverec2(_array2pywt(self.u[1], self.scriptNs), wl)
+        defx0 = pywt.waverec2(_array2pywt(self.u[0], self.scriptNs), self.wavelet, mode=self.mode) 
+        defx1 = pywt.waverec2(_array2pywt(self.u[1], self.scriptNs), self.wavelet, mode=self.mode)
 
         # Interpolated defx at xs 
         Ux = interp2d(x, y, defx0, dx=np.array([1.0/(defx0.shape[0]-1), 1.0/(defx0.shape[1]-1)]))
@@ -92,11 +105,11 @@ class DisplacementFieldWavelet(DisplacementField):
 
     def reestimate(self, stepsize, W, level):
         """
-         
+        Reestimation step for training the deformation. 
         """
-        wl = pywt.Wavelet(self._wl_name())
         vqks = np.array([
-            _pywt2array(pywt.wavedec2(W[q], wl, level=self.levels), self.scriptNs, level) for q in range(2)
+            _pywt2array(pywt.wavedec2(W[q], self.wavelet, mode=self.mode, level=self.levels), self.scriptNs, level) for q in range(2)
         ])
 
         self.u -= stepsize * (self.lmbks * self.u + vqks)
+

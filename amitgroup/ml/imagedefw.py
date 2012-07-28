@@ -7,7 +7,7 @@ import pywt
 
 __all__ = ['imagedef']
 
-def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_costs=False):
+def imagedef(F, I, A=None, stepsize=0.4, coef=1e-5, rho=1.5, tol=1e-7, calc_costs=False):
     """
     Deforms an a prototype image `F` into a data image `I` using a Daubechies wavelet basis and maximum a posteriori. 
 
@@ -34,10 +34,10 @@ def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
         The deformation in the form of a :class:`DisplacementField`. 
     info : dict
         Dictionary with info:
-        - `iterations`: Total number of iterations, ``N``.
-        - `iterations_per_level`: Iterations per coarseness level.
-        - `logprior`: The value of the log-prior for each iteration. Array of length ``N``.
-        - `loglikelihood`: The value of the log-likelihood for each iteration. Array of length ``N``.
+         * `iterations`: Total number of iterations, ``N``.
+         * `iterations_per_level`: Iterations per coarseness level.
+         * `logprior`: The value of the log-prior for each iteration. Array of length ``N``.
+         * `loglikelihood`: The value of the log-likelihood for each iteration. Array of length ``N``.
 
     Examples
     --------
@@ -102,7 +102,7 @@ def imagedef(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_cost
         if a == A:
             break
         ag.info("Running coarse-to-fine level", a)
-        for loop_inner in xrange(4000): # This number is just a maximum
+        for loop_inner in xrange(7000): # This number is just a maximum
             num_iterations += 1
             # 2.
 
