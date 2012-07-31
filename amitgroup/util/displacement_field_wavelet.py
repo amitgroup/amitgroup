@@ -20,6 +20,7 @@ def _pywt2array(coef, scriptNs, maxL=1000):
             for alpha in range(3):
                 Nx, Ny = coef[i][alpha].shape
                 new_u[i,alpha,:Nx,:Ny] = coef[i][alpha]
+                
     return new_u
 
 def _array2pywt(coef, scriptNs):
@@ -68,9 +69,21 @@ class DisplacementFieldWavelet(DisplacementField):
         self._init_lmbks()
 
     def _init_lmbks(self):
-        self.lmbks = np.zeros(self.ushape)
+        values = np.zeros(self.ushape)
         for i in range(self.levels+1):
-            self.lmbks[:,i,:,:,:] = self.coef * 2.0**(self.rho * i) 
+            values[:,i,:,:,:] = self.coef * 2.0**(self.rho * i) 
+
+        # Which ones are used? Create a mask
+        mask = np.ones(self.ushape)
+        for level in range(self.levels+1):
+            N = 2**(max(0, level-1))
+            if level == 0:
+                mask[:,level,0,:N,:N] = 0 
+            else:
+                mask[:,level,:,:N,:N] = 0 
+
+        self.lmbks = np.ma.array(values, mask=mask)
+    
 
     def prepare_shape(self, shape):
         #self.levels = len(pywt.wavedec(range(shape[0]), wl)) - 1
@@ -107,9 +120,12 @@ class DisplacementFieldWavelet(DisplacementField):
         """
         Reestimation step for training the deformation. 
         """
-        vqks = np.array([
+        vqks = np.asarray([
             _pywt2array(pywt.wavedec2(W[q], self.wavelet, mode=self.mode, level=self.levels), self.scriptNs, level) for q in range(2)
         ])
 
         self.u -= stepsize * (self.lmbks * self.u + vqks)
+
+    def sum_of_coefficients(self, to_level=None):
+        return self.lmbks[:,:to_level+1].sum()
 

@@ -81,10 +81,8 @@ def imagedef(F, I, A=None, stepsize=0.4, coef=1e-5, rho=1.5, tol=1e-7, calc_cost
     logpriors = []
     loglikelihoods = []
 
-    delF = np.gradient(F)
+    delF = np.gradient(F, 1./F.shape[0], 1./F.shape[1])
     # Normalize since the image covers the square around [0, 1].
-    delF[0] /= F.shape[0]
-    delF[1] /= F.shape[1]
     
     imdef = ag.util.DisplacementFieldWavelet(F.shape, coef=coef, rho=rho)
     
@@ -134,15 +132,34 @@ def imagedef(F, I, A=None, stepsize=0.4, coef=1e-5, rho=1.5, tol=1e-7, calc_cost
                     ag.info("cost = {0}".format(-logprior-loglikelihood))
             
             # Check termination
-            if loglikelihood - last_loglikelihood <= tol and loop_inner > 100: # Require at least 100
+            if loglikelihood - last_loglikelihood <= tol and loop_inner > 10: # Require at least 100
                  break
             last_loglikelihood = loglikelihood
+
+            if stepsize is not None:
+                # 4.1/2 Decide step size (if stepsize is set to None)
+                # There is something wrong here that forces an adjustment value of T
+                # TODO: Solve this.
+                delFzs2 = delFzs[0]**2 + delFzs[1]**2
+                
+                # Work in progres
+                M = 2.0
+                d = imdef.lmbks[:,:a+1].count() 
+                T = d * M * delFzs2.sum() * dx + imdef.sum_of_coefficients(a)
+                T *= 5.0
+        
+                #print delFzs2.sum(), imdef.sum_of_coefficients(a)
+                #print("1/T = {0} ({1})".format(1/T, T))
+
+                delta = 1.0/T
+            else:
+                delta = stepsize
 
             # 5. Gradient descent
             W = np.empty((2,) + terms.shape)
             for q in range(2):
                 W[q] = delFzs[q] * terms
-            imdef.reestimate(stepsize, W, a+1)
+            imdef.reestimate(delta, W, a+1)
 
         iterations_per_level.append(num_iterations)
         num_iterations = 0
