@@ -4,10 +4,9 @@ from __future__ import print_function
 import amitgroup as ag
 import sys
 
-__all__ = ['set_verbose', 'info']
-
 # If any of the arguments is '--verbose', set this to true
 _is_verbose = '--verbose' in sys.argv
+_is_silent = '--silent' in sys.argv
 
 def set_verbose(is_verbose):
     """
@@ -29,3 +28,10 @@ def info(*args, **kwargs):
     """
     if _is_verbose:
         print(*args, **kwargs)
+
+def warning(*args, **kwargs):
+    """
+    Output warning, such as numerical instabilities.
+    """
+    if not _is_silent:
+        print("WARNING: " + args[0], *args[1:], **kwargs)

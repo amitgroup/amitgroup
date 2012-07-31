@@ -7,15 +7,16 @@ from time import time
 
 t1 = time()
 F, I = ag.io.load_example('faces2')
-imgdef, info = ag.ml.imagedef(F, I, stepsize=0.001, coef=0.1, rho=1.3, A=4, calc_costs=True)
-Fdef = imgdef.deform(F)
+
+imdef, info = ag.ml.imagedef(F, I, stepsize=None, penalty=0.1, rho=1.0, A=4, tol=1e-7, calc_costs=True, wavelet='db2')
+Fdef = imdef.deform(F)
 t2 = time()
 
 print t2-t1
 
 if 1:
-    x, y = imgdef.get_x(F.shape)
-    Ux, Uy = imgdef.deform_map(x, y) 
+    x, y = imdef.get_x(F.shape)
+    Ux, Uy = imdef.deform_map(x, y) 
 
     d = dict(interpolation='nearest', cmap=plt.cm.gray)
     plt.figure(figsize=(7,7))
@@ -34,6 +35,12 @@ if 1:
 
     #Also print some info before showing
     print info['iterations_per_level'] 
+    
+    print imdef.u[0,0,0,0,0], 0.35
+    print imdef.u[1,0,0,0,0], -0.1
+    print imdef.u[0,1,0,0,0], 0.15
+    print imdef.u[0,1,1,0,0], -0.2
+    print imdef.u[1,1,2,0,0], 0.3
 
     plt.show()
 

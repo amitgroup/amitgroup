@@ -5,7 +5,8 @@ class DisplacementField(object):
     Displacement field. Abstract base class for representing a deformation of a 2D mesh grid. 
     """
     def __init__(self, shape):
-        self.prepare_shape(shape)
+        self.shape = shape
+        self.prepare_shape()
 
     def prepare_shape(self, shape):
         """
@@ -13,7 +14,6 @@ class DisplacementField(object):
         maximum number of coefficients appropriate for the shape.
         """
         pass
-        shape = shape
 
     def deform_map(self, x, y):
         """

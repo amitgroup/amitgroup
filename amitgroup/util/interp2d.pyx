@@ -21,28 +21,28 @@ cdef inline DTYPE_t lerp(DTYPE_t a, DTYPE_t x, DTYPE_t y) nogil:
 
 def interp2d(x, y, z, dx=None, startx=None, fill_value=None): 
     """
-    Calculates bilinear interpolated points of ``z`` at positions ``x`` and ``y``.
+    Calculates bilinear interpolated points of `z` at positions `x` and `y`.
     
     The motivation of this function is that ``scipy.interpolate.interp2d(..., kind='linear')`` produces unwanted results.
 
     Parameters
     ----------
     x, y : ndarray
-        Points at which to interpolate data. Array of shape ``(A, B)``, where ``A`` and ``B`` are the rows and columns.
+        Points at which to interpolate data. Array of shape ``(A, B)``, where `A` and `B` are the rows and columns.
     z : ndarray
         The original array that should be interpolated. Array of size ``(A, B)``.
     dx : ndarray or None
-        The distance between points in ``z``. Array of size 2.
+        The distance between points in `z`. Array of size 2.
         If None, even spacing that range from 0.0 to 1.0 is assumed.
     startx : ndarray or None
         The ``(x, y)`` value corresponding to ``z[0,0]``. Array of size 2. 
     fill_value : float or None
-        The value to return outside the area specified by ``z``. If None, the closest value inside the area is used.
+        The value to return outside the area specified by `z`. If None, the closest value inside the area is used.
 
     Returns
     -------
     output : ndarray
-        Array of shape ``(A, B)`` with interpolated values at positions at ``x`` and ``y``.
+        Array of shape ``(A, B)`` with interpolated values at positions at `x` and `y`.
     """
     
     assert x.dtype == DTYPE, "x must be of type {0}, not {1}".format(DTYPE, x.dtype)

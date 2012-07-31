@@ -7,7 +7,7 @@ import pywt
 
 __all__ = ['imagedef']
 
-def imagedef(F, I, A=None, stepsize=0.4, coef=1e-5, rho=1.5, tol=1e-7, calc_costs=False):
+def imagedef(F, I, A=None, penalty=0.1, rho=1.0, tol=1e-7, calc_costs=False, stepsize=None, wavelet='db2'):
     """
     Deforms an a prototype image `F` into a data image `I` using a Daubechies wavelet basis and maximum a posteriori. 
 
@@ -19,14 +19,14 @@ def imagedef(F, I, A=None, stepsize=0.4, coef=1e-5, rho=1.5, tol=1e-7, calc_cost
         Data image that the prototype will try to deform into. Array of shape ``(L, L)``. 
     A : int
         Coefficient depth limit. If None, then naturally bounded by image size.
-    stepsize : float
-        Gradient descent step size.
-    coef : float
-        Determines the weight of the prior (proportional to the inverse variance of the gaussian deformations).
+    penalty : float
+        Determines the weight of the prior (proportional to the inverse variance of the gaussian deformations). Reduce this value if you want more deformations.
     rho : float
-        Determines the penalty of more granular coefficients. Increase to smoothen.
+        Determines the penalty of more granular coefficients. Increase to smoothen. Must be strictly positive.
     calc_costs : bool
         If True, then ``info`` will contain `logprior` and `loglikelihood`. The cost function `J` is the negative sum of these two. 
+    stepsize : float or None
+        Gradient descent step size. If `None`, then the stepsize will be inferred by something along the lines of Newton's method.
     
     Returns
     -------
@@ -78,13 +78,14 @@ def imagedef(F, I, A=None, stepsize=0.4, coef=1e-5, rho=1.5, tol=1e-7, calc_cost
     >>> plt.show()
      
     """
+    assert rho > 0, "Parameter rho must be strictly positive"
     logpriors = []
     loglikelihoods = []
 
-    delF = np.gradient(F, 1./F.shape[0], 1./F.shape[1])
+    delF = np.gradient(F, 1/F.shape[0], 1/F.shape[1])
     # Normalize since the image covers the square around [0, 1].
     
-    imdef = ag.util.DisplacementFieldWavelet(F.shape, coef=coef, rho=rho)
+    imdef = ag.util.DisplacementFieldWavelet(F.shape, penalty=penalty, rho=rho, wavelet=wavelet)
     
     x0, x1 = imdef.get_x(F.shape)
 
@@ -95,10 +96,10 @@ def imagedef(F, I, A=None, stepsize=0.4, coef=1e-5, rho=1.5, tol=1e-7, calc_cost
 
     num_iterations = 0
     iterations_per_level = []
-    # TODO: bad access of imdef.scriptNs
-    for a, N in enumerate(imdef.scriptNs): 
-        if a == A:
-            break
+    if A is None:
+        A = imdef.levels
+
+    for a in range(1, A+1):
         ag.info("Running coarse-to-fine level", a)
         for loop_inner in xrange(7000): # This number is just a maximum
             num_iterations += 1
@@ -110,7 +111,9 @@ def imagedef(F, I, A=None, stepsize=0.4, coef=1e-5, rho=1.5, tol=1e-7, calc_cost
             z1 = x1 + Uy
 
             # Interpolate F at zs
-            Fzs = ag.util.interp2d(z0, z1, F)
+            #Fzs = ag.util.interp2d(z0, z1, F)
+            Fzs = imdef.deform(F)
+            #np.testing.assert_array_almost_equal(ag.util.interp2d(z0, z1, F), Fzs)
 
             # Interpolate delF at zs 
             delFzs = np.empty((2,) + F.shape) 
@@ -119,47 +122,50 @@ def imagedef(F, I, A=None, stepsize=0.4, coef=1e-5, rho=1.5, tol=1e-7, calc_cost
 
             # 4.
             terms = Fzs - I
-            # Calculate cost, just for sanity check
-            loglikelihood = -(terms**2).sum() * dx
 
+            # Calculate (cost) 
+
+            loglikelihood = -(terms**2).sum() * dx
             if calc_costs:
-                logprior = -imdef.logprior() 
+                logprior = imdef.logprior(a) 
                 logpriors.append(logprior)
 
                 loglikelihoods.append(loglikelihood)
         
                 if __debug__ and loop_inner%10 == 0:
-                    ag.info("cost = {0}".format(-logprior-loglikelihood))
+                    ag.info("cost = {0} (prior: {1}, llh: {2}) [max U: {3}".format(-logprior-loglikelihood, -logprior, -loglikelihood, (imdef.lmbks * imdef.u**2).max()))
             
             # Check termination
-            if loglikelihood - last_loglikelihood <= tol and loop_inner > 10: # Require at least 100
-                 break
+            if loglikelihood < last_loglikelihood:
+                ag.warning("The negative loglikelihood increased from {0} to {1}.".format(-last_loglikelihood, -loglikelihood))
+            elif loglikelihood - last_loglikelihood <= tol and loop_inner > 5:
+                break
             last_loglikelihood = loglikelihood
 
-            if stepsize is not None:
+            if stepsize is None:
                 # 4.1/2 Decide step size (if stepsize is set to None)
                 # There is something wrong here that forces an adjustment value of T
                 # TODO: Solve this.
                 delFzs2 = delFzs[0]**2 + delFzs[1]**2
                 
                 # Work in progres
-                M = 2.0
-                d = imdef.lmbks[:,:a+1].count() 
+                M = 4.0
+                d = imdef.lmbks[0,:a].count() 
                 T = d * M * delFzs2.sum() * dx + imdef.sum_of_coefficients(a)
-                T *= 5.0
+                #T *= 200.0
         
-                #print delFzs2.sum(), imdef.sum_of_coefficients(a)
+                #print delFzs2.sum() * dx, imdef.sum_of_coefficients(a)
                 #print("1/T = {0} ({1})".format(1/T, T))
 
                 delta = 1.0/T
             else:
-                delta = stepsize
+                delta = stepsize**a
 
             # 5. Gradient descent
             W = np.empty((2,) + terms.shape)
             for q in range(2):
                 W[q] = delFzs[q] * terms
-            imdef.reestimate(delta, W, a+1)
+            imdef.reestimate(delta, W, a)
 
         iterations_per_level.append(num_iterations)
         num_iterations = 0
