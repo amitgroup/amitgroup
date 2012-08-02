@@ -4,12 +4,13 @@ from __future__ import division
 import amitgroup as ag
 import numpy as np
 import pywt
+from copy import deepcopy
 from .displacement_field import DisplacementField
 from .interp2d import interp2d
 
 #TODO Move somewhere else, so as not to clog up the space
 # before the class.
-def _pywt2array(coefficients, scriptNs, maxL=1000):
+def _pywt2array(coefficients, scriptNs, maxL=np.inf):
     L = len(scriptNs)#len(coefficients)
     N = scriptNs[-1]#len(coefficients[-1][0])
     new_u = np.zeros((L, 3, N, N))
@@ -76,7 +77,10 @@ class DisplacementFieldWavelet(DisplacementField):
     def _init_lmbks_and_u(self):
         values = np.zeros(self.ushape)
         for i in range(self.levels+1):
-            values[:,i,:,:,:] = self.penalty * 2.0**(self.rho * self.scriptNs[i]) 
+            # We decrease the self.scriptNs[i] so that the first level
+            # is only the penalty
+            values[:,i,:,:,:] = self.penalty * 2.0**(self.rho * self.scriptNs[i])
+            # * np.prod(self.shape)
 
         # Which ones are used? Create a mask
         mask = np.ones(self.ushape)
@@ -129,6 +133,9 @@ class DisplacementFieldWavelet(DisplacementField):
     def logprior(self, levels=None):
         return -(self.lmbks * self.u**2)[:,:levels].sum() / 2
 
+    def logprior_x2(self, levels=None):
+        return -(self.lmbks * self.u**2)[:,:levels].sum()
+
     def reestimate(self, stepsize, W, level):
         """
         Reestimation step for training the deformation. 
@@ -137,10 +144,20 @@ class DisplacementFieldWavelet(DisplacementField):
             _pywt2array(pywt.wavedec2(W[q], self.wavelet, mode=self.mode, level=self.levels), self.scriptNs, level) for q in range(2)
         ])
 
+
+        quit = self.u[0,0,0,0,0] != 0
+        print "HERE", self.lmbks[0,0,0,0,0], vqks[0,0,0,0,0]
+        print "LAMBDAS: ", stepsize * self.lmbks[0,0,0,0,0] * self.u[0,0,0,0,0]
+        print "VS:      ", stepsize * vqks[0,0,0,0,0]
         self.u -= stepsize * (self.lmbks * self.u + vqks)
+        #if quit: 
+        #    import sys; sys.exit(0)
+        self.u -= stepsize * vqks
 
     def sum_of_coefficients(self, levels=None):
         # Return only lmbks[0], because otherwise we'll double-count every
         # value (since they are the same)
         return self.lmbks[0,:levels].sum()
 
+    def copy(self):
+        return deepcopy(self) 
