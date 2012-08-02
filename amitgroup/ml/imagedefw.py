@@ -96,6 +96,8 @@ def imagedef(F, I, A=None, penalty=0.1, rho=1.0, tol=0.01, calc_costs=False, ste
     
     imdef = ag.util.DisplacementFieldWavelet(F.shape, penalty=penalty, rho=rho, wavelet=wavelet)
     
+    imdef.u[0,0,0,0,0] = 3.528
+    
     x0, x1 = imdef.get_x(F.shape)
 
     # 1. 
@@ -168,8 +170,9 @@ def imagedef(F, I, A=None, penalty=0.1, rho=1.0, tol=0.01, calc_costs=False, ste
             if math.fabs(cost - last_cost)/last_cost < tol and loop_inner > 5:
                 break
 
-            #print cost 
-            #print loglikelihood
+            print 'cost', cost 
+            print 'llh', loglikelihood
+            print 'lprior', logprior
             #print np.exp(loglikelihood)
 
             last_cost = cost
@@ -178,6 +181,7 @@ def imagedef(F, I, A=None, penalty=0.1, rho=1.0, tol=0.01, calc_costs=False, ste
             # 4.1/2 Decide step size (this is done for each coarse-to-fine level)
             if loop_inner == 0 or 1:
                 if stepsize is None:
+                    print 'delFzs.mean()', delFzs.min(), delFzs.max()
                     delFzs2 = delFzs[0]**2 + delFzs[1]**2
                     delF2 = delF[0]**2 + delF[1]**2
                     print 'diff', delFzs2.sum(), delF2.sum()
@@ -186,12 +190,13 @@ def imagedef(F, I, A=None, penalty=0.1, rho=1.0, tol=0.01, calc_costs=False, ste
                     d = imdef.lmbks[0,:a].count() 
                     print "HESS", delFzs2.sum() * dx
                     #print d, a**2
-                    T = a**2 * M * theta * delFzs2.sum() * dx + imdef.sum_of_coefficients(a)
+                    T = a**2 * M * theta * delFzs2.sum() * dx * dx + imdef.sum_of_coefficients(a)
                     #T /= penalty #adjust
                     #T *= 10000.0
                     print a**2 * M * delFzs2.sum() * dx, imdef.sum_of_coefficients(a)
                     print("1/T = {0} ({1})".format(1/T, T))
 
+                    import sys; sys.exit(0)
                     delta = 1.0/T
                 else:
                     delta = stepsize

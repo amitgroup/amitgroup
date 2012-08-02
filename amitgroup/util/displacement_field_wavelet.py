@@ -79,7 +79,7 @@ class DisplacementFieldWavelet(DisplacementField):
         for i in range(self.levels+1):
             # We decrease the self.scriptNs[i] so that the first level
             # is only the penalty
-            values[:,i,:,:,:] = self.penalty * 2.0**(self.rho * self.scriptNs[i])
+            values[:,i,:,:,:] = self.penalty * 2.0**(self.rho * self.scriptNs[i]) / 2.0
             # * np.prod(self.shape)
 
         # Which ones are used? Create a mask
@@ -145,14 +145,16 @@ class DisplacementFieldWavelet(DisplacementField):
         ])
 
 
-        quit = self.u[0,0,0,0,0] != 0
-        print "HERE", self.lmbks[0,0,0,0,0], vqks[0,0,0,0,0]
-        print "LAMBDAS: ", stepsize * self.lmbks[0,0,0,0,0] * self.u[0,0,0,0,0]
-        print "VS:      ", stepsize * vqks[0,0,0,0,0]
-        self.u -= stepsize * (self.lmbks * self.u + vqks)
-        #if quit: 
-        #    import sys; sys.exit(0)
-        self.u -= stepsize * vqks
+        if 0:
+            quit = self.u[0,0,0,0,0] != 0
+            print "HERE", self.lmbks[0,0,0,0,0], vqks[0,0,0,0,0]
+            print "LAMBDAS: ", self.lmbks[0,0,0,0,0], self.u[0,0,0,0,0]
+            print "LAMBDAS: ", -self.lmbks[0,0,0,0,0] * self.u[0,0,0,0,0]
+            print "VS:      ", -vqks[0,0,0,0,0]/np.prod(self.shape)
+            if quit: 
+                import sys; sys.exit(0)
+
+        self.u -= stepsize * (self.lmbks * self.u + vqks / np.prod(self.shape))
 
     def sum_of_coefficients(self, levels=None):
         # Return only lmbks[0], because otherwise we'll double-count every
