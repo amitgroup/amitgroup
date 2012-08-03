@@ -20,12 +20,10 @@ def _pywt2array(coefficients, L, levelshape, maxL=np.inf):
     for i in range(min(maxL, L)):
         if i == 0:
             Nx, Ny = coefficients[i].shape
-            #assert Nx == scriptNs[i]
             new_u[i,0,:Nx,:Ny] = coefficients[i]
         else:
             for alpha in range(3):
                 Nx, Ny = coefficients[i][alpha].shape
-                #assert Nx == scriptNs[i]
                 new_u[i,alpha,:Nx,:Ny] = coefficients[i][alpha]
                 
     return new_u
@@ -55,16 +53,18 @@ class DisplacementFieldWavelet(DisplacementField):
     ----------
     shape : tuple
         Size of the displacement field.
-    penalty : float
-        Coefficient signifying the size of the prior. Higher means less deformation.
-    rho : float
-        A high value penalizes the prior for higher coarse-to-fine coefficients more. Must be strictly greater than 0.
     wavelet : string / pywt.Wavelet
         Specify wavelet type. Read more at PyWavelets_.
+    penalty : float
+        Coefficient signifying the size of the prior. Higher means less deformation.
+        This is only needed if this deformation will be reestimated.
+    rho : float
+        A high value penalizes the prior for higher coarse-to-fine coefficients more. Must be strictly greater than 0.
+        This is only needed if this deformation will be reestimated.
      
     .. _PyWavelets: http://www.pybytes.com/pywavelets/
     """
-    def __init__(self, shape, penalty=1.0, rho=2.0, wavelet='db2'):
+    def __init__(self, shape, wavelet='db2', rho=2.0, penalty=1.0):
         assert rho > 0.0, "Parameter rho must be strictly positive"
         #super(DisplacementFieldWavelet, self).__init__(shape)
         self.wavelet = wavelet 
@@ -82,7 +82,6 @@ class DisplacementFieldWavelet(DisplacementField):
         # implies an adjustment of 2**self.levels for the s.d. We take
         # the square of this since we're dealing with the variance. 
         self.penalty_adjusted = penalty / 4**self.levels 
-        #self.u = np.zeros(self.ushape)
         self._init_lmbks_and_u()
 
     def _init_lmbks_and_u(self):
@@ -90,8 +89,7 @@ class DisplacementFieldWavelet(DisplacementField):
         for i in range(self.levels+1):
             # We decrease the self.scriptNs[i] so that the first level
             # is only the penalty
-            values[:,i,:,:,:] = self.penalty_adjusted * 2.0**(self.rho * self.scriptNs[i]) / 2.0
-            # * np.prod(self.shape)
+            values[:,i,:,:,:] = self.penalty_adjusted * 2.0**(self.rho * (self.scriptNs[i]-1))
 
         # Which ones are used? Create a mask
         mask = np.ones(self.ushape)
@@ -106,7 +104,6 @@ class DisplacementFieldWavelet(DisplacementField):
         self.u = np.ma.array(np.zeros(self.ushape), mask=mask)
 
     def prepare_shape(self):
-        #self.levels = len(pywt.wavedec(range(shape[0]), wl)) - 1
         side = max(self.shape)
         self.levels = int(np.log2(side))
         self.levelshape = tuple(map(int, map(np.log2, self.shape)))
@@ -120,7 +117,7 @@ class DisplacementFieldWavelet(DisplacementField):
         """See :func:`DisplacementField.deform_map`"""
         # TODO: Do waverec2 with cutoff coefficients and then patch it up with
         # linear interpolation instead! Should give comparable results, at least
-        # for db2.
+        # for db2, but possibly faster.
     
         defx0 = pywt.waverec2(_array2pywt(self.u[0], self.levelshape, self.levels), self.wavelet, mode=self.mode) 
         defx1 = pywt.waverec2(_array2pywt(self.u[1], self.levelshape, self.levels), self.wavelet, mode=self.mode)
@@ -147,9 +144,6 @@ class DisplacementFieldWavelet(DisplacementField):
     def logprior(self, levels=None):
         return -(self.lmbks * self.u**2)[:,:levels].sum() / 2
 
-    def logprior_x2(self, levels=None):
-        return -(self.lmbks * self.u**2)[:,:levels].sum()
-
     def reestimate(self, stepsize, W, level):
         """
         Reestimation step for training the deformation. 
@@ -167,3 +161,44 @@ class DisplacementFieldWavelet(DisplacementField):
 
     def copy(self):
         return deepcopy(self) 
+
+    def randomize(self, sigma, rho=2.5, start_level=1, levels=3):
+        """
+        Randomly sets the coefficients up to a certain level by sampling a Gaussian. 
+        
+        Parameters
+        ----------  
+        sigma : float
+            Standard deviation of the Gaussian. The `sigma` is adjusted to a normalized image
+            scale and not the scale of coefficient values (nor pixels). This means that setting `sigma` to 1, the standard
+            deviation is the same size as the image, which is a lot. A more appropriate value is
+            thus 0.01.
+        rho : float
+            A value higher than 1, will cause more dampening for higher coefficients, which will
+            result in a smoother deformation.
+        levels: int
+            Number of levels that should be randomized. The levels above will be set to zero. For a funny-mirror-type deformation, this should be limited to about 3.
+        """
+        # Reset all values first
+        self.u *= 0.0
+    
+        for q in range(2):
+            for level in range(start_level, min(self.levels+1, start_level+levels)):
+                N, M = _levels2shape(self.levelshape, self.levels, level)
+
+                # First of all, a coefficient of 1, will be shift the image 1/2**self.levels, 
+                # so first we have to adjust for that.
+                # Secondly, higher coefficient should be adjusted by roughly 2**-s, to account
+                # for the different amplitudes of a wavelet basis (energy-conserving reasons).
+                # Finally, we might want to dampen higher coefficients even further, to create
+                # a smoother image. This is done by rho.
+                adjust = 2.0**(self.levels - rho * max(level-1, 0))# * 2**self.levels
+
+                if level == 0:
+                    self.u[q,level,0,:N,:M] = np.random.normal(0.0, sigma, (N, M)) * adjust 
+                else:
+                    als = []
+                    for alpha in range(3):
+                        self.u[q,level,alpha,:N,:M] = np.random.normal(0.0, sigma, (N, M)) * adjust 
+
+        

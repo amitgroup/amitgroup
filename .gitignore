@@ -1,5 +1,6 @@
 *.py[co]
 .*.sw*
+.DS_Store
 
 # pyx generated files
 amitgroup/features/bedges.c
