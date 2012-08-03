@@ -60,17 +60,23 @@ class DisplacementFieldWavelet(DisplacementField):
      
     .. _PyWavelets: http://www.pybytes.com/pywavelets/
     """
-    def __init__(self, shape, penalty=1.0, rho=1.0, wavelet='db2'):
+    def __init__(self, shape, penalty=1.0, rho=2.0, wavelet='db2'):
         assert rho > 0.0, "Parameter rho must be strictly positive"
         #super(DisplacementFieldWavelet, self).__init__(shape)
         self.wavelet = wavelet 
         self.mode = 'per'
         self.shape = shape
         self.prepare_shape()
-        self.penalty = penalty
         self.rho = rho 
         biggest = self.scriptNs[-1]        
         self.ushape = (2, self.levels+1, 3, biggest, biggest)
+        # We divide the penalty, since the raw penalty is the ratio
+        # of the variance between the coefficients and the loglikelihood.
+        # It is more natural to want the variance between how much the 
+        # the coefficients can create a deformation in space instead, which
+        # implies an adjustment of 2**self.levels for the s.d. We take
+        # the square of this since we're dealing with the variance. 
+        self.penalty_adjusted = penalty / 4**self.levels 
         #self.u = np.zeros(self.ushape)
         self._init_lmbks_and_u()
 
@@ -79,7 +85,7 @@ class DisplacementFieldWavelet(DisplacementField):
         for i in range(self.levels+1):
             # We decrease the self.scriptNs[i] so that the first level
             # is only the penalty
-            values[:,i,:,:,:] = self.penalty * 2.0**(self.rho * self.scriptNs[i]) / 2.0
+            values[:,i,:,:,:] = self.penalty_adjusted * 2.0**(self.rho * self.scriptNs[i]) / 2.0
             # * np.prod(self.shape)
 
         # Which ones are used? Create a mask
@@ -125,7 +131,7 @@ class DisplacementFieldWavelet(DisplacementField):
         """See :func:`DisplacementField.deform`"""
         im = np.zeros(F.shape)
 
-        x0, x1 = self.get_x(F.shape) 
+        x0, x1 = self.meshgrid()
         z0, z1 = self._deformed_x(x0, x1)
         im = interp2d(z0, z1, F)
         return im
@@ -142,19 +148,9 @@ class DisplacementFieldWavelet(DisplacementField):
         """
         vqks = np.asarray([
             _pywt2array(pywt.wavedec2(W[q], self.wavelet, mode=self.mode, level=self.levels), self.scriptNs, level) for q in range(2)
-        ])
-
-
-        if 0:
-            quit = self.u[0,0,0,0,0] != 0
-            print "HERE", self.lmbks[0,0,0,0,0], vqks[0,0,0,0,0]
-            print "LAMBDAS: ", self.lmbks[0,0,0,0,0], self.u[0,0,0,0,0]
-            print "LAMBDAS: ", -self.lmbks[0,0,0,0,0] * self.u[0,0,0,0,0]
-            print "VS:      ", -vqks[0,0,0,0,0]/np.prod(self.shape)
-            if quit: 
-                import sys; sys.exit(0)
-
-        self.u -= stepsize * (self.lmbks * self.u + vqks / np.prod(self.shape))
+        ]) / np.prod(self.shape) # Notice this adjustment of the values
+    
+        self.u -= stepsize * (self.lmbks * self.u + vqks)
 
     def sum_of_coefficients(self, levels=None):
         # Return only lmbks[0], because otherwise we'll double-count every

@@ -74,7 +74,7 @@ def deformation(F, I, displacement_field, show_diff=False, show=True):
     
     assert isinstance(displacement_field, ag.util.DisplacementField) 
 
-    x, y = displacement_field.get_x(F.shape)
+    x, y = displacement_field.meshgrid()
     Ux, Uy = displacement_field.deform_map(x, y) 
     Fdef = displacement_field.deform(F)
 

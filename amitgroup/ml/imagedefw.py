@@ -6,10 +6,13 @@ import amitgroup as ag
 import amitgroup.util
 import pywt
 
-__all__ = ['imagedef']
+def _powerof2(v):
+    # Does not handle 0, but that's not valid for image deformations anyway
+    return (v & (v-1)) == 0 
 
-def imagedef(F, I, A=None, penalty=0.1, rho=1.0, tol=0.01, calc_costs=False, stepsize=None, wavelet='db2', \
-             max_iterations_per_level=1000, start_level=1):
+def imagedef(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
+             calc_costs=False, wavelet='db2', \
+             max_iterations_per_level=1000, start_level=1, stepsize_scale_factor=1.0):
     """
     Deforms an a prototype image `F` into a data image `I` using a Daubechies wavelet basis and maximum a posteriori. 
 
@@ -19,16 +22,19 @@ def imagedef(F, I, A=None, penalty=0.1, rho=1.0, tol=0.01, calc_costs=False, ste
         Prototype image. Array of shape ``(L, L)`` with normalized intensitites. So far, ``L`` has to be a power of two.
     I : ndarray
         Data image that the prototype will try to deform into. Array of shape ``(L, L)``. 
-    A : int
-        Coefficient depth limit. If None, then naturally bounded by image size.
+    last_level : int
+        Coefficient depth limit. If `None`, then naturally bounded by image size. 
+        A higher level will allow for finer deformations, but incur a computational overhead.
     penalty : float
-        Determines the weight of the prior (proportional to the inverse variance of the gaussian deformations). Reduce this value if you want more deformations.
+        Determines the weight of the prior as opposed to the likelihood. (arbitrarily proportional to the ratio of the inverse variance of the gaussian deformations of the prior and the likelihood). Reduce this value if you want more deformations.
     rho : float
         Determines the penalty of more granular coefficients. Increase to smoothen. Must be strictly positive.
     calc_costs : bool
         If True, then ``info`` will contain `logprior` and `loglikelihood`. The cost function `J` is the negative sum of these two. 
-    stepsize : float or None
-        Gradient descent step size. If `None`, then the stepsize will be inferred by something along the lines of Newton's method.
+    first_level : int
+        First coarse-to-fine coefficient level. Defaults to 1 and generally does not needed to be fiddle with. 
+    stepsize_scale_factor : float
+        Adjust the inferred stepsize to fine-tune stability and speed of iterations.
     
     Returns
     -------
@@ -41,64 +47,56 @@ def imagedef(F, I, A=None, penalty=0.1, rho=1.0, tol=0.01, calc_costs=False, ste
          * `logpriors`: The value of the log-prior for each iteration. Array of length ``N``.
          * `loglikelihoods`: The value of the log-likelihood for each iteration. Array of length ``N``.
          * `costs`: The cost function over time (the negative sum of logprior and loglikelihood)
-
-    Examples
-    --------
     """
     # Speed this up. How?
     """
+    Examples
+    --------
     Deform an image into a prototype image:
 
     >>> import amitgroup as ag
     >>> import amitgroup.ml
     >>> import numpy as np
-    >>> import matplotlib.pylab as plt
 
     Load two example faces and perform the deformation:
 
     >>> F, I = ag.io.load_example('faces2')
-    >>> imgdef, info = ag.ml.imagedef(F, I)
-    >>> Fdef = imgdef.deform(F)
+    >>> imdef, info = ag.ml.imagedef(F, I)
+    >>> Fdef = imdef.deform(F)
 
     Output the results:
 
-    >>> d = dict(interpolation='nearest', cmap=plt.cm.gray)
-    >>> plt.figure(figsize=(7,7))
-    >>> plt.subplot(221)
-    >>> plt.title("Prototype")
-    >>> plt.imshow(F, **d)
-    >>> plt.subplot(222)
-    >>> plt.title("Data image")
-    >>> plt.imshow(I, **d) 
-    >>> plt.subplot(223)
-    >>> plt.title("Deformed")
-    >>> plt.imshow(Fdef, **d)
-    >>> plt.subplot(224)
-    >>> plt.title("Deformation map")
-    >>> x, y = imgdef.get_x(F.shape)
-    >>> Ux, Uy = imgdef.deform_map(x, y) 
-    >>> plt.quiver(y, -x, Uy, -Ux)
-    >>> plt.show()
+    >>> ag.plot.deformation(F, I, imdef)
      
     """
+    """Old stuff:
+    stepsize : float or None
+        Gradient descent step size. If `None`, then the stepsize will be inferred by something along the lines of Newton's method.
+    """
     assert rho > 0, "Parameter rho must be strictly positive"
+    assert len(F.shape) == 2 and len(I.shape) == 2, "Images must be 2D ndarrays"
+    assert _powerof2(F.shape[0]) and _powerof2(I.shape[1]), "Image sides must be powers of 2"
+    assert F.shape == I.shape, "Images must have the same shape"
+
+    # This should work, but is very wonky. Needs more testing.
+    assert F.shape[0] == F.shape[1], "Sides must be the same length... For now. Will fix."
+
+    # Shift the penalty value, as to make 1.0 a reasonable value.
+    penalty_adjusted = penalty
+
     logpriors = []
     loglikelihoods = []
 
     dx = 1/np.prod(F.shape)
-
-    # TODO: VERY TEMP
-    #penalty = 1.0 
-    theta = 1.0 # precision of likelihood
 
     delF = np.gradient(F, 1/F.shape[0], 1/F.shape[1])
     # Normalize since the image covers the square around [0, 1].
     
     imdef = ag.util.DisplacementFieldWavelet(F.shape, penalty=penalty, rho=rho, wavelet=wavelet)
     
-    imdef.u[0,0,0,0,0] = 3.528
+    #imdef.u[0,0,0,0,0] = 3.528
     
-    x0, x1 = imdef.get_x(F.shape)
+    x, y = imdef.meshgrid()
 
     # 1. 
 
@@ -107,23 +105,22 @@ def imagedef(F, I, A=None, penalty=0.1, rho=1.0, tol=0.01, calc_costs=False, ste
 
     num_iterations = 0
     iterations_per_level = []
-    if A is None:
-        A = imdef.levels
+    if last_level is None:
+        last_level = imdef.levels
 
     adjust = 1.0
-    for a in range(start_level, A+1):
-
+    for a in range(start_level, last_level+1):
         ag.info("Running coarse-to-fine level", a)
         for loop_inner in xrange(max_iterations_per_level): # This number is just a maximum
             num_iterations += 1
             # 2.
         
-            print "u0 = ", imdef.u[0,0,0,0,0]
+            #print "u0 = ", imdef.u[0,0,0,0,0]
 
             # Calculate deformed xs
-            Ux, Uy = imdef.deform_map(x0, x1)
-            z0 = x0 + Ux
-            z1 = x1 + Uy
+            Ux, Uy = imdef.deform_map(x, y)
+            z0 = x + Ux
+            z1 = y + Uy
 
             # Interpolate F at zs
             Fzs = ag.util.interp2d(z0, z1, F)
@@ -140,16 +137,14 @@ def imagedef(F, I, A=None, penalty=0.1, rho=1.0, tol=0.01, calc_costs=False, ste
 
             # Calculate (cost) 
     
-            print "KUU", (terms**2).sum() * dx
-
             #sigma = np.sqrt(dx) / np.sqrt(2)
             #sigma2 = sigma**2
             # Technicall we should have dx and sigma involved here,
             # but we are letting them be absorbed into the ratio
             # between prior and loglikelihood.
-            loglikelihood = -(terms**2).sum() * dx * theta / 2.0#/2.0# * dx / (2 * sigma2)
+            loglikelihood = -(terms**2).sum() * dx / 2.0#/2.0# * dx / (2 * sigma2)
             if calc_costs:
-                logprior = imdef.logprior(a) 
+                logprior = imdef.logprior(a)
                 logpriors.append(logprior)
 
                 loglikelihoods.append(loglikelihood)
@@ -170,49 +165,42 @@ def imagedef(F, I, A=None, penalty=0.1, rho=1.0, tol=0.01, calc_costs=False, ste
             if math.fabs(cost - last_cost)/last_cost < tol and loop_inner > 5:
                 break
 
-            print 'cost', cost 
-            print 'llh', loglikelihood
-            print 'lprior', logprior
+            #print 'cost', cost 
+            #print 'llh', loglikelihood
+            #print 'lprior', logprior
             #print np.exp(loglikelihood)
 
             last_cost = cost
             last_loglikelihood = loglikelihood
 
-            # 4.1/2 Decide step size (this is done for each coarse-to-fine level)
-            if loop_inner == 0 or 1:
-                if stepsize is None:
+            # 4.1/2 Decide step size (this is done once for each coarse-to-fine level)
+            if loop_inner == 0:
+                delFzs2 = delFzs[0]**2 + delFzs[1]**2
+
+                # This is the value of the psi, which turns out to be a good bound for this purpose
+                M = dx 
+
+                T = a**2 * M * delFzs2.sum() * dx + imdef.sum_of_coefficients(a)
+
+                if 1:
                     print 'delFzs.mean()', delFzs.min(), delFzs.max()
-                    delFzs2 = delFzs[0]**2 + delFzs[1]**2
-                    delF2 = delF[0]**2 + delF[1]**2
-                    print 'diff', delFzs2.sum(), delF2.sum()
-                    
-                    M = 1.0 # Upper bound of the wavelet basis functions (psi) 
-                    d = imdef.lmbks[0,:a].count() 
-                    print "HESS", delFzs2.sum() * dx
-                    #print d, a**2
-                    T = a**2 * M * theta * delFzs2.sum() * dx * dx + imdef.sum_of_coefficients(a)
-                    #T /= penalty #adjust
-                    #T *= 10000.0
                     print a**2 * M * delFzs2.sum() * dx, imdef.sum_of_coefficients(a)
                     print("1/T = {0} ({1})".format(1/T, T))
 
-                    import sys; sys.exit(0)
-                    delta = 1.0/T
-                else:
-                    delta = stepsize
+                dt = stepsize_scale_factor/T
 
 
             # 5. Gradient descent
             W = np.empty((2,) + terms.shape)
             for q in range(2):
-                W[q] = delFzs[q] * terms * theta# * dx
+                W[q] = delFzs[q] * terms
 
-            import pywt
-            u = pywt.wavedec(W[0][:,0], 'db1', mode='per')
-            for uu in u[1:]:
-                uu[:] = 0.0 
-            print "SHIFT", pywt.waverec(u, 'db1', mode='per')[0]
-            print W[0][:,0].mean()
+            #import pywt
+            #u = pywt.wavedec(W[0][:,0], 'db1', mode='per')
+            #for uu in u[1:]:
+            #    uu[:] = 0.0 
+            #print "SHIFT", pywt.waverec(u, 'db1', mode='per')[0]
+            #print W[0][:,0].mean()
         
             if 0:
                 import pylab as plt
@@ -228,7 +216,7 @@ def imagedef(F, I, A=None, penalty=0.1, rho=1.0, tol=0.01, calc_costs=False, ste
                 plt.show()
                 import sys; sys.exit(0)
                 
-            imdef.reestimate(delta, W, a)
+            imdef.reestimate(dt, W, a)
 
         iterations_per_level.append(num_iterations)
         num_iterations = 0

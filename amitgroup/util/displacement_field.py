@@ -49,26 +49,40 @@ class DisplacementField(object):
         """
         raise NotImplemented("Can't use DisplacementField directly")
 
-    @classmethod
-    def get_x(cls, shape):
+
+    def meshgrid(self):
         """
         Returns a mesh of `x` and `y` values appropriate to use with this displacement field.
+    
+        Returns
+        -------
+        x, y : ndarray, ndarray
+            A tuple of two arrays, each with the same shape as the canonical shape of this displacement field.
+
+        See also
+        --------
+        :func:`meshgrid_for_shape`
+        """
+        return self.meshgrid_for_shape(self.shape)
+
+    @classmethod
+    def meshgrid_for_shape(cls, shape):
+        """
+        Returns a mesh of `x` and `y` values appropriate to use with a displacement field of given shape. 
 
         Parameters
         ----------
         shape : tuple
-            Tuple of length 2 specifying the size of the mesh. 
+            Tuple of length 2 specifying the size of the mesh.
         
         Returns
         -------
-        x : ndarray
-            Contains `x` values. Array of shape specified above.
-        y : ndarray
-            Same as above, for `y` values. 
+        x, y : ndarray
+            A tuple of two arrays, each with the shape of the `shape` parameter.
 
         Examples
         --------
-        >>> x, y = DisplacementField.get_x((4, 4))
+        >>> x, y = DisplacementField.meshgrid_for_shape((4, 4))
         >>> x
         array([[ 0.  ,  0.  ,  0.  ,  0.  ],
                [ 0.25,  0.25,  0.25,  0.25],
