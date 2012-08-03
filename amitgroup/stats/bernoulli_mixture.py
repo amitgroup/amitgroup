@@ -110,7 +110,7 @@ class BernoulliMixture:
         self.min_probability = 0.05
         loglikelihood = -np.inf
         # First E step plus likelihood computation
-        new_loglikelihood = self.compute_loglikelihoods()
+        new_loglikelihood = self._compute_loglikelihoods()
 
         self.iterations = 0
         while new_loglikelihood - loglikelihood > tol:
@@ -119,7 +119,7 @@ class BernoulliMixture:
             # M-step
             self.M_step()
             # E-step
-            new_loglikelihood = self.compute_loglikelihoods()
+            new_loglikelihood = self._compute_loglikelihoods()
             
             self.iterations += 1
 
@@ -168,9 +168,6 @@ class BernoulliMixture:
         self.log_templates = np.log(self.work_templates)
         self.log_invtemplates = np.log(1-self.work_templates)
 
-    def get_templates(self):
-        return self.templates
-
     def init_templates(self):
         self.work_templates = np.zeros((self.num_mix,
                                    self.data_length))
@@ -180,19 +177,12 @@ class BernoulliMixture:
     def set_templates(self):
         self.templates = self.work_templates.reshape((self.num_mix,)+self.data_shape)
 
-    def get_num_mix(self):
-        return self.num_mix
-
-    def get_weights(self):
-        return self.weights
-
     def set_weights(self,new_weights):
         np.testing.assert_approx_equal(np.sum(new_weights),1.)
         assert(new_weights.shape==(self.num_mix,))
         self.weights = new_weights
         
-
-    def compute_loglikelihoods(self):
+    def _compute_loglikelihoods(self):
         template_logscores = self.get_template_loglikelihoods()
 
         loglikelihoods = template_logscores + np.tile(np.log(self.weights),(self.num_data,1))
@@ -205,7 +195,12 @@ class BernoulliMixture:
                                            (self.num_mix,1)).transpose())
         self.affinities/=np.tile(np.sum(self.affinities,axis=1),(self.num_mix,1)).transpose()
         return loglikelihood
-        
+
+    def compute_loglikelihood(self,datamat):
+        #num_data = datamat.shape[0]
+        #np.tile(self.log_templates 
+        pass
+
     def get_template_loglikelihoods(self):
         """ Assumed to be called whenever
         """
