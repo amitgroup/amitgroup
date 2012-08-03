@@ -35,9 +35,9 @@ def images(data, zero_to_one=True, show=True):
         # TODO: Better find out pleasing aspect ratios
         if len(data) <= 3:
             sh = (1, len(data))
-        if len(data) == 6:
+        elif len(data) == 6:
             sh = (2, 3)
-        if len(data) == 12:
+        elif len(data) == 12:
             sh = (3, 4)
         else:
             perside = math.ceil(math.sqrt(len(data)))
