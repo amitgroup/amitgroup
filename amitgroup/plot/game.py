@@ -96,6 +96,9 @@ class PlottingWindow(object):
         if limits == 'auto':
             xlims = x.min(), x.max()
             ylims = y.min(), y.max()
+        else:
+            xlims = x.min(), x.max()
+            ylims = limits
     
         @np.vectorize
         def x2pixel(x0):
