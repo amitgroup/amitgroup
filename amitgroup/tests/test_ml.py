@@ -27,10 +27,12 @@ class TestML(unittest.TestCase):
         np.testing.assert_array_almost_equal(Fdef, Fdef_correct)
 
     def test_imagedef_nonsquare(self):
-        F2 = F[::2] 
-        imdef = ag.util.DisplacementFieldWavelet(F2.shape, 'db2')
-        I2.randomize(2.0)
-        I2 = imdef.deform(F2) 
+        # Not complete
+        if 0:
+            F2 = F[::2] 
+            imdef = ag.util.DisplacementFieldWavelet(F2.shape, 'db2')
+            I2.randomize(2.0)
+            I2 = imdef.deform(F2) 
 
         
         

@@ -76,7 +76,6 @@ def imagedef(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
     logpriors = []
     loglikelihoods = []
 
-    dx = 1/np.prod(F.shape)
 
     # Notice that the image is always considered to lie in the range [0, 1] on both axes.
     delF = np.gradient(F, 1/F.shape[0], 1/F.shape[1])
@@ -86,6 +85,7 @@ def imagedef(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
     x, y = imdef.meshgrid()
 
     # 1. 
+    dx = 1/np.prod(F.shape)
 
     last_loglikelihood = -np.inf 
     last_cost = np.inf
@@ -95,12 +95,11 @@ def imagedef(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
     if last_level is None:
         last_level = imdef.levels
 
-    adjust = 1.0
     for a in range(start_level, last_level+1):
         ag.info("Running coarse-to-fine level", a)
-        for loop_inner in xrange(max_iterations_per_level): # This number is just a maximum
+        for loop_inner in xrange(max_iterations_per_level):
             num_iterations += 1
-            # 2.
+            # 2. Deform
         
             # Calculate deformed xs
             Ux, Uy = imdef.deform_map(x, y)
@@ -116,12 +115,10 @@ def imagedef(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
             for q in range(2):
                 delFzs[q] = ag.util.interp2d(z0, z1, delF[q], fill_value=0.0)
 
-            # 4.
+            # 3. Cost
             terms = Fzs - I
 
-            # Calculate (cost) 
-    
-            # Technicall we should have a sigma involved here,
+            # Technically we should have a sigma involved here,
             # but we are letting them be absorbed into the ratio
             # between prior and loglikelihood, which we call penalty.
             loglikelihood = -(terms**2).sum() * dx / 2.0
@@ -129,11 +126,11 @@ def imagedef(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
             logpriors.append(logprior)
 
             loglikelihoods.append(loglikelihood)
-    
-            if __debug__:# and loop_inner%10 == 0:
-                ag.info("cost = {0} (prior: {1}, llh: {2}) [max U: {3}".format(-logprior-loglikelihood, logprior, loglikelihood, (imdef.lmbks * imdef.u**2).max()))
 
             cost = -logprior - loglikelihood
+    
+            if __debug__:
+                ag.info("cost: {0} (prior: {1}, llh: {2})".format(cost, logprior, loglikelihood))
             
             if math.fabs(cost - last_cost)/last_cost < tol and loop_inner > 5:
                 break
@@ -141,7 +138,7 @@ def imagedef(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
             last_cost = cost
             last_loglikelihood = loglikelihood
 
-            # 4.1/2 Decide step size (this is done once for each coarse-to-fine level)
+            # 4. Decide step size (this is done once for each coarse-to-fine level)
             if loop_inner == 0:
                 delFzs2 = delFzs[0]**2 + delFzs[1]**2
 
@@ -157,20 +154,6 @@ def imagedef(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
             for q in range(2):
                 W[q] = delFzs[q] * terms
 
-            if 0:
-                import pylab as plt
-                print delFzs[0].shape
-                plt.subplot(221)
-                plt.plot(delFzs[0][:,0])
-                plt.subplot(222)
-                plt.plot(terms[:,0])
-                plt.subplot(223) 
-                plt.plot(Fzs[:,0])
-                plt.subplot(224)
-                plt.plot(W[0][:,0])
-                plt.show()
-                import sys; sys.exit(0)
-                
             imdef.reestimate(dt, W, a)
 
         iterations_per_level.append(num_iterations)

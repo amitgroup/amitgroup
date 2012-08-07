@@ -32,7 +32,7 @@ def bedges(images, k=6, inflate=True):
         features = array_bedges(images, k) 
 
     if inflate:
-        # Will not inflate the one-pixel border aroudn the image.
+        # Will not touch the one-pixel border around the image.
         # Just try not to keep salient features that close to the edge!
         for feature in features:
             feature[1:-1,1:-1] = feature[1:-1,1:-1] | \

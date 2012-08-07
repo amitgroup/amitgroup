@@ -5,166 +5,169 @@ import numpy as np
 import amitgroup as ag
 import amitgroup.util
 import amitgroup.features
+import math
 import pywt
 
-twopi = 2.0 * np.pi
-
-# Use ag.ml._deformed_x instead
-
-def _gen_xs(shape):
-    dx = 1/shape[0]
-    dy = 1/shape[1]
-    return np.mgrid[0:1.0-dx:shape[0]*1j, 0:1.0-dy:shape[1]*1j]
-
-def empty_u(tlevels, scriptNs):
-    u = []
-    for q in range(2):
-        u0 = [np.zeros((scriptNs[0],)*2)]
-        for a in range(1, tlevels):
-            sh = (scriptNs[a],)*2
-            u0.append((np.zeros(sh), np.zeros(sh), np.zeros(sh)))
-        u.append(u0)
-    return u 
-
-def _pywt2array(coef, scriptNs, maxL=1000):
-    L = len(scriptNs)#len(coef)
-    N = scriptNs[-1]#len(coef[-1][0])
-    new_u = np.zeros((L, 3, N, N))
-    for i in range(min(maxL, L)):
-        if i == 0:
-            Nx, Ny = coef[i].shape
-            new_u[i,0,:Nx,:Ny] = coef[i]
-        else:
-            for alpha in range(3):
-                Nx, Ny = coef[i][alpha].shape
-                new_u[i,alpha,:Nx,:Ny] = coef[i][alpha]
-    return new_u
-
-def _array2pywt(coef, scriptNs):
-    new_u = []
-    for i, N in enumerate(scriptNs): 
-        if i == 0:
-            new_u.append(coef[i,0,:N,:N])
-        else:
-            als = []
-            for alpha in range(3):
-                als.append(coef[i,alpha,:N,:N])
-            new_u.append(tuple(als))
-    return new_u
-
-def bernoulli_train(data):
-    edges = ag.features.bedges(data)
-    return edges
-
-def bernoulli_model(F, I, A=None, stepsize=0.1, coef=1e-3, rho=1.5, tol=1e-7, calc_costs=False):
+def bernoulli_deformation(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
+                          wavelet='db2', max_iterations_per_level=1000, start_level=1, stepsize_scale_factor=1.0, \
+                          debug_plot=False):
     """
+    Similar to :func:`image_deformation`, except it operates on binary features.
     """
-    assert F.shape[1:] == I.shape, "F and I must match"
+    #assert F.shape[1:] == I.shape, "F and I must match"
+    assert F.shape == I.shape, "F and I must match"
     assert F.shape[0] == 8, "F must already be the means of edge features"
 
     logpriors = []
     loglikelihoods = []
+    costs = []
 
-    X_ = ag.features.bedges(np.array([I]))
-    X = np.rollaxis(X_[0], 2)
+    # This, or an assert
+    X = I.astype(float)
 
-    x0, x1 = _gen_xs(I.shape)
-    
-    if 1:
-        all_js = range(8)
-        filler = []
-    else:
-        all_js = [2]
-        filler = [None] * 2
+    all_js = range(8)
 
-    delFjs = [] + filler 
+    delFjs = []
     for j in all_js:
-        delF = np.gradient(F[j])
+        delF = np.gradient(F[j], 1/F[j].shape[0], 1/F[j].shape[1])
         # Normalize since the image covers the square around [0, 1].
-        delF[0] /= F[j].shape[0]
-        delF[1] /= F[j].shape[1]
         delFjs.append(delF)
     
-    imdef = ag.util.DisplacementFieldWavelet(x0.shape, coef=coef, rho=rho)
+    imdef = ag.util.DisplacementFieldWavelet(F.shape[1:], penalty=penalty, wavelet=wavelet, rho=rho)
+
+    #imdef.u[0,1,0,0,0] = 0.0#-0.5647391
+
+    x, y = imdef.meshgrid()
 
     # 1. 
-    dx = 1/(x0.shape[0]*x0.shape[1])
+    dx = 1/np.prod(F.shape)
 
     last_loglikelihood = -np.inf 
+    last_cost = np.inf
 
     num_iterations = 0
     iterations_per_level = []
-    # TODO: bad access of imdef.scriptNs
-    for a, N in enumerate(imdef.scriptNs): 
-        if a == A:
-            break
+    if last_level is None:
+        last_level = imdef.levels
+
+    if debug_plot:
+        plw = ag.plot.PlottingWindow(figsize=(6, 10), subplots=(5, 4))
+
+    for a in range(start_level, last_level+1): 
         ag.info("Running coarse-to-fine level", a)
-        for loop_inner in xrange(2000): # This number is just a maximum
+        for loop_inner in xrange(max_iterations_per_level):
+            if debug_plot and not plw.tick():
+                break 
             num_iterations += 1
-            # 2.
+            # 2. Deform
 
             # Calculate deformed xs
-            Ux, Uy = imdef.deform_map(x0, x1)
-            z0 = x0 + Ux
-            z1 = x1 + Uy
+            Ux, Uy = imdef.deform_map(x, y)
+            z0 = x + Ux
+            z1 = y + Uy
 
             # Interpolate F at zs
-            Fjzs = [] + filler 
+            Fjzs = []
             for j in all_js: 
-                Fzs = ag.math.interp2d(z0, z1, F[j])
+                Fzs = ag.util.interp2d(z0, z1, F[j].astype(float))
                 Fjzs.append(Fzs)
 
             # Interpolate delF at zs 
-            delFjzs = [] + filler
+            delFjzs = []
             for j in all_js: 
                 delFzs = np.empty((2,) + F[j].shape) 
                 for q in range(2):
-                    #print(delFjs[j][q].shape)
-                    #print z0.shape 
-                    #print z1.shape
-                    delFzs[q] = ag.math.interp2d(z0, z1, delFjs[j][q], fill_value=0.0)
+                    delFzs[q] = ag.util.interp2d(z0, z1, delFjs[j][q], fill_value=0.0)
                 delFjzs.append(delFzs)
 
-            # 4.
-            #terms = Fzs - I
-            # Calculate cost, just for sanity check
-            #loglikelihood = -(terms**2).sum() * dx
+            # 3. Cost
+
+            # log-prior
+            logprior = imdef.logprior()
+            logpriors.append(logprior)
+    
+            # log-likelihood
             loglikelihood = 0.0
+            for j in all_js:
+                loglikelihood += (X[j] * np.log(Fjzs[j]) + (1-X[j]) * np.log(1.0-Fjzs[j])).sum()
+            loglikelihoods.append(loglikelihood)
 
-            if calc_costs:
-                logprior = -imdef.logprior() 
-                logpriors.append(logprior)
+            # cost
+            cost = -logprior - loglikelihood
+            costs.append(cost)
 
-                for j in all_js:
-                    loglikelihood = (X[j] * np.log(Fjzs[j]) + 0.1 * (1-X[j]) * np.log(1.0-Fjzs[j])).sum()
-                loglikelihoods.append(loglikelihood)
+            if __debug__:
+                ag.info("cost: {0} (prior: {1}, llh: {2})".format(cost, logprior, loglikelihood))
             
+            # Some plotting for real-time feedback
+            if debug_plot:
+                for j in all_js:
+                    # What's the likelihood for this component?
+                    llhj = (X[j] * np.log(Fjzs[j]) + (1-X[j]) * np.log(1.0-Fjzs[j])).sum()
+                    plw.imshow(Fjzs[j], subplot=j*2+0, caption="{0:.2f}".format(llhj))
+                    plw.imshow(X[j], subplot=j*2+1)
+                plw.plot(costs[-100:], subplot=16)
+                plw.plot(loglikelihoods[-100:], subplot=17)
+                plw.plot(logpriors[-100:], subplot=18)
+                plw.imshow(np.asarray(Fjzs).mean(axis=0), subplot=19, caption="Average F (deformed)")
+                plw.flip(20)
+
             # Check termination
-            #print(loglikelihood - last_loglikelihood)
-            if loglikelihood - last_loglikelihood <= tol and loop_inner >= 100: # Require at least 100
-                 break
+            if math.fabs(cost - last_cost)/last_cost < tol and loop_inner > 5:
+                break
+
+            last_cost = cost
             last_loglikelihood = loglikelihood
 
-            W = np.empty((2,) + x0.shape)
-            for q in range(2):
-                W[q] = 0.0
+            # 4. Decide step size (this is done once for each coarse-to-fine level)
+            if loop_inner == 0:
+                v = 0.0
+                # TODO: This can be simplified greatly, either with temporary variables or actually simplifying the expression,
+                # or, maybe even removing less impactful factors.
                 for j in all_js: 
-                    t1 = X[j] * delFjzs[j][q]/Fjzs[j]
-                    t2 = -(1-X[j]) * delFjzs[j][q]/(1-Fjzs[j])
-                    W[q] += t1 + t2 
+                    del2Fjzs = np.asarray([
+                        np.gradient(delFjzs[j][q], 1/x.shape[0], 1/x.shape[1])[q] for q in range(2)
+                    ]) 
+
+                    v += (X[j] * (np.fabs((Fjzs[j] * del2Fjzs[0] * del2Fjzs[1])) + delFjzs[j][0]**2 + delFjzs[j][1]**2)/Fjzs[j]**2).sum()
+                    v += ((1-X[j]) * (np.fabs((1-Fjzs[j]) * del2Fjzs[0] * del2Fjzs[1]) + delFjzs[j][0]**2 + delFjzs[j][1]**2)/(1-Fjzs[j])**2).sum()
+
+                # This is the value of the psi, which turns out to be a good bound for this purpose
+                M = dx
+                T = a**2 * M * v * dx + imdef.sum_of_coefficients(a) * 3
+
+                dt = stepsize_scale_factor/T
 
             # 5. Gradient descent
-            imdef.reestimate(stepsize, W, a+1)
+            W = np.zeros((2,) + x.shape) # Change to empty
+            for q in range(2):
+                Wq = 0.0
+                for j in all_js: 
+                    grad = delFjzs[j][q]
+                    Xj = X[j]
+                    Fjzsj = Fjzs[j]
+
+                    t1 = Xj/Fjzsj
+                    t2 = -(1-Xj)/(1-Fjzsj)
+                    # This erronously says plus in Amit's book.
+                    Wq -= (t1 + t2) * grad
+                W[q] = Wq 
+
+            imdef.reestimate(dt, W, a+1)
 
         iterations_per_level.append(num_iterations)
         num_iterations = 0
     
+    if debug_plot:
+        plw.mainloop()
                
     info = {}
     info['iterations_per_level'] = iterations_per_level
     info['iterations'] = sum(iterations_per_level) 
-    if calc_costs:
-        info['logpriors'] = np.array(logpriors)
-        info['loglikelihoods'] = np.array(loglikelihoods)
+    logpriors = np.asarray(logpriors)
+    loglikelihoods = np.asarray(loglikelihoods)
+    info['logpriors'] = logpriors
+    info['loglikelihoods'] = loglikelihoods
+    info['costs'] = -logpriors - loglikelihoods
 
     return imdef, info 

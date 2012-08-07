@@ -10,7 +10,8 @@ except ImportError:
     from .interp2d_pure import *
     print("Warning: No Cython! Please compile amitgroup.")
 
-from .blur import blur_image
+from .blur import *
+from .misc import *
 
-__all__ = ['interp2d', 'blur_image']
-__all__ += ['DisplacementField', 'DisplacementFieldWavelet']
+#__all__ = ['interp2d', 'blur_image']
+#__all__ += ['DisplacementField', 'DisplacementFieldWavelet']

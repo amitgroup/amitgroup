@@ -14,10 +14,10 @@ def _levels2shape(levelshape, levels, level=np.inf):
 
 #TODO Move somewhere else, so as not to clog up the space
 # before the class.
-def _pywt2array(coefficients, L, levelshape, maxL=np.inf):
-    shape = _levels2shape(levelshape, L)
-    new_u = np.zeros((L, 3) + shape)
-    for i in range(min(maxL, L)):
+def _pywt2array(coefficients, levels, levelshape, maxL=np.inf):
+    shape = _levels2shape(levelshape, levels)
+    new_u = np.zeros((levels+1, 3) + shape)
+    for i in range(min(maxL, levels+1)):
         if i == 0:
             Nx, Ny = coefficients[i].shape
             new_u[i,0,:Nx,:Ny] = coefficients[i]
@@ -39,6 +39,7 @@ def _array2pywt(coefficients, levelshape, levels):
             for alpha in range(3):
                 als.append(coefficients[level,alpha,:N,:M])
             new_u.append(tuple(als))
+    #print map(np.shape, new_u)
     return new_u
 
 class DisplacementFieldWavelet(DisplacementField):
@@ -107,7 +108,7 @@ class DisplacementFieldWavelet(DisplacementField):
         side = max(self.shape)
         self.levels = int(np.log2(side))
         self.levelshape = tuple(map(int, map(np.log2, self.shape)))
-        self.scriptNs = map(len, pywt.wavedec(range(side), self.wavelet, level=self.levels, mode=self.mode))
+        self.scriptNs = map(len, pywt.wavedec(np.zeros(side), self.wavelet, level=self.levels, mode=self.mode))
 
     def _deformed_x(self, x0, x1):
         Ux0, Ux1 = self.deform_map(x0, x1)
@@ -149,8 +150,8 @@ class DisplacementFieldWavelet(DisplacementField):
         Reestimation step for training the deformation. 
         """
         vqks = np.asarray([
-            _pywt2array(pywt.wavedec2(W[q], self.wavelet, mode=self.mode, level=self.levels), len(self.scriptNs), self.levelshape, level) for q in range(2)
-        ]) / 4**self.levels  #/ np.prod(self.shape) # Notice this adjustment of the values
+            _pywt2array(pywt.wavedec2(W[q], self.wavelet, mode=self.mode, level=self.levels), self.levels, self.levelshape, level) for q in range(2)
+        ]) / 4**self.levels # Notice this adjustment of the values
 
         self.u -= stepsize * (self.lmbks * self.u + vqks)
 

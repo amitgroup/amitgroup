@@ -45,6 +45,7 @@ def images(data, zero_to_one=True, show=True):
         fig = plt.figure()
         for i, im in enumerate(data): 
             plt.subplot(sh[0], sh[1], 1+i).set_axis_off()
+            plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
             plt.imshow(im, **settings)
 
     if show:
