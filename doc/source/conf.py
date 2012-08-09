@@ -28,7 +28,6 @@ sys.path = [os.path.abspath('..')] + sys.path
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
-    'matplotlib.sphinxext.plot_directive',
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.autosummary',
@@ -47,6 +46,9 @@ else:
         use_matplotlib_plot_directive = (plot_directive.__version__ >= 2)
     except AttributeError:
         use_matplotlib_plot_directive = False
+
+if use_matplotlib_plot_directive:
+    extensions.append('matplotlib.sphinxext.plot_directive')
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

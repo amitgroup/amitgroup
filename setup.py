@@ -8,7 +8,8 @@ cython_req = (0, 16)
 try:
     import Cython
     from Cython.Distutils import build_ext
-    cython_ok = tuple(map(int, Cython.__version__.split('.')[:2])) >= cython_req 
+    import re
+    cython_ok = tuple(map(int, re.sub("[^\d.]*]", "", Cython.__version__).split('.')[:2])) >= cython_req 
 except ImportError:
     cython_ok = False 
 
