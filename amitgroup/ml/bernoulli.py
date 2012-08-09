@@ -10,7 +10,7 @@ import pywt
 
 def bernoulli_deformation(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
                           wavelet='db2', max_iterations_per_level=1000, start_level=1, stepsize_scale_factor=1.0, \
-                          debug_plot=False):
+                          debug_plot=False, means=None, variances=None):
     """
     Similar to :func:`image_deformation`, except it operates on binary features.
     """
@@ -33,9 +33,7 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001
         # Normalize since the image covers the square around [0, 1].
         delFjs.append(delF)
     
-    imdef = ag.util.DisplacementFieldWavelet(F.shape[1:], penalty=penalty, wavelet=wavelet, rho=rho)
-
-    #imdef.u[0,1,0,0,0] = 0.0#-0.5647391
+    imdef = ag.util.DisplacementFieldWavelet(F.shape[1:], penalty=penalty, wavelet=wavelet, rho=rho, means=means, variances=variances)
 
     x, y = imdef.meshgrid()
 
@@ -134,7 +132,7 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001
 
                 # This is the value of the psi, which turns out to be a good bound for this purpose
                 M = dx
-                T = a**2 * M * v * dx + imdef.sum_of_coefficients(a) * 3
+                T = imdef.number_of_coefficients(a) * M * v * dx + np.sqrt(imdef.sum_of_coefficients(a))# * 8
 
                 dt = stepsize_scale_factor/T
 

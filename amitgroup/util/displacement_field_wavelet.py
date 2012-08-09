@@ -65,7 +65,7 @@ class DisplacementFieldWavelet(DisplacementField):
      
     .. _PyWavelets: http://www.pybytes.com/pywavelets/
     """
-    def __init__(self, shape, wavelet='db2', rho=2.0, penalty=1.0):
+    def __init__(self, shape, wavelet='db2', rho=2.0, penalty=1.0, means=None, variances=None):
         assert rho > 0.0, "Parameter rho must be strictly positive"
         #super(DisplacementFieldWavelet, self).__init__(shape)
         self.wavelet = wavelet 
@@ -76,33 +76,58 @@ class DisplacementFieldWavelet(DisplacementField):
         biggest = self.scriptNs[-1]        
         coefshape = _levels2shape(self.levelshape, self.levels)
         self.ushape = (2, self.levels+1, 3) + coefshape
+        
         # We divide the penalty, since the raw penalty is the ratio
         # of the variance between the coefficients and the loglikelihood.
         # It is more natural to want the variance between how much the 
         # the coefficients can create a deformation in space instead, which
         # implies an adjustment of 2**self.levels for the s.d. We take
         # the square of this since we're dealing with the variance. 
+        # Notice: Penalty is only applicable
         self.penalty_adjusted = penalty / 4**self.levels 
-        self._init_lmbks_and_u()
 
-    def _init_lmbks_and_u(self):
+        self._init_mask()
+
+        if means is not None:
+            self.mu = np.ma.array(means, mask=self.mask)
+        else:
+            self.mu = np.ma.array(np.zeros(self.ushape), mask=self.mask)
+
+        if variances is not None:
+            self.lmbks = np.ma.array(1/np.clip(variances, 0.0001, 1000000), mask=self.mask)
+        else:
+            self._init_default_lmbks()
+
+        self._init_u()
+
+    @classmethod
+    def shape_for_size(cls, size):
+        levelshape = tuple(map(int, map(np.log2, size)))
+        levels = max(levelshape)
+        coefshape = _levels2shape(levelshape, levels)
+        return (2, levels+1, 3) + coefshape
+            
+    def _init_mask(self):
+        self.mask = np.ones(self.ushape)
+        for level in range(self.levels+1):
+            N, M = _levels2shape(self.levelshape, self.levels, level)
+            if level == 0:
+                self.mask[:,level,0,:N,:M] = 0 
+            else:
+                self.mask[:,level,:,:N,:M] = 0 
+
+    def _init_u(self):
+        # Could also default to mean values
+        self.u = np.ma.array(np.zeros(self.ushape), mask=self.mask)
+
+    def _init_default_lmbks(self):
         values = np.zeros(self.ushape)
         for i in range(self.levels+1):
             # We decrease the self.scriptNs[i] so that the first level
             # is only the penalty
             values[:,i,:,:,:] = self.penalty_adjusted * 2.0**(self.rho * (self.scriptNs[i]-1))
 
-        # Which ones are used? Create a mask
-        mask = np.ones(self.ushape)
-        for level in range(self.levels+1):
-            N, M = _levels2shape(self.levelshape, self.levels, level)
-            if level == 0:
-                mask[:,level,0,:N,:M] = 0 
-            else:
-                mask[:,level,:,:N,:M] = 0 
-
-        self.lmbks = np.ma.array(values, mask=mask)
-        self.u = np.ma.array(np.zeros(self.ushape), mask=mask)
+        self.lmbks = np.ma.array(values, mask=self.mask)
 
     def prepare_shape(self):
         side = max(self.shape)
@@ -143,7 +168,7 @@ class DisplacementFieldWavelet(DisplacementField):
         return im
 
     def logprior(self, levels=None):
-        return -(self.lmbks * self.u**2)[:,:levels].sum() / 2
+        return -(self.lmbks * (self.u - self.mu)**2)[:,:levels].sum() / 2
 
     def reestimate(self, stepsize, W, level):
         """
@@ -158,7 +183,11 @@ class DisplacementFieldWavelet(DisplacementField):
     def sum_of_coefficients(self, levels=None):
         # Return only lmbks[0], because otherwise we'll double-count every
         # value (since they are the same)
+        # TODO: Just changed this. Correct?
         return self.lmbks[0,:levels].sum()
+
+    def number_of_coefficients(self, levels=None):
+        return (self.mask[:,:levels] == False).sum()
 
     def copy(self):
         return deepcopy(self) 
@@ -202,4 +231,33 @@ class DisplacementFieldWavelet(DisplacementField):
                     for alpha in range(3):
                         self.u[q,level,alpha,:N,:M] = np.random.normal(0.0, sigma, (N, M)) * adjust 
 
-        
+    def ilevels(self):
+        for level in range(self.levels+1):
+            alphas = 1 if level == 0 else 3
+            yield level, (alphas,)+_levels2shape(self.levelshape, self.levels, level)
+
+    def print_lmbks(self, last_level=np.inf):
+        for level, (alphas, N, M) in self.ilevels():
+            print "Level {0}".format(level)
+            print self.lmbks[:,level,:alphas,:N,:M]
+            if level == last_level:
+                break
+
+    def print_u(self, last_level=np.inf):
+        for level, (alphas, N, M) in self.ilevels():
+            print "Level {0}".format(level)
+            print self.u[:,level,:alphas,:N,:M]
+            if level == last_level:
+                break
+
+    # TODO: The name 'u' for the coefficients is congruent with the book, 
+    #  but a bit confusing for other peopel. Change.
+    def ulevel(self, level):
+        alphas = 1 if level == 0 else 3
+        size = _levels2shape(self.levelshape, self.levels, level)
+        return self.u[:,level,:alphas,:size[0],:size[1]]
+
+    def lmbk_level(self, level):
+        alphas = 1 if level == 0 else 3
+        size = _levels2shape(self.levelshape, self.levels, level)
+        return self.lmbks[:,level,:alphas,:size[0],:size[1]]
