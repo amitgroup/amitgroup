@@ -9,7 +9,7 @@ try:
     import Cython
     from Cython.Distutils import build_ext
     import re
-    cython_ok = tuple(map(int, re.sub(r"[^\d.]*]", "", Cython.__version__).split('.')[:2])) >= cython_req 
+    cython_ok = tuple(map(int, re.sub(r"[^\d.]*", "", Cython.__version__).split('.')[:2])) >= cython_req 
 except ImportError:
     cython_ok = False 
 
