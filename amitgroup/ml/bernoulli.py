@@ -8,6 +8,97 @@ import amitgroup.features
 import math
 import pywt
 
+def bernoulli2(F, I, last_level=None, penalty=1.0, rho=2.0, wavelet='db2', max_iterations_per_level=1000, start_level=1, debug_plot=False, means=None, variances=None, **kwargs):
+    from scipy.optimize import fmin_bfgs
+    # This, or an assert
+    X = I.astype(float)
+
+    all_js = range(8)
+
+    delFjs = []
+    for j in all_js:
+        delF = np.gradient(F[j], 1/F[j].shape[0], 1/F[j].shape[1])
+        # Normalize since the image covers the square around [0, 1].
+        delFjs.append(delF)
+    
+    imdef = ag.util.DisplacementFieldWavelet(F.shape[1:], penalty=penalty, wavelet=wavelet, rho=rho, means=means, variances=variances)
+
+    x, y = imdef.meshgrid()
+
+    # 1. 
+    dx = 1/np.prod(F.shape)
+
+    def cb(uk):
+        print "uk:", uk
+
+    def f(u, imdef, F, X, delFjs, x, y, a):
+        # Calculate deformed xs
+        Ux, Uy = imdef.deform_map(x, y)
+        z0 = x + Ux
+        z1 = y + Uy
+
+        # Interpolate F at zs
+        Fjzs = []
+        for j in all_js: 
+            Fzs = ag.util.interp2d(z0, z1, F[j].astype(float))
+            Fjzs.append(Fzs)
+
+        # 3. Cost
+
+        # log-prior
+        logprior = imdef.logprior()
+
+        # log-likelihood
+        loglikelihood = 0.0
+        for j in all_js:
+            loglikelihood += (X[j] * np.log(Fjzs[j]) + (1-X[j]) * np.log(1.0-Fjzs[j])).sum()
+
+        # cost
+        cost = -logprior - loglikelihood
+        return cost
+
+    def fprime(u, imdef, F, X, delFjs, x, y, a):
+        # Calculate deformed xs
+        Ux, Uy = imdef.deform_map(x, y)
+        z0 = x + Ux
+        z1 = y + Uy
+
+# Interpolate delF at zs 
+        delFjzs = []
+        for j in all_js: 
+            delFzs = np.empty((2,) + F[j].shape) 
+            for q in range(2):
+                delFzs[q] = ag.util.interp2d(z0, z1, delFjs[j][q], fill_value=0.0)
+            delFjzs.append(delFzs)
+
+        # Interpolate F at zs
+        Fjzs = []
+        for j in all_js: 
+            Fzs = ag.util.interp2d(z0, z1, F[j].astype(float))
+            Fjzs.append(Fzs)
+
+        W = np.zeros((2,) + x.shape) # Change to empty
+        for q in range(2):
+            Wq = 0.0
+            for j in all_js: 
+                grad = delFjzs[j][q]
+                Xj = X[j]
+                Fjzsj = Fjzs[j]
+
+                t1 = Xj/Fjzsj
+                t2 = -(1-Xj)/(1-Fjzsj)
+                # This erronously says plus in Amit's book.
+                Wq -= (t1 + t2) * grad
+            W[q] = Wq 
+
+        return imdef.derive(W, a+1).flatten()
+
+
+    imdef = ag.util.DisplacementFieldWavelet(F.shape[1:], penalty=penalty, wavelet=wavelet, rho=rho, means=means, variances=variances)
+    for a in range(start_level, last_level+1): 
+        ag.info("Running coarse-to-fine level", a)
+        fmin_bfgs(f, imdef.u.flatten(), fprime, args=(imdef, F, X, delFjs, x, y, a), callback=cb)
+    
 def bernoulli_deformation(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
                           wavelet='db2', max_iterations_per_level=1000, start_level=1, stepsize_scale_factor=1.0, \
                           debug_plot=False, means=None, variances=None):

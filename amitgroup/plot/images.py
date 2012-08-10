@@ -54,10 +54,9 @@ def images(data, zero_to_one=True, show=True):
 def deformation(F, I, displacement_field, show_diff=False, show=True):
     """
     
-    Plot how a :class:`DisplacementField` applies to a prototype image `F` to qualitatively
-    compare it with `I`.
+    Plot how a :class:`DisplacementField` applies to a prototype image `F` to qualitatively compare it with `I`.
 
-    Especially designed to plot the results of :func:`imagedef`.
+    Especially designed to plot the results of :func:`image_deformation`.
 
     Parameters
     ----------

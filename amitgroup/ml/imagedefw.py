@@ -10,7 +10,7 @@ def _powerof2(v):
     # Does not handle 0, but that's not valid for image deformations anyway
     return (v & (v-1)) == 0 
 
-def imagedef(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
+def image_deformation(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
              wavelet='db2', \
              max_iterations_per_level=1000, start_level=1, stepsize_scale_factor=1.0):
     """
@@ -59,7 +59,7 @@ def imagedef(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
     Load two example faces and perform the deformation:
 
     >>> F, I = ag.io.load_example('faces2')
-    >>> imdef, info = ag.ml.imagedef(F, I)
+    >>> imdef, info = ag.ml.image_deformation(F, I)
     >>> Fdef = imdef.deform(F)
 
     Output the results:

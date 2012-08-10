@@ -3,7 +3,7 @@ from scipy.signal import convolve
 import numpy as np
 import amitgroup as ag
 
-def gauss_kern(size, sizey=None):
+def _gauss_kern(size, sizey=None):
     """ Returns a normalized 2D gauss kernel array for convolutions. """
     size = int(size)
     if not sizey:
@@ -15,7 +15,7 @@ def gauss_kern(size, sizey=None):
     return g / g.sum()
 
 def _blur_and_shrink(im, n, ny=None):
-    g = gauss_kern(n, sizey=ny)
+    g = _gauss_kern(n, sizey=ny)
     improc = convolve(im,g, mode='valid')
     return(improc)
 

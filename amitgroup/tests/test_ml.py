@@ -14,9 +14,9 @@ class TestML(unittest.TestCase):
         self.F = np.zeros((8, 8))
         self.F[2:3,0:1] = 1.0
 
-    def test_imagedef(self):
+    def test_image_deformation(self):
         # Set tolerance pretty high, to make it fast
-        imdef, info = ag.ml.imagedef(self.F, self.I, last_level=2, penalty=0.2, rho=1.0, tol=1e-2)
+        imdef, info = ag.ml.image_deformation(self.F, self.I, last_level=2, penalty=0.2, rho=1.0, tol=1e-2)
         Fdef = imdef.deform(self.F)
     
         # Save the data (when you're sure this test will succeed)
@@ -26,7 +26,7 @@ class TestML(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(Fdef, Fdef_correct)
 
-    def test_imagedef_nonsquare(self):
+    def test_image_deformation_nonsquare(self):
         # Not complete
         if 0:
             F2 = F[::2] 
