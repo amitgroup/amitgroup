@@ -155,7 +155,8 @@ class DisplacementFieldWavelet(DisplacementField):
         return im
 
     def logprior(self, levels=None):
-        return -(self.lmbks * (self.u - self.mu)**2)[:,:_flat_start(levels, 0, self.levelshape)].sum() / 2
+        limit = None if levels is None else _flat_start(levels, 0, self.levelshape)
+        return -(self.lmbks * (self.u - self.mu)**2)[:,:limit].sum() / 2
 
     def reestimate(self, stepsize, W, level):
         """
