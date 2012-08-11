@@ -1,6 +1,5 @@
 
 import amitgroup as ag
-import amitgroup.ml
 import numpy as np
 from time import time
 
@@ -8,7 +7,7 @@ def main():
     t1 = time()
     assert 0, "This example needs easily accessible I and F"
 
-    imdef, info = ag.ml.bernoulli_model(F, I, stepsize_scale_factor=1.0, penalty=0.1, rho=1.0, last_level=4, tol=0.001, \
+    imdef, info = ag.stats.bernoulli_model(F, I, stepsize_scale_factor=1.0, penalty=0.1, rho=1.0, last_level=4, tol=0.001, \
                                   start_level=2, wavelet='db2')
     Fdef = imdef.deform(F)
     t2 = time()

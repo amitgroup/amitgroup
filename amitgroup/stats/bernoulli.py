@@ -7,9 +7,59 @@ import amitgroup.util
 import amitgroup.features
 import math
 import pywt
+import sys
+from scipy.optimize import fmin_bfgs, fmin_l_bfgs_b
 
-def bernoulli2(F, I, last_level=None, penalty=1.0, rho=2.0, wavelet='db2', max_iterations_per_level=1000, start_level=1, debug_plot=False, means=None, variances=None, **kwargs):
-    from scipy.optimize import fmin_bfgs
+def _cost(u, imdef, F, X, delFjs, x, y, a, all_js):
+    if len(u.shape) == 1:
+        u = u.reshape((2, len(u)//2))
+    imdef.u[:u.shape[0],:u.shape[1]] = u 
+    # Calculate deformed xs
+    z0, z1 = imdef.deform_x(x, y, a)
+
+    # Interpolate F at zs
+    Fjzs = np.empty(F.shape) 
+    for j in all_js: 
+        Fjzs[j] = ag.util.interp2d(z0, z1, F[j].astype(float))
+
+    # 3. Cost
+
+    # log-prior
+    logprior = imdef.logprior()
+
+    # log-likelihood
+    loglikelihood = (X * np.log(Fjzs) + (1-X) * np.log(1.0-Fjzs)).sum()
+
+    # cost
+    return -logprior - loglikelihood
+
+def _cost_deriv(u, imdef, F, X, delFjs, x, y, a, all_js):
+    if len(u.shape) == 1:
+        u = u.reshape((2, len(u)//2))
+    imdef.u[:u.shape[0],:u.shape[1]] = u 
+    # Calculate deformed xs
+    z0, z1 = imdef.deform_x(x, y, a)
+
+    # Interpolate delF at zs 
+    delFjzs = np.empty((8, 2) + F.shape[1:]) 
+    for j in all_js: 
+        for q in range(2):
+            delFjzs[j,q] = ag.util.interp2d(z0, z1, delFjs[j][q], fill_value=0.0)
+
+    # Interpolate F at zs
+    Fjzs = np.empty(F.shape) 
+    for j in all_js: 
+        Fjzs[j] = ag.util.interp2d(z0, z1, F[j].astype(float))
+
+    W = np.zeros((2,) + x.shape) # Change to empty
+    for q in range(2):
+        grad = delFjzs[:,q]
+        W[q] = -((X/Fjzs - (1-X)/(1-Fjzs)) * grad).sum(axis=0) 
+
+    limit = None if a is None else ag.util.flat_start(a, 0, imdef.levelshape)
+    return imdef.derive(W, a+1)[:,:limit].flatten()
+
+def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0, wavelet='db8', maxiter=1000, start_level=1, debug_plot=False, means=None, variances=None):
     # This, or an assert
     X = I.astype(float)
 
@@ -25,83 +75,38 @@ def bernoulli2(F, I, last_level=None, penalty=1.0, rho=2.0, wavelet='db2', max_i
 
     x, y = imdef.meshgrid()
 
-    # 1. 
-    dx = 1/np.prod(F.shape)
-
-    def cb(uk):
-        print "uk:", uk
-
-    def f(u, imdef, F, X, delFjs, x, y, a):
-        # Calculate deformed xs
-        Ux, Uy = imdef.deform_map(x, y)
-        z0 = x + Ux
-        z1 = y + Uy
-
-        # Interpolate F at zs
-        Fjzs = []
-        for j in all_js: 
-            Fzs = ag.util.interp2d(z0, z1, F[j].astype(float))
-            Fjzs.append(Fzs)
-
-        # 3. Cost
-
-        # log-prior
-        logprior = imdef.logprior()
-
-        # log-likelihood
-        loglikelihood = 0.0
-        for j in all_js:
-            loglikelihood += (X[j] * np.log(Fjzs[j]) + (1-X[j]) * np.log(1.0-Fjzs[j])).sum()
-
-        # cost
-        cost = -logprior - loglikelihood
-        return cost
-
-    def fprime(u, imdef, F, X, delFjs, x, y, a):
-        # Calculate deformed xs
-        Ux, Uy = imdef.deform_map(x, y)
-        z0 = x + Ux
-        z1 = y + Uy
-
-# Interpolate delF at zs 
-        delFjzs = []
-        for j in all_js: 
-            delFzs = np.empty((2,) + F[j].shape) 
-            for q in range(2):
-                delFzs[q] = ag.util.interp2d(z0, z1, delFjs[j][q], fill_value=0.0)
-            delFjzs.append(delFzs)
-
-        # Interpolate F at zs
-        Fjzs = []
-        for j in all_js: 
-            Fzs = ag.util.interp2d(z0, z1, F[j].astype(float))
-            Fjzs.append(Fzs)
-
-        W = np.zeros((2,) + x.shape) # Change to empty
-        for q in range(2):
-            Wq = 0.0
-            for j in all_js: 
-                grad = delFjzs[j][q]
-                Xj = X[j]
-                Fjzsj = Fjzs[j]
-
-                t1 = Xj/Fjzsj
-                t2 = -(1-Xj)/(1-Fjzsj)
-                # This erronously says plus in Amit's book.
-                Wq -= (t1 + t2) * grad
-            W[q] = Wq 
-
-        return imdef.derive(W, a+1).flatten()
-
+    if debug_plot:
+        plw = ag.plot.PlottingWindow(figsize=(8, 8), subplots=(4,4))
+        def cb(uk):
+            if not plw.tick():
+                sys.exit(0)
+            for j in range(8):
+                plw.imshow(imdef.deform(F[j]), subplot=j*2)
+                plw.imshow(I[j], subplot=j*2+1)
+    else:
+        cb = None 
 
     imdef = ag.util.DisplacementFieldWavelet(F.shape[1:], penalty=penalty, wavelet=wavelet, rho=rho, means=means, variances=variances)
+
+    min_cost = np.inf
     for a in range(start_level, last_level+1): 
         ag.info("Running coarse-to-fine level", a)
-        fmin_bfgs(f, imdef.u.flatten(), fprime, args=(imdef, F, X, delFjs, x, y, a), callback=cb)
+
+        u = imdef.abridged_u(a)
+        new_u, cost = fmin_bfgs(_cost, u, _cost_deriv, args=(imdef, F, X, delFjs, x, y, a, all_js), callback=cb, gtol=gtol, maxiter=maxiter, full_output=True)[:2]
+
+        #new_u, cost, _ = fmin_l_bfgs_b(_cost, u, _cost_deriv, args=(imdef, F, X, delFjs, x, y, a, all_js))
+        print cost
+        if cost < min_cost:
+            # If the algorithm makes mistakes and returns a really high cost, don't use it.
+            min_cost = cost
+            imdef.u[:,:u.shape[1]] = new_u.reshape(u.shape)
+
+    return imdef, {'cost': min_cost}
     
-def bernoulli_deformation(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
-                          wavelet='db2', max_iterations_per_level=1000, start_level=1, stepsize_scale_factor=1.0, \
-                          debug_plot=False, means=None, variances=None):
+def _bernoulli_deformation_old(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
+                               wavelet='db2', max_iterations_per_level=1000, start_level=1, stepsize_scale_factor=1.0, \
+                               debug_plot=False, means=None, variances=None):
     """
     Similar to :func:`image_deformation`, except it operates on binary features.
     """
@@ -199,7 +204,6 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001
                 plw.plot(loglikelihoods[-100:], subplot=17)
                 plw.plot(logpriors[-100:], subplot=18)
                 plw.imshow(np.asarray(Fjzs).mean(axis=0), subplot=19, caption="Average F (deformed)")
-                plw.flip(20)
 
             # Check termination
             if math.fabs(cost - last_cost)/last_cost < tol and loop_inner > 5:

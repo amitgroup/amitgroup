@@ -4,6 +4,36 @@ import pygame.locals as pylocals
 import numpy as np
 
 class PlottingWindow(object):
+    """
+    A simple `pygame <http://www.pygame.org/>`__ wrapper that allows for real-time plotting with minimal code injection.
+
+    Pygame prefers to be run in the main thread, so you are in charge of maintaing a main loop that calls :func:`tick`. 
+    However, for the development of iterative algorithms, this is appropriately the same as the main algorithm loop.
+
+    Parameters
+    ----------
+    figsize : tuple
+        Figure size, with a similar scale as `matplotlib <http://matplotlib.sourceforge.net>`__ uses. Tuple of size 2.
+    subplots : tuple
+        Number of subplots, with rows specified first and then columns. Tuple of size 2.
+    caption : str
+        Set the name of the plotting window.
+
+    Examples
+    --------
+    >>> import amitgroup as ag
+    >>> import numpy as np
+    
+    Plot an evolving 2D function.
+
+    >>> plw = ag.plot.PlottingWindow()
+    >>> x, y = np.mgrid[0:1:100j, 0:1:100j]
+    >>> t = 0.0
+    >>> while plw.tick():
+    ...     im = np.sin(x + t) * np.cos(10*y + 10*t)
+    ...     plw.imshow(im, limits=(-1, 1))
+    ...     t += 1/60. # doctest: +SKIP
+    """
     def __init__(self, figsize=(8, 6), subplots=(1, 1), caption="Plotting Window"):
         pygame.init() 
         #if not pygame.font: print 'Warning, fonts disabled'
@@ -23,10 +53,33 @@ class PlottingWindow(object):
         self.subplots(subplots)
 
     def subplots(self, shape):
+        """
+        Change the number of subplots. It is normally more convenient to set this through an argument in the constructor.
+        """
         assert len(shape) == 2, "Subplots shape must have two elemements"
         self._subplots = shape
 
-    def tick(self, clear=True):
+    def clear(self):
+        """
+        Manually clear the screen. If :func:`tick` is called with its default settings, a separate call to this function is not needed.
+        """
+        self._screen.blit(self._background, (0, 0))
+
+    def tick(self, clear=True, fps=0):
+        """
+        Handle input and clear the screen. 
+
+        If this function returns `False`, you should terminate your main loop. 
+        
+        Parameters
+        ----------
+        fps : int
+            If nonzero, then it will enforce the given frame rate. For instance, set to 60, if you want 60 a maximum of 60 frames per seconds to be displayed.
+        """
+        pygame.display.flip()
+        if fps > 0:
+            self._clock.tick(fps)
+
         if self._quit:
             return False
         #clock.time(60)  
@@ -37,16 +90,10 @@ class PlottingWindow(object):
                 pygame.display.quit()
                 return False 
 
+
         if clear:
-            self._screen.blit(self._background, (0, 0))
+            self.clear()
 
-        #if pygame.font:
-        #    font = pygame.font.Font(None, 36)
-        #    text = font.render("x", 1, (10, 10, 10))
-        #    textpos = text.get_rect(centerx=_background.get_width()/2)
-        #    _screen.blit(text, textpos)
-
-        #pygame.display.flip()
         return True 
 
     def _anchor_and_size(self, subplot):
@@ -58,6 +105,20 @@ class PlottingWindow(object):
         return (anchor[0]+pad, anchor[1]+pad), (size[0]-2*pad, size[1]-2*pad) 
 
     def imshow(self, im, limits=(0, 1), subplot=0, caption=None):
+        """
+        Display an image.
+    
+        Parameters
+        ----------
+        im : ndarray
+            A 2D array with the image data.
+        limits : tuple
+            A tuple of size two, that specifies the values of black and white.
+        subplot : int
+            Zero-based index of subplot.
+        caption : str
+            Add a textual description of the image.
+        """
         assert isinstance(im, np.ndarray) and len(im.shape) == 2, "Image must be a 2D ndarray"
         anchor, size = self._anchor_and_size(subplot)
 
@@ -71,7 +132,7 @@ class PlottingWindow(object):
             im2 = im
 
         im3 = (np.clip(im2.T, 0, 1)*255).astype(np.uint32)
-        scr = pygame.Surface(im.shape)
+        scr = pygame.Surface(im3.shape)
         pygame.surfarray.blit_array(scr, (im3<<24) + (im3<<16) + (im3<<8) + 0xFF)
         scale = min((size[0])//im.shape[0], (size[1])//im.shape[1])
         scr2 = pygame.transform.scale(scr, (im.shape[0]*scale, im.shape[1]*scale))
@@ -84,6 +145,20 @@ class PlottingWindow(object):
             self._screen.blit(text, (anchor[0], anchor[1]-10))
 
     def plot(self, x, y=None, limits='auto', subplot=0):
+        """
+        Plot some data using a regular solid-line plot.
+
+        Parameters
+        ---------- 
+        x : ndarray
+            The `time` axis. If `y` is None, then this is used as data values instead.
+        y : ndarray
+            The `data` axis.
+        limits : tuple or str
+            A tuple of size two, that specifies the range of the `y` values that should be plotted. If set to a string saying ``"auto"``, then it will be automatically determined.
+        subplot : int
+            Zero-based index of subplot.
+        """
         N = len(x) 
         if N < 2:
             return # Just don't draw anything
@@ -117,11 +192,11 @@ class PlottingWindow(object):
             text = font.render("{0:.1g}/{1:.1g}".format(*ylims), 1, (10, 10, 10))
             self._screen.blit(text, (anchor[0], anchor[1]-10))
 
-    def flip(self, fps=0):
-        pygame.display.flip()
-        if fps > 0:
-            self._clock.tick(fps)
-
     def mainloop(self, fps=60):
-        while self.tick(clear=False):
-            self.flip(fps)
+        """
+        Call this instead or after your own :func:`tick` loop, to keep the window alive. 
+
+        This function will be blocking utnil the user presses Escape or closes the window.
+        """
+        while self.tick(clear=False, fps=fps):
+            pass

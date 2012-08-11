@@ -1,5 +1,4 @@
 import amitgroup as ag
-import amitgroup.ml
 import numpy as np
 import unittest
 import os
@@ -16,7 +15,7 @@ class TestML(unittest.TestCase):
 
     def test_image_deformation(self):
         # Set tolerance pretty high, to make it fast
-        imdef, info = ag.ml.image_deformation(self.F, self.I, last_level=2, penalty=0.2, rho=1.0, tol=1e-2)
+        imdef, info = ag.stats.image_deformation(self.F, self.I, last_level=2, penalty=0.2, rho=1.0, tol=1e-2)
         Fdef = imdef.deform(self.F)
     
         # Save the data (when you're sure this test will succeed)

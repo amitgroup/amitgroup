@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 
 from .displacement_field import DisplacementField 
-from .displacement_field_wavelet import DisplacementFieldWavelet
+from .displacement_field_wavelet import DisplacementFieldWavelet, flat_start # TODO: The latter is temp
 
 try:
     from .interp2d import *

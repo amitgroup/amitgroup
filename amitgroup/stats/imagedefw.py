@@ -59,7 +59,7 @@ def image_deformation(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
     Load two example faces and perform the deformation:
 
     >>> F, I = ag.io.load_example('faces2')
-    >>> imdef, info = ag.ml.image_deformation(F, I)
+    >>> imdef, info = ag.stats.image_deformation(F, I)
     >>> Fdef = imdef.deform(F)
 
     Output the results:

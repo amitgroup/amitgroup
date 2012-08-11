@@ -30,6 +30,9 @@ def _flat_length_one_alpha(levelshape, level):
 def _flat_length(levelshape, level):
     return np.prod(_levels2fullshape(levelshape, level))
 
+def flat_start(level, alpha, levelshape):
+    return _flat_start(level, alpha, levelshape)
+
 def _flat_start(level, alpha, levelshape):
     start = 0
     for l in range(level):
@@ -97,9 +100,7 @@ class DisplacementFieldWavelet(DisplacementField):
     @classmethod
     def shape_for_size(cls, size):
         levelshape = _size2levelshape(size)
-        levels = max(levelshape)
-        coefshape = _levels2shape(levelshape)
-        return (2, levels+1, 3) + coefshape
+        return (2, _total_length(levelshape))
 
     def _init_u(self):
         # Could also default to mean values
@@ -122,37 +123,50 @@ class DisplacementFieldWavelet(DisplacementField):
         self.levelshape = tuple(map(int, map(np.log2, self.shape)))
         self.scriptNs = map(len, pywt.wavedec(np.zeros(side), self.wavelet, level=self.levels, mode=self.mode))
 
-    def _deformed_x(self, x0, x1):
-        Ux0, Ux1 = self.deform_map(x0, x1)
+    def deform_x(self, x0, x1, levels=np.inf):
+        Ux0, Ux1 = self.deform_map(x0, x1, levels)
         return x0+Ux0, x1+Ux1
 
-    def deform_map(self, x, y):
+    def deform_map(self, x, y, levels=np.inf):
         """See :func:`DisplacementField.deform_map`"""
-        # TODO: Do waverec2 with cutoff coefficients and then patch it up with
-        # linear interpolation instead! Should give comparable results, at least
-        # for db2, but possibly faster.
+        # Here we have a choice of doing a smaller wave reconstruction, and then doing linear
+        # interpolation. This sounds as though it would be faster (maybe it is for extremely large images), but
+        # it is not since it induces too many iterations (not as precise, I suppose). 
+        # Note: It is actually faster if you use Haar (db1) wavelets.
+        #levels = min(self.levels, levels)
+        levels = self.levels
 
-        defx0 = pywt.waverec2(self.array2pywt(self.u[0], self.levelshape, self.levels), self.wavelet, mode=self.mode) 
-        defx1 = pywt.waverec2(self.array2pywt(self.u[1], self.levelshape, self.levels), self.wavelet, mode=self.mode)
+        defx0 = pywt.waverec2(self.array2pywt(self.u[0], self.levelshape, levels), self.wavelet, mode=self.mode) 
+        defx1 = pywt.waverec2(self.array2pywt(self.u[1], self.levelshape, levels), self.wavelet, mode=self.mode)
 
         # Interpolated defx at xs 
         if x.shape == defx0.shape:
             Ux = defx0
             Uy = defx1
         else:
-            Ux = interp2d(x, y, defx0, dx=np.array([1/(defx0.shape[0]-1), 1/(defx0.shape[1]-1)]))
-            Uy = interp2d(x, y, defx1, dx=np.array([1/(defx1.shape[0]-1), 1/(defx1.shape[1]-1)]))
+            # Adjust the values, since the size of the mother wavelet depends on the number of coefficients
+            adjust = 2**(levels - self.levels)
+            defx0 *= adjust
+            defx1 *= adjust 
+
+            dx = np.array([1/(defx0.shape[0]-1), 1/(defx0.shape[1]-1)])
+            Ux = interp2d(x, y, defx0, dx=dx)
+            Uy = interp2d(x, y, defx1, dx=dx)
 
         return Ux, Uy 
 
-    def deform(self, F):
+    def deform(self, F, levels=np.inf):
         """See :func:`DisplacementField.deform`"""
         im = np.zeros(F.shape)
 
         x0, x1 = self.meshgrid()
-        z0, z1 = self._deformed_x(x0, x1)
+        z0, z1 = self.deform_x(x0, x1, levels)
         im = interp2d(z0, z1, F)
         return im
+    
+    def abridged_u(self, levels=None):
+        limit = None if levels is None else _flat_start(levels, 0, self.levelshape)
+        return self.u[:,:limit]
 
     def logprior(self, levels=None):
         limit = None if levels is None else _flat_start(levels, 0, self.levelshape)
@@ -171,9 +185,9 @@ class DisplacementFieldWavelet(DisplacementField):
     def derive(self, W, level):
         vqks = np.asarray([
             self.pywt2array(pywt.wavedec2(W[q], self.wavelet, mode=self.mode, level=self.levels), self.levels, self.levelshape, level) for q in range(2)
-        ]) / 4**self.levels # Notice this adjustment of the values
+        ]) / 4**self.levels #4**self.levels # Notice this adjustment of the values
         
-        return self.lmbks * self.u + vqks
+        return -(self.lmbks * self.u + vqks)
 
     def sum_of_coefficients(self, levels=None):
         # Return only lmbks[0], because otherwise we'll double-count every
