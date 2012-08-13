@@ -178,6 +178,9 @@ class DisplacementFieldWavelet(DisplacementField):
     def abridged_u(self, last_level=None):
         return self.u[:,:self.flat_limit(last_level)]
 
+    def coef_shape(self, last_level=None):
+        return (self.ushape[0], self.flat_limit(last_level))
+
     def logprior(self, last_level=None):
         limit = self.flat_limit(last_level) 
         return -(self.lmbks * (self.u - self.mu)**2)[:,:limit].sum() / 2

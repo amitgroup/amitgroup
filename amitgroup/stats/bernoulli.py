@@ -11,19 +11,18 @@ import sys
 from scipy.optimize import fmin_bfgs, fmin_l_bfgs_b, fmin_cg # TODO: Remove?
 from scipy.optimize.linesearch import line_search_wolfe1
 
-def _cost(u, imdef, F, X, delFjs, x, y, a, all_js):
+def _cost(u, imdef, F, X, neg_X, delFjs, x, y, level, all_js):
     """Calculate the cost."""
-    if u.ndim == 1: 
-        u = u.reshape((2, len(u)//2))
     imdef.u *= 0.0
-    imdef.u[:u.shape[0],:u.shape[1]] = u 
+    shape = imdef.coef_shape(level)
+    imdef.u[:shape[0],:shape[1]] = u.reshape(shape)
     # Calculate deformed xs
-    z0, z1 = imdef.deform_x(x, y, a)
+    z0, z1 = imdef.deform_x(x, y, level)
 
     # Interpolate F at zs
     Fjzs = np.empty(F.shape) 
     for j in all_js: 
-        Fjzs[j] = ag.util.interp2d(z0, z1, F[j].astype(float))
+        Fjzs[j] = ag.util.interp2d(z0, z1, F[j])
 
     # 3. Cost
 
@@ -31,17 +30,16 @@ def _cost(u, imdef, F, X, delFjs, x, y, a, all_js):
     logprior = imdef.logprior()
 
     # log-likelihood
-    loglikelihood = (X * np.log(Fjzs) + (1-X) * np.log(1-Fjzs)).sum()
+    loglikelihood = (X * np.log(Fjzs) + neg_X * np.log(1-Fjzs)).sum()
 
     # cost
     return -logprior - loglikelihood
 
-def _cost_num_deriv(u, imdef, F, X, delFjs, x, y, level, all_js):
-    """Numerical derivative for the cost. Can be used for comparison."""
-    if u.ndim == 1: 
-        u = u.reshape((2, len(u)//2))
+def _cost_num_deriv(u, imdef, F, X, neg_X, delFjs, x, y, level, all_js):
+    """Numerical derivative of the cost. Can be used for comparison."""
     imdef.u *= 0.0
-    imdef.u[:u.shape[0],:u.shape[1]] = u 
+    shape = imdef.coef_shape(level)
+    imdef.u[:shape[0],:shape[1]] = u.reshape(shape)
 
     orig_u = np.copy(imdef.u)
     
@@ -62,12 +60,11 @@ def _cost_num_deriv(u, imdef, F, X, delFjs, x, y, level, all_js):
     deriv = deriv[:,:limit].flatten()
     return deriv
 
-def _cost_deriv(u, imdef, F, X, delFjs, x, y, level, all_js):
+def _cost_deriv(u, imdef, F, X, neg_X, delFjs, x, y, level, all_js):
     """Calculate the derivative of the cost."""
-    if u.ndim == 1:
-        u = u.reshape((2, len(u)//2))
     imdef.u *= 0.0
-    imdef.u[:u.shape[0],:u.shape[1]] = u 
+    shape = imdef.coef_shape(level)
+    imdef.u[:shape[0],:shape[1]] = u.reshape(shape)
     # Calculate deformed xs
     z0, z1 = imdef.deform_x(x, y, level)
 
@@ -75,6 +72,7 @@ def _cost_deriv(u, imdef, F, X, delFjs, x, y, level, all_js):
     Fjzs = np.empty(F.shape) 
     for j in all_js: 
         Fjzs[j] = ag.util.interp2d(z0, z1, F[j])
+    neg_Fjzs = 1 - Fjzs
 
     # Interpolate delF at zs 
     delFjzs = np.empty((2, 8) + F.shape[1:]) 
@@ -93,10 +91,11 @@ def _cost_deriv(u, imdef, F, X, delFjs, x, y, level, all_js):
     delFjzs = delFjzs2
     """
 
+    s = -(X/Fjzs - neg_X/neg_Fjzs)
     W = np.empty((2,) + x.shape) # Change to empty
     for q in range(2):
         grad = delFjzs[q]
-        W[q] = -((X/Fjzs - (1-X)/(1-Fjzs)) * grad).sum(axis=0) 
+        W[q] = (s * grad).sum(axis=0) 
 
     limit = imdef.flat_limit(level) 
     vqks = imdef.transform(W, level)
@@ -105,7 +104,7 @@ def _cost_deriv(u, imdef, F, X, delFjs, x, y, level, all_js):
 class _AbortException(Exception):
     pass
 
-def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0, wavelet='db2', maxiter=1000, start_level=1, debug_plot=False, means=None, variances=None):
+def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0, wavelet='db2', maxiter=50, start_level=1, debug_plot=False, means=None, variances=None):
     # This, or an assert
     X = I.astype(float)
 
@@ -135,7 +134,7 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0,
     imdef = ag.util.DisplacementFieldWavelet(F.shape[1:], penalty=penalty, wavelet=wavelet, rho=rho, means=means, variances=variances)
 
     ### Do some tests with the derivative
-    args = (imdef, F, X, delFjs, x, y, 1, all_js)
+    args = (imdef, F, X, (1-X), delFjs, x, y, 1, all_js)
     def ccost(u):
         return _cost(u, *args)
     def ccost_num_deriv(u):
@@ -214,8 +213,10 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0,
             print ret
             import sys; sys.exit(0)
 
+        args = (imdef, F, X, 1-X, delFjs, x, y, a, all_js)
         try:
-            new_u, cost, min_deriv, Bopt, func_calls, grad_calls, warnflag = fmin_bfgs(_cost, u, _cost_deriv, args=(imdef, F, X, delFjs, x, y, a, all_js), callback=cb, gtol=gtol, maxiter=maxiter, full_output=True, disp=False)
+            new_u, cost, min_deriv, Bopt, func_calls, grad_calls, warnflag = \
+                fmin_bfgs(_cost, u, _cost_deriv, args=args, callback=cb, gtol=gtol, maxiter=maxiter, full_output=True, disp=False)
         except _AbortException:
             return None, {}
     
@@ -231,6 +232,7 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0,
 
     return imdef, {'cost': min_cost}
     
+
 def _bernoulli_deformation_old(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
                                wavelet='db2', max_iterations_per_level=1000, start_level=1, stepsize_scale_factor=1.0, \
                                debug_plot=False, means=None, variances=None):
