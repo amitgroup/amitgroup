@@ -8,11 +8,14 @@ import amitgroup.features
 import math
 import pywt
 import sys
-from scipy.optimize import fmin_bfgs, fmin_l_bfgs_b
+from scipy.optimize import fmin_bfgs, fmin_l_bfgs_b, fmin_cg # TODO: Remove?
+from scipy.optimize.linesearch import line_search_wolfe1
 
 def _cost(u, imdef, F, X, delFjs, x, y, a, all_js):
-    if len(u.shape) == 1:
+    """Calculate the cost."""
+    if u.ndim == 1: 
         u = u.reshape((2, len(u)//2))
+    imdef.u *= 0.0
     imdef.u[:u.shape[0],:u.shape[1]] = u 
     # Calculate deformed xs
     z0, z1 = imdef.deform_x(x, y, a)
@@ -28,38 +31,81 @@ def _cost(u, imdef, F, X, delFjs, x, y, a, all_js):
     logprior = imdef.logprior()
 
     # log-likelihood
-    loglikelihood = (X * np.log(Fjzs) + (1-X) * np.log(1.0-Fjzs)).sum()
+    loglikelihood = (X * np.log(Fjzs) + (1-X) * np.log(1-Fjzs)).sum()
 
     # cost
     return -logprior - loglikelihood
 
-def _cost_deriv(u, imdef, F, X, delFjs, x, y, a, all_js):
-    if len(u.shape) == 1:
+def _cost_num_deriv(u, imdef, F, X, delFjs, x, y, level, all_js):
+    """Numerical derivative for the cost. Can be used for comparison."""
+    if u.ndim == 1: 
         u = u.reshape((2, len(u)//2))
+    imdef.u *= 0.0
+    imdef.u[:u.shape[0],:u.shape[1]] = u 
+
+    orig_u = np.copy(imdef.u)
+    
+    deriv = np.zeros(orig_u.shape)
+    limit = imdef.flat_limit(level) 
+    dt = 0.00001
+    for q in range(2):
+        for i in range(limit):
+            u = np.copy(orig_u)
+            u[q,i] -= dt
+            cost0 = _cost(u, imdef, F, X, delFjs, x, y, level, all_js)
+            u = np.copy(orig_u)
+            u[q,i] += dt
+            cost1 = _cost(u, imdef, F, X, delFjs, x, y, level, all_js)
+            deriv[q,i] = (cost1-cost0)/(2*dt)
+
+    # Compare
+    deriv = deriv[:,:limit].flatten()
+    return deriv
+
+def _cost_deriv(u, imdef, F, X, delFjs, x, y, level, all_js):
+    """Calculate the derivative of the cost."""
+    if u.ndim == 1:
+        u = u.reshape((2, len(u)//2))
+    imdef.u *= 0.0
     imdef.u[:u.shape[0],:u.shape[1]] = u 
     # Calculate deformed xs
-    z0, z1 = imdef.deform_x(x, y, a)
-
-    # Interpolate delF at zs 
-    delFjzs = np.empty((8, 2) + F.shape[1:]) 
-    for j in all_js: 
-        for q in range(2):
-            delFjzs[j,q] = ag.util.interp2d(z0, z1, delFjs[j][q], fill_value=0.0)
+    z0, z1 = imdef.deform_x(x, y, level)
 
     # Interpolate F at zs
     Fjzs = np.empty(F.shape) 
     for j in all_js: 
-        Fjzs[j] = ag.util.interp2d(z0, z1, F[j].astype(float))
+        Fjzs[j] = ag.util.interp2d(z0, z1, F[j])
 
-    W = np.zeros((2,) + x.shape) # Change to empty
+    # Interpolate delF at zs 
+    delFjzs = np.empty((2, 8) + F.shape[1:]) 
     for q in range(2):
-        grad = delFjzs[:,q]
+        for j in all_js: 
+            delFjzs[q,j] = ag.util.interp2d(z0, z1, delFjs[j][q], fill_value=0.0)
+
+    # Adjusted derivatives
+    """
+    shape = Fjzs[0].shape
+    delFjzs2 = np.empty((2, 8) + F.shape[1:])
+    for j in all_js:
+        grad = np.gradient(Fjzs[j], 1/shape[0], 1/shape[1])
+        for q in range(2):
+            delFjzs2[q,j] = grad[q]
+    delFjzs = delFjzs2
+    """
+
+    W = np.empty((2,) + x.shape) # Change to empty
+    for q in range(2):
+        grad = delFjzs[q]
         W[q] = -((X/Fjzs - (1-X)/(1-Fjzs)) * grad).sum(axis=0) 
 
-    limit = None if a is None else ag.util.flat_start(a, 0, imdef.levelshape)
-    return imdef.derive(W, a+1)[:,:limit].flatten()
+    limit = imdef.flat_limit(level) 
+    vqks = imdef.transform(W, level)
+    return (-imdef.logprior_derivative() + vqks)[:,:limit].flatten()
 
-def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0, wavelet='db8', maxiter=1000, start_level=1, debug_plot=False, means=None, variances=None):
+class _AbortException(Exception):
+    pass
+
+def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0, wavelet='db2', maxiter=1000, start_level=1, debug_plot=False, means=None, variances=None):
     # This, or an assert
     X = I.astype(float)
 
@@ -79,7 +125,7 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0,
         plw = ag.plot.PlottingWindow(figsize=(8, 8), subplots=(4,4))
         def cb(uk):
             if not plw.tick():
-                sys.exit(0)
+                raise _AbortException() 
             for j in range(8):
                 plw.imshow(imdef.deform(F[j]), subplot=j*2)
                 plw.imshow(I[j], subplot=j*2+1)
@@ -88,19 +134,100 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0,
 
     imdef = ag.util.DisplacementFieldWavelet(F.shape[1:], penalty=penalty, wavelet=wavelet, rho=rho, means=means, variances=variances)
 
+    ### Do some tests with the derivative
+    args = (imdef, F, X, delFjs, x, y, 1, all_js)
+    def ccost(u):
+        return _cost(u, *args)
+    def ccost_num_deriv(u):
+        return _cost_num_deriv(u, *args)
+    def ccost_deriv(u):
+        return _cost_deriv(u, *args)
+    def new_u():
+        u = np.zeros(imdef.u.shape)
+        u[0,0] = 0.0
+        return u
+
+    if 0:
+        u = new_u()
+        u[0,0] = -4.0
+        cc = ccost_num_deriv(u)
+
+        print "cost:", ccost(u)
+        print "deriv:", ccost_deriv(u)
+        print "numde:", cc 
+        import sys; sys.exit(0)
+
+    if 0:
+        print "Derv:", ccost_deriv(new_u())
+        for dt in [-0.001, 0.001]:
+            u = new_u() 
+            cost0 = ccost(u)
+                
+            u = new_u() 
+            u[0,0] += dt
+            cost1a = ccost(u)
+
+            u = new_u() 
+            u[1,0] += dt
+            cost1b = ccost(u)
+
+            u = new_u()
+            u[:,0] += dt
+            cost2 = ccost(u)
+
+            print cost1b, cost0
+            numd = [(cost1a-cost0)/dt, (cost1b-cost0)/dt]
+            print "dt:", dt
+            print "Numd:", numd
+            print "Numd2:", ccost_num_deriv(new_u())
+            print "Both:", (cost2-cost0)/dt, np.sum(numd)
+        import sys; sys.exit(0)
+
+    ###
+
     min_cost = np.inf
     for a in range(start_level, last_level+1): 
         ag.info("Running coarse-to-fine level", a)
 
         u = imdef.abridged_u(a)
-        new_u, cost = fmin_bfgs(_cost, u, _cost_deriv, args=(imdef, F, X, delFjs, x, y, a, all_js), callback=cb, gtol=gtol, maxiter=maxiter, full_output=True)[:2]
 
-        #new_u, cost, _ = fmin_l_bfgs_b(_cost, u, _cost_deriv, args=(imdef, F, X, delFjs, x, y, a, all_js))
-        print cost
+        if 0:
+            u = u.flatten()
+            args = (imdef, F, X, delFjs, x, y, a, all_js)
+            def ccost(u):
+                return _cost(u, *args)
+            def ccost_num_deriv(u):
+                return _cost_num_deriv(u, *args)
+            def ccost_deriv(u):
+                return _cost_deriv(u, *args)
+
+            Hk = np.eye(len(u))
+            gfk = ccost_deriv(u)
+            pk = -np.dot(Hk, gfk)
+            old_fval = ccost(u)
+            old_old_fval = old_fval + 5000
+            print 'old_fval:', old_fval
+            print 'old_old_fval:', old_old_fval
+            print pk
+            ret = line_search_wolfe1(ccost, ccost_num_deriv, u, pk, gfk, old_fval, old_old_fval)
+
+            print ret
+            import sys; sys.exit(0)
+
+        try:
+            new_u, cost, min_deriv, Bopt, func_calls, grad_calls, warnflag = fmin_bfgs(_cost, u, _cost_deriv, args=(imdef, F, X, delFjs, x, y, a, all_js), callback=cb, gtol=gtol, maxiter=maxiter, full_output=True, disp=False)
+        except _AbortException:
+            return None, {}
+    
+        print warnflag, cost, (min_deriv.min(), min_deriv.max())
+
         if cost < min_cost:
             # If the algorithm makes mistakes and returns a really high cost, don't use it.
             min_cost = cost
             imdef.u[:,:u.shape[1]] = new_u.reshape(u.shape)
+
+    #if debug_plot:
+    #    plw.mainloop()
 
     return imdef, {'cost': min_cost}
     

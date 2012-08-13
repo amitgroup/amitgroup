@@ -82,7 +82,7 @@ class DisplacementFieldWavelet(DisplacementField):
         # the coefficients can create a deformation in space instead, which
         # implies an adjustment of 2**self.levels for the s.d. We take
         # the square of this since we're dealing with the variance. 
-        # Notice: Penalty is only applicable
+        # Notice: Penalty is only applicable if means and variances are not set manually
         self.penalty_adjusted = penalty / 4**self.levels 
 
         if means is not None:
@@ -124,10 +124,21 @@ class DisplacementFieldWavelet(DisplacementField):
         self.scriptNs = map(len, pywt.wavedec(np.zeros(side), self.wavelet, level=self.levels, mode=self.mode))
 
     def deform_x(self, x0, x1, levels=np.inf):
-        Ux0, Ux1 = self.deform_map(x0, x1, levels)
+        Ux0, Ux1 = self.invtransform(x0, x1, levels)
         return x0+Ux0, x1+Ux1
 
     def deform_map(self, x, y, levels=np.inf):
+        return self.invtransform(x, y, levels) 
+
+    def transform(self, f, level):
+        """
+        Forward transform of the wavelet.
+        """ 
+        return np.asarray([
+            self.pywt2array(pywt.wavedec2(f[q], self.wavelet, mode=self.mode, level=self.levels), self.levelshape, level) for q in range(2)
+        ])
+
+    def invtransform(self, x, y, levels=np.inf):
         """See :func:`DisplacementField.deform_map`"""
         # Here we have a choice of doing a smaller wave reconstruction, and then doing linear
         # interpolation. This sounds as though it would be faster (maybe it is for extremely large images), but
@@ -164,41 +175,30 @@ class DisplacementFieldWavelet(DisplacementField):
         im = interp2d(z0, z1, F)
         return im
     
-    def abridged_u(self, levels=None):
-        limit = None if levels is None else _flat_start(levels, 0, self.levelshape)
-        return self.u[:,:limit]
+    def abridged_u(self, last_level=None):
+        return self.u[:,:self.flat_limit(last_level)]
 
-    def logprior(self, levels=None):
-        limit = None if levels is None else _flat_start(levels, 0, self.levelshape)
+    def logprior(self, last_level=None):
+        limit = self.flat_limit(last_level) 
         return -(self.lmbks * (self.u - self.mu)**2)[:,:limit].sum() / 2
 
-    def reestimate(self, stepsize, W, level):
-        """
-        Reestimation step for training the deformation. 
-        """
-        vqks = np.asarray([
-            self.pywt2array(pywt.wavedec2(W[q], self.wavelet, mode=self.mode, level=self.levels), self.levels, self.levelshape, level) for q in range(2)
-        ]) / 4**self.levels # Notice this adjustment of the values
+    def logprior_derivative(self):
+        return -self.lmbks * (self.u - self.mu) # Introduce mu here.
 
-        self.u -= stepsize * (self.lmbks * self.u + vqks)
-    
-    def derive(self, W, level):
-        vqks = np.asarray([
-            self.pywt2array(pywt.wavedec2(W[q], self.wavelet, mode=self.mode, level=self.levels), self.levels, self.levelshape, level) for q in range(2)
-        ]) / 4**self.levels #4**self.levels # Notice this adjustment of the values
-        
-        return -(self.lmbks * self.u + vqks)
-
-    def sum_of_coefficients(self, levels=None):
+    def sum_of_coefficients(self, last_level=None):
         # Return only lmbks[0], because otherwise we'll double-count every
         # value (since they are the same)
-        return self.lmbks[0,:_flat_start(levels, 0, self.levelshape)].sum()
+        return self.lmbks[0,:self.flat_limit(last_level)].sum()
 
     def number_of_coefficients(self, levels=None):
         return self.ushape[1]
 
     def copy(self):
         return deepcopy(self) 
+
+    def flat_limit(self, last_level=None):
+        # TODO: Come up with better name, and maybe place
+        return None if last_level is None else _flat_start(last_level+1, 0, self.levelshape)
 
     def range_slice(self, level, alpha=None):
         """
@@ -302,11 +302,11 @@ class DisplacementFieldWavelet(DisplacementField):
         return self.lmbks[:,level,:alphas,:size[0],:size[1]]
 
     @classmethod
-    def pywt2array(cls, coefficients, levels, levelshape, maxL=np.inf):
+    def pywt2array(cls, coefficients, levelshape, last_level=np.inf):
         N = _total_length(levelshape)
         u = np.zeros(N)
         pos = 0
-        for i in range(min(maxL, levels+1)):
+        for i in range(min(last_level+1, max(levelshape)+1)):
             L = _flat_length_one_alpha(levelshape, i)
             if i == 0:
                 u[pos:pos+L] = coefficients[i].flatten()
@@ -319,10 +319,10 @@ class DisplacementFieldWavelet(DisplacementField):
         return u
 
     @classmethod
-    def array2pywt(cls, u, levelshape, levels):
+    def array2pywt(cls, u, levelshape, last_level):
         coefficients = []
         pos = 0
-        for level in range(levels+1): 
+        for level in range(last_level+1): 
             alphas, N, M = _levels2fullshape(levelshape, level)
             sh = _levels2shape(levelshape, level)
             L = _flat_length_one_alpha(levelshape, level)
