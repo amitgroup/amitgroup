@@ -21,8 +21,8 @@ def _levels2fullshape(levelshape, level):
     sh = _levels2shape(levelshape, level)
     return ((1,) if level == 0 else (3,)) + sh 
 
-def _total_length(levelshape):
-    return _flat_start(max(levelshape)+1, 0, levelshape)
+def _total_length(levelshape, level=np.inf):
+    return _flat_start(min(level, max(levelshape))+1, 0, levelshape)
 
 def _flat_length_one_alpha(levelshape, level):
     return np.prod(_levels2shape(levelshape, level))
@@ -57,13 +57,12 @@ class DisplacementFieldWavelet(DisplacementField):
         Specify wavelet type. Read more at PyWavelets_.
     penalty : float
         Coefficient signifying the size of the prior. Higher means less deformation.
-        This is only needed if this deformation will be reestimated.
+        This is only needed if the derivative is needed.
     rho : float
-        A high value penalizes the prior for higher coarse-to-fine coefficients more. Must be strictly greater than 0.
-        This is only needed if this deformation will be reestimated.
+        A high value penalizes the prior for higher coarse-to-fine coefficients more.
+        This is only needed if the derivative is needed.
     """
-    def __init__(self, shape, wavelet='db2', rho=2.0, penalty=1.0, means=None, variances=None):
-        assert rho > 0.0, "Parameter rho must be strictly positive"
+    def __init__(self, shape, wavelet='db2', rho=2.0, penalty=1.0, means=None, variances=None, level_capacity=None):
         #super(DisplacementFieldWavelet, self).__init__(shape)
         
         self.wavelet = wavelet 
@@ -73,7 +72,11 @@ class DisplacementFieldWavelet(DisplacementField):
         self.rho = rho 
         biggest = self.scriptNs[-1]        
         coefshape = _levels2shape(self.levelshape)
-        N = _total_length(self.levelshape)
+        self.level_capacity = level_capacity or np.inf
+        if level_capacity is not None:
+            N = _total_length(self.levelshape, level_capacity)
+        else:
+            N = _total_length(self.levelshape)
         self.ushape = (2, N)
 
         # We divide the penalty, since the raw penalty is the ratio
@@ -123,32 +126,35 @@ class DisplacementFieldWavelet(DisplacementField):
         self.levelshape = tuple(map(int, map(np.log2, self.shape)))
         self.scriptNs = map(len, pywt.wavedec(np.zeros(side), self.wavelet, level=self.levels, mode=self.mode))
 
-    def deform_x(self, x0, x1, levels=np.inf):
-        Ux0, Ux1 = self.invtransform(x0, x1, levels)
+    def deform_x(self, x0, x1, last_level=np.inf):
+        last_level = min(last_level, self.level_capacity)
+        Ux0, Ux1 = self.invtransform(x0, x1, last_level)
         return x0+Ux0, x1+Ux1
 
-    def deform_map(self, x, y, levels=np.inf):
-        return self.invtransform(x, y, levels) 
+    def deform_map(self, x, y, last_level=np.inf):
+        last_level = min(last_level, self.level_capacity)
+        return self.invtransform(x, y, last_level) 
 
     def transform(self, f, level):
         """
         Forward transform of the wavelet.
         """ 
         return np.asarray([
-            self.pywt2array(pywt.wavedec2(f[q], self.wavelet, mode=self.mode, level=self.levels), self.levelshape, level) for q in range(2)
+            self.pywt2array(pywt.wavedec2(f[q], self.wavelet, mode=self.mode, level=self.levels), self.levelshape, level, self.level_capacity) for q in range(2)
         ])
 
-    def invtransform(self, x, y, levels=np.inf):
+    def invtransform(self, x, y, last_level=np.inf):
         """See :func:`DisplacementField.deform_map`"""
         # Here we have a choice of doing a smaller wave reconstruction, and then doing linear
         # interpolation. This sounds as though it would be faster (maybe it is for extremely large images), but
         # it is not since it induces too many iterations (not as precise, I suppose). 
         # Note: It is actually faster if you use Haar (db1) wavelets.
         #levels = min(self.levels, levels)
-        levels = self.levels
+        last_level = self.levels
+        #last_level = min(last_level, self.last_level)
 
-        defx0 = pywt.waverec2(self.array2pywt(self.u[0], self.levelshape, levels), self.wavelet, mode=self.mode) 
-        defx1 = pywt.waverec2(self.array2pywt(self.u[1], self.levelshape, levels), self.wavelet, mode=self.mode)
+        defx0 = pywt.waverec2(self.array2pywt(self.u[0], self.levelshape, last_level), self.wavelet, mode=self.mode) 
+        defx1 = pywt.waverec2(self.array2pywt(self.u[1], self.levelshape, last_level), self.wavelet, mode=self.mode)
 
         # Interpolated defx at xs 
         if x.shape == defx0.shape:
@@ -156,7 +162,8 @@ class DisplacementFieldWavelet(DisplacementField):
             Uy = defx1
         else:
             # Adjust the values, since the size of the mother wavelet depends on the number of coefficients
-            adjust = 2**(levels - self.levels)
+            assert 0
+            adjust = 2**(last_level - self.levels)
             defx0 *= adjust
             defx1 *= adjust 
 
@@ -287,8 +294,6 @@ class DisplacementFieldWavelet(DisplacementField):
 
     def print_u(self, last_level=np.inf):
         for level, (alphas, N, M) in self.ilevels():
-            #TODO: print self.u[:,level,:alphas,:N,:M]
-            print self.u
             if level == last_level:
                 break
 
@@ -305,11 +310,11 @@ class DisplacementFieldWavelet(DisplacementField):
         return self.lmbks[:,level,:alphas,:size[0],:size[1]]
 
     @classmethod
-    def pywt2array(cls, coefficients, levelshape, last_level=np.inf):
-        N = _total_length(levelshape)
+    def pywt2array(cls, coefficients, levelshape, last_level=np.inf, level_capacity=np.inf):
+        N = _total_length(levelshape, level_capacity)
         u = np.zeros(N)
         pos = 0
-        for i in range(min(last_level+1, max(levelshape)+1)):
+        for i in range(min(level_capacity+1, last_level+1, max(levelshape)+1)):
             L = _flat_length_one_alpha(levelshape, i)
             if i == 0:
                 u[pos:pos+L] = coefficients[i].flatten()
@@ -325,6 +330,7 @@ class DisplacementFieldWavelet(DisplacementField):
     def array2pywt(cls, u, levelshape, last_level):
         coefficients = []
         pos = 0
+        lenU = len(u)
         for level in range(last_level+1): 
             alphas, N, M = _levels2fullshape(levelshape, level)
             sh = _levels2shape(levelshape, level)
@@ -335,7 +341,11 @@ class DisplacementFieldWavelet(DisplacementField):
             else:
                 als = []
                 for alpha in range(3):
-                    als.append(u[pos:pos+L].reshape(sh))
+                    if pos+L <= lenU:
+                        u_segment = u[pos:pos+L]
+                        als.append(u_segment.reshape(sh))
+                    else:
+                        als.append(np.zeros(sh))
                     pos += L
                 coefficients.append(tuple(als))
         return coefficients

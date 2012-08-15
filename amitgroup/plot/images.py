@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pylab as plt
 import math
 
-def images(data, zero_to_one=True, show=True):
+def images(data, zero_to_one=True, show=True, subplots=None):
     """
     Display images that range a grid. Especially designed for probability images, ranging from 0 to 1.
 
@@ -33,7 +33,10 @@ def images(data, zero_to_one=True, show=True):
         plt.imshow(data, **settings)
     else:
         # TODO: Better find out pleasing aspect ratios
-        if len(data) <= 3:
+        if subplots is not None:
+            sh = subplots
+            assert len(data) <= np.prod(subplots) 
+        elif len(data) <= 3:
             sh = (1, len(data))
         elif len(data) == 6:
             sh = (2, 3)

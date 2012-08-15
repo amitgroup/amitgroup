@@ -80,7 +80,7 @@ def image_deformation(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
     # Notice that the image is always considered to lie in the range [0, 1] on both axes.
     delF = np.gradient(F, 1/F.shape[0], 1/F.shape[1])
     
-    imdef = ag.util.DisplacementFieldWavelet(F.shape, penalty=penalty, rho=rho, wavelet=wavelet)
+    imdef = ag.util.DisplacementFieldWavelet(F.shape, penalty=penalty, rho=rho, wavelet=wavelet, level_capacity=3)
     
     x, y = imdef.meshgrid()
 
@@ -154,7 +154,7 @@ def image_deformation(F, I, last_level=None, penalty=1.0, rho=2.0, tol=0.001, \
             for q in range(2):
                 W[q] = delFzs[q] * terms
 
-            imdef.reestimate(dt, W, a)
+            imdef.u -= dt * (imdef.u * imdef.lmbks + imdef.transform(W, a)/4**imdef.levels)
 
         iterations_per_level.append(num_iterations)
         num_iterations = 0

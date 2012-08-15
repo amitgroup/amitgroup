@@ -123,7 +123,7 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0,
     if debug_plot:
         plw = ag.plot.PlottingWindow(figsize=(8, 8), subplots=(4,4))
         def cb(uk):
-            if not plw.tick():
+            if not plw.tick(1):
                 raise _AbortException() 
             for j in range(8):
                 plw.imshow(imdef.deform(F[j]), subplot=j*2)
