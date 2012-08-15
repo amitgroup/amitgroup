@@ -110,13 +110,25 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0,
 
     all_js = range(8)
 
+    # We don't need more capacity then the last_level
+    level_capacity = last_level
+
     delFjs = []
     for j in all_js:
         delF = np.gradient(F[j], 1/F[j].shape[0], 1/F[j].shape[1])
         # Normalize since the image covers the square around [0, 1].
         delFjs.append(delF)
+
+    settings = dict(
+        penalty=penalty, 
+        wavelet=wavelet, 
+        rho=rho, 
+        level_capacity=level_capacity, 
+        means=means, 
+        variances=variances
+    )
     
-    imdef = ag.util.DisplacementFieldWavelet(F.shape[1:], penalty=penalty, wavelet=wavelet, rho=rho, means=means, variances=variances)
+    imdef = ag.util.DisplacementFieldWavelet(F.shape[1:], **settings)
 
     x, y = imdef.meshgrid()
 
@@ -131,7 +143,7 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0,
     else:
         cb = None 
 
-    imdef = ag.util.DisplacementFieldWavelet(F.shape[1:], penalty=penalty, wavelet=wavelet, rho=rho, means=means, variances=variances)
+    #imdef = ag.util.DisplacementFieldWavelet(F.shape[1:], **settings) 
 
     ### Do some tests with the derivative
     args = (imdef, F, X, (1-X), delFjs, x, y, 1, all_js)

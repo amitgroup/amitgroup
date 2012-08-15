@@ -101,9 +101,9 @@ class DisplacementFieldWavelet(DisplacementField):
         self._init_u()
 
     @classmethod
-    def shape_for_size(cls, size):
+    def shape_for_size(cls, size, level_capacity=np.inf):
         levelshape = _size2levelshape(size)
-        return (2, _total_length(levelshape))
+        return (2, _total_length(levelshape, level_capacity))
 
     def _init_u(self):
         # Could also default to mean values
