@@ -105,6 +105,9 @@ class _AbortException(Exception):
     pass
 
 def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0, wavelet='db2', maxiter=50, start_level=1, debug_plot=False, means=None, variances=None):
+    assert F.ndim == 3, "F must have 3 axes"
+    assert F.shape == I.shape, "F and I shape mismatch {0} {1}".format(F.shape, I.shape)
+    assert F.shape[0] == 8, "Currently only supports 8 features (not {0})".format(F.shape[0])
     # This, or an assert
     X = I.astype(float)
 
@@ -232,7 +235,7 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.4, rho=2.0,
         except _AbortException:
             return None, {}
     
-        print warnflag, cost, (min_deriv.min(), min_deriv.max())
+        #print warnflag, cost, (min_deriv.min(), min_deriv.max())
 
         if cost < min_cost:
             # If the algorithm makes mistakes and returns a really high cost, don't use it.

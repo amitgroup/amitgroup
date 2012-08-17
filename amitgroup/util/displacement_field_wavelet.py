@@ -86,7 +86,8 @@ class DisplacementFieldWavelet(DisplacementField):
         # implies an adjustment of 2**self.levels for the s.d. We take
         # the square of this since we're dealing with the variance. 
         # Notice: Penalty is only applicable if means and variances are not set manually
-        self.penalty_adjusted = penalty / 4**self.levels 
+        if penalty:
+            self.penalty_adjusted = penalty / 4**self.levels 
 
         if means is not None:
             self.mu = means 
@@ -107,7 +108,9 @@ class DisplacementFieldWavelet(DisplacementField):
 
     def _init_u(self):
         # Could also default to mean values
-        self.u = np.zeros(self.ushape)
+        #self.u = np.zeros(self.ushape)
+        # Start with self.mu, since it offers the least cost
+        self.u = np.copy(self.mu)
 
     def _init_default_lmbks(self):
         values = np.zeros(self.ushape)

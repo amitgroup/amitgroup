@@ -2,7 +2,7 @@ import os, struct
 from array import array as pyarray 
 from numpy import append, array, int8, uint8, zeros
 
-def load_mnist(dataset="training", digits=None, path=None, asbytes=False, selection=None, return_labels=True):
+def load_mnist(dataset="training", digits=None, path=None, asbytes=False, selection=None, return_labels=True, return_indices=False):
     """
     Loads MNIST files into a 3D numpy array.
 
@@ -18,6 +18,11 @@ def load_mnist(dataset="training", digits=None, path=None, asbytes=False, select
         If True, returns data as ``numpy.uint8`` in [0, 255] as opposed to ``numpy.float64`` in [0.0, 1.0].
     selection : slice
         Using a ``slice`` object, specify what subset of the dataset to load. An example is ``slice(0, 20, 2)``, which would load every other digit until but not including the twenthieth.
+    return_labels : bool
+        Specify whether or not labels should be returned. This is also a speed performance if digits are not specified, since then the labels file does not need to be read at all.
+    return_indicies : bool
+        Specify whether or not to return the MNIST indices that were fetched. This is valuable only if digits is specified, because in that case it can be valuable to know how far
+        in the database it reached.
 
     Returns
     -------
@@ -25,6 +30,8 @@ def load_mnist(dataset="training", digits=None, path=None, asbytes=False, select
         Image data of shape ``(N, rows, cols)``, where ``N`` is the number of images. 
     labels : ndarray
         Array of size ``N`` describing the labels. Returned only if ``return_labels`` is `True`, which is default.
+    indicies : ndarray
+        The indices in the database that were returned.
 
     Examples
     --------
@@ -34,7 +41,7 @@ def load_mnist(dataset="training", digits=None, path=None, asbytes=False, select
 
     Load 100 sevens from the testing set:    
 
-    >>> sevens, _ = ag.io.load_mnist('testing', digits=[7], selection=slice(0, 100)) # doctest: +SKIP
+    >>> sevens = ag.io.load_mnist('testing', digits=[7], selection=slice(0, 100), return_labels=False) # doctest: +SKIP
 
     """
 
@@ -89,7 +96,9 @@ def load_mnist(dataset="training", digits=None, path=None, asbytes=False, select
     if not asbytes:
         images = images.astype(float)/255.0
 
+    ret = (images,)
     if return_labels:
-        return images, labels
-    else:
-        return images
+        ret += (labels,)
+    if return_indices:
+        ret += (indices,)
+    return ret

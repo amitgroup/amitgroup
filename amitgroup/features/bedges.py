@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from .features import array_bedges
 import numpy as np
 
-def bedges(images, k=6, inflate=True, edge_first=False):
+def bedges(images, k=6, inflate=True, lastaxis=False):
     """
     Extracts binary edge features for each pixel according to [1].
 
@@ -15,13 +15,13 @@ def bedges(images, k=6, inflate=True, edge_first=False):
         There are 6 contrast differences that are checked. The value `k` specifies how many of them must be fulfilled for an edge to be present. The default is all of them (`k` = 6) and gives more conservative edges.
     inflate : bool
         If True, then an edge will appear if any of the 8 neighboring pixels detected an edge. This is equivalent to inflating the edges area with 1 pixel. This adds robustness to your features.
-    edgefirst : bool
-        In many cases, it makes more sense to have the features in the shape ``(8, rows, cols)``, which is what this option achieves. Notice that if you process several images, the final shape will be ``(N, 8, rows, cols)``.
+    lastaxis: bool
+        If True, the images will be returned with the features on the last axis as ``(rows, cols, 8)`` instead of ``(8, rows, cols)``. 
     
     Returns
     -------
     edges : ndarray
-        An array of shape ``(rows, cols, 8)`` if entered as a single image, or ``(N, rows, cols, 8)`` of multiple. Each pixel in the original image becomes a binary vector of size 8, one bit for each cardinal and diagonal direction. 
+        An array of shape ``(8, rows, cols)`` if entered as a single image, or ``(N, 8, rows, cols)`` of multiple. Each pixel in the original image becomes a binary vector of size 8, one bit for each cardinal and diagonal direction. 
 
     References
     ----------
@@ -45,7 +45,7 @@ def bedges(images, k=6, inflate=True, edge_first=False):
             
     if single:
         features = features[0]
-    if edgefirst:
+    if not lastaxis:
         features = np.rollaxis(features, axis=-1, start=features.ndim-3)
 
     return features
