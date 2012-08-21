@@ -71,7 +71,7 @@ class BernoulliMixture:
            [  9.97376426e-01,   2.62357439e-03]])
 
     """
-    def __init__(self,num_mix,data_mat,init_type='unif_rand'):
+    def __init__(self,num_mix,data_mat,init_type='unif_rand',init_seed=0):
         # TODO: opt_type='expected'
         self.num_mix = num_mix
         self.num_data = data_mat.shape[0]
@@ -80,6 +80,10 @@ class BernoulliMixture:
         self.data_length = np.prod(data_mat.shape[1:])
         self.data_mat = data_mat.reshape(self.num_data, self.data_length)
         self.iterations = 0
+        # set the random seed
+        self.seed = init_seed
+        np.random.seed(self.seed)
+
 
         self.min_probability = 0.05 
 
@@ -99,7 +103,7 @@ class BernoulliMixture:
 
 
     # TODO: save_template never used!
-    def run_EM(self, tol, min_probability=0.05, debug_plot=False, init_seed=0):
+    def run_EM(self, tol, min_probability=0.05, debug_plot=False):
         """ 
         Run the EM algorithm to specified convergence.
         
@@ -119,10 +123,6 @@ class BernoulliMixture:
 
         if debug_plot:
             plw = ag.plot.PlottingWindow(subplots=(1, self.num_mix), figsize=(self.num_mix*3, 3))
-
-        # set the random seed
-        self.seed = init_seed
-        np.random.seed(self.seed)
 
         self.iterations = 0
         while new_loglikelihood - loglikelihood > tol:
