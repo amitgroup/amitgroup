@@ -81,7 +81,7 @@ class BernoulliMixture:
         self.data_mat = data_mat.reshape(self.num_data, self.data_length)
         self.iterations = 0
 
-        self.min_probability = 0.05
+        self.min_probability = 0.05 
 
         # If we change this to a true bitmask, we should do ~data_mat
         self.not_data_mat = 1 - self.data_mat
@@ -112,7 +112,7 @@ class BernoulliMixture:
             Disallow probabilities to fall below this value, and extend below one minus this value.
         init_seed : integer or None
         """
-        self.min_probability = 0.05
+        self.min_probability = min_probability 
         loglikelihood = -np.inf
         # First E step plus likelihood computation
         new_loglikelihood = self._compute_loglikelihoods()

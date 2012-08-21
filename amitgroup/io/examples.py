@@ -17,7 +17,7 @@ def load_example(name):
     ----------
     name : str
         * `"faces"`: loads ``N`` faces into an array of shape ``(N, rows, cols)``.
-        * `"faces2"`: loads 2 faces into an array of shape ``(2, rows, cols)``.
+        * `"two-faces"`: loads 2 faces into an array of shape ``(2, rows, cols)``.
         * `"oldfaithful"`: loads the classic Old Faithful eruption data as an array of shape ``(N, 2)``.
         * `"mnist"`: loads 10 MNIST nines into an array of shape ``(10, rows, cols)``.
 
@@ -41,7 +41,7 @@ def load_example(name):
     """
     if name == 'faces':
         return ag.io.load_all_images(datapath('Images_0'))
-    if name == 'faces2':
+    if name == 'two-faces':
         data = np.load(datapath('twoface.npz'))
         return np.array([data['im1'], data['im2']])
     if name == 'oldfaithful':

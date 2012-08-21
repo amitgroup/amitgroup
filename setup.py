@@ -2,10 +2,22 @@
 
 from distutils.core import setup
 from distutils.extension import Extension
-from Cython.Distutils import build_ext
 import os.path
 
-def CythonExtension(modpath, mp=False):
+cython_req = (0, 16)
+try:
+    import Cython
+    from Cython.Distutils import build_ext
+    import re
+    cython_ok = tuple(map(int, re.sub(r"[^\d.]*", "", Cython.__version__).split('.')[:2])) >= cython_req 
+except ImportError:
+    cython_ok = False 
+
+if not cython_ok:
+    raise ImportError("At least Cython {0} is required".format(".".join(map(str, cython_req))))
+
+
+def cython_extension(modpath, mp=False):
     extra_compile_args = []
     extra_link_args = []
     if mp:
@@ -26,8 +38,8 @@ setup(name='amitgroup',
         'amitgroup.stats'
     ],
     ext_modules = [
-        CythonExtension("amitgroup.features.features"),
-        CythonExtension("amitgroup.util.interp2d"),
-        CythonExtension("amitgroup.ml.aux"),
+        cython_extension("amitgroup.features.features"),
+        cython_extension("amitgroup.util.interp2d"),
+        cython_extension("amitgroup.ml.aux"),
     ]
 )

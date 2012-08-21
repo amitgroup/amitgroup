@@ -1,12 +1,8 @@
 
 from __future__ import print_function
 
-import amitgroup as ag
-import sys
-
-# If any of the arguments is '--verbose', set this to true
-_is_verbose = '--verbose' in sys.argv
-_is_silent = '--silent' in sys.argv
+_is_verbose = False
+_is_silent = False
 
 def set_verbose(is_verbose):
     """
@@ -35,3 +31,11 @@ def warning(*args, **kwargs):
     """
     if not _is_silent:
         print("WARNING: " + args[0], *args[1:], **kwargs)
+
+
+class AbortException(Exception):
+    """
+    This exception is used for when the user wants to quit algorithms mid-way. The `AbortException` can for instance
+    be sent by pygame input, and caught by whatever is running the algorithm.
+    """
+    pass

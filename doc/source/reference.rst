@@ -46,10 +46,11 @@ Utilities (:mod:`amitgroup.util`)
 .. autosummary::
    :toctree: generated/
 
-   blur_image
    DisplacementField
    DisplacementFieldWavelet
+   blur_image
    interp2d
+   zeropad
 
 Machine Learning (:mod:`amitgroup.ml`)
 --------------------------------------
@@ -58,17 +59,21 @@ Machine Learning (:mod:`amitgroup.ml`)
 .. autosummary::
    :toctree: generated/
 
-   imagedef
+   bernoulli_deformation
+   image_deformation
 
 Plotting (:mod:`amitgroup.plot`)
 --------------------------------
 .. currentmodule:: amitgroup.plot
 
-The plotting module adds some convenience functions to matplotlib_, and provides plotting functions for amitgroup classes.
+The plotting module adds some convenience functions for using matplotlib_ and pygame_.
 
 .. autosummary::
    :toctree: generated/
  
+   PlottingWindow
+   deformation
    images
 
 .. _matplotlib: http://matplotlib.sourceforge.net
+.. _pygame: http://www.pygame.org/

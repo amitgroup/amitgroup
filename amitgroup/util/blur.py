@@ -1,8 +1,9 @@
 
 from scipy.signal import convolve
 import numpy as np
+import amitgroup as ag
 
-def gauss_kern(size, sizey=None):
+def _gauss_kern(size, sizey=None):
     """ Returns a normalized 2D gauss kernel array for convolutions. """
     size = int(size)
     if not sizey:
@@ -13,11 +14,27 @@ def gauss_kern(size, sizey=None):
     g = np.exp(-(x**2/float(size)+y**2/float(sizey)))
     return g / g.sum()
 
-def blur_image(im, n, ny=None) :
+def _blur_and_shrink(im, n, ny=None):
+    g = _gauss_kern(n, sizey=ny)
+    improc = convolve(im,g, mode='valid')
+    return(improc)
+
+def blur_image(im, n, ny=None, maintain_size=True):
     """ 
     Blurs the image by convolving with a gaussian kernel of typical
     size `n`. The optional keyword argument `ny` allows for a different
     size in the `y` direction.
+
+    Parameters
+    ----------
+    im : ndarray
+        2D array with an image.
+    n : int
+        Kernel size.
+    ny : int
+        Kernel size in y, if specified. 
+    maintain_size : bool
+        If True, the size of the image will be maintained. This is done by first padding the image with the edge values, before convolving.
 
     Examples
     --------
@@ -31,6 +48,11 @@ def blur_image(im, n, ny=None) :
     >>> ag.plot.images([face, face2]) 
     >>> plt.show()
     """
-    g = gauss_kern(n, sizey=ny)
-    improc = convolve(im,g, mode='valid')
-    return(improc)
+    if maintain_size:
+        if ny is None:
+            ny = n 
+        x, y = np.mgrid[-n:im.shape[0]+n, -ny:im.shape[1]+ny].astype(float)
+        bigger = ag.util.interp2d(x, y, im.astype(float), startx=(0, 0), dx=(1, 1))
+        return _blur_and_shrink(bigger, n, ny) 
+    else:
+        return _blur_and_shrink(im, n, ny)

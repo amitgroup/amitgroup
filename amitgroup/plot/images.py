@@ -1,10 +1,9 @@
 
 import amitgroup as ag
 import numpy as np
-import matplotlib.pylab as plt
 import math
 
-def images(data, zero_to_one=True, show=True):
+def images(data, zero_to_one=True, show=True, subplots=None):
     """
     Display images that range a grid. Especially designed for probability images, ranging from 0 to 1.
 
@@ -17,6 +16,7 @@ def images(data, zero_to_one=True, show=True):
     show : bool
         Call `pylab.show()` inside the function.
     """
+    import matplotlib.pylab as plt
 
     settings = {
         'interpolation': 'nearest',
@@ -33,11 +33,14 @@ def images(data, zero_to_one=True, show=True):
         plt.imshow(data, **settings)
     else:
         # TODO: Better find out pleasing aspect ratios
-        if len(data) <= 3:
+        if subplots is not None:
+            sh = subplots
+            assert len(data) <= np.prod(subplots) 
+        elif len(data) <= 3:
             sh = (1, len(data))
-        if len(data) == 6:
+        elif len(data) == 6:
             sh = (2, 3)
-        if len(data) == 12:
+        elif len(data) == 12:
             sh = (3, 4)
         else:
             perside = math.ceil(math.sqrt(len(data)))
@@ -45,6 +48,7 @@ def images(data, zero_to_one=True, show=True):
         fig = plt.figure()
         for i, im in enumerate(data): 
             plt.subplot(sh[0], sh[1], 1+i).set_axis_off()
+            plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
             plt.imshow(im, **settings)
 
     if show:
@@ -53,10 +57,9 @@ def images(data, zero_to_one=True, show=True):
 def deformation(F, I, displacement_field, show_diff=False, show=True):
     """
     
-    Plot how a :class:`DisplacementField` applies to a prototype image `F` to qualitatively
-    compare it with `I`.
+    Plot how a :class:`DisplacementField` applies to a prototype image `F` to qualitatively compare it with `I`.
 
-    Especially designed to plot the results of :func:`imagedef`.
+    Especially designed to plot the results of :func:`image_deformation`.
 
     Parameters
     ----------
@@ -71,10 +74,11 @@ def deformation(F, I, displacement_field, show_diff=False, show=True):
     show : bool
         Call `pylab.show()` inside the function.
     """
+    import matplotlib.pylab as plt
     
     assert isinstance(displacement_field, ag.util.DisplacementField) 
 
-    x, y = displacement_field.get_x(F.shape)
+    x, y = displacement_field.meshgrid()
     Ux, Uy = displacement_field.deform_map(x, y) 
     Fdef = displacement_field.deform(F)
 
