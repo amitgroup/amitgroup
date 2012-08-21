@@ -1,7 +1,11 @@
 
-import amitgroup as ag
-import numpy as np
 from time import time
+
+time1 = time()
+import amitgroup as ag
+time2 = time()
+print time2-time1
+import numpy as np
 
 def main():
     t1 = time()

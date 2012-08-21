@@ -1,7 +1,6 @@
 
 import amitgroup as ag
 import numpy as np
-import matplotlib.pylab as plt
 import math
 
 def images(data, zero_to_one=True, show=True, subplots=None):
@@ -17,6 +16,7 @@ def images(data, zero_to_one=True, show=True, subplots=None):
     show : bool
         Call `pylab.show()` inside the function.
     """
+    import matplotlib.pylab as plt
 
     settings = {
         'interpolation': 'nearest',
@@ -74,6 +74,7 @@ def deformation(F, I, displacement_field, show_diff=False, show=True):
     show : bool
         Call `pylab.show()` inside the function.
     """
+    import matplotlib.pylab as plt
     
     assert isinstance(displacement_field, ag.util.DisplacementField) 
 

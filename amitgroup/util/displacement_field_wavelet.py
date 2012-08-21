@@ -123,6 +123,18 @@ class DisplacementFieldWavelet(DisplacementField):
 
         self.lmbks = values
 
+    def set_flat_u(self, flat_u, level):
+        """
+        Sets `u` from a flattened array of a subset of `u`.
+        
+        The size of the subset is determined by level. The rest of `u` is filled with zeros.
+        """
+        assert level <= self.level_capacity, "Please increase coefficient capacity for this level"
+        # First reset
+        self.u.fill(0.0)
+        shape = self.coef_shape(level)
+        self.u[:shape[0],:shape[1]] = flat_u.reshape(shape)
+
     def prepare_shape(self):
         side = max(self.shape)
         self.levels = int(np.log2(side))
@@ -195,8 +207,9 @@ class DisplacementFieldWavelet(DisplacementField):
         limit = self.flat_limit(last_level) 
         return -(self.lmbks * (self.u - self.mu)**2)[:,:limit].sum() / 2
 
-    def logprior_derivative(self):
-        return -self.lmbks * (self.u - self.mu) # Introduce mu here.
+    def logprior_derivative(self, last_level=None):
+        limit = self.flat_limit(last_level) 
+        return (-self.lmbks * (self.u - self.mu))[:,:limit] # Introduce mu here.
 
     def sum_of_coefficients(self, last_level=None):
         # Return only lmbks[0], because otherwise we'll double-count every

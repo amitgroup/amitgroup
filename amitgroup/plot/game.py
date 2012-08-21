@@ -1,6 +1,4 @@
 
-import pygame
-import pygame.locals as pylocals
 import numpy as np
 
 class PlottingWindow(object):
@@ -35,6 +33,8 @@ class PlottingWindow(object):
     ...     t += 1/60. # doctest: +SKIP
     """
     def __init__(self, figsize=(8, 6), subplots=(1, 1), caption="Plotting Window"):
+        import pygame
+
         pygame.init() 
         #if not pygame.font: print 'Warning, fonts disabled'
         self._window_size = tuple(map(lambda x: x*80, figsize))
@@ -76,6 +76,8 @@ class PlottingWindow(object):
         fps : int
             If nonzero, then it will enforce the given frame rate. For instance, set to 60, if you want 60 a maximum of 60 frames per seconds to be displayed.
         """
+        import pygame
+        import pygame.locals as pylocals
         pygame.display.flip()
         if fps > 0:
             self._clock.tick(fps)
@@ -119,6 +121,7 @@ class PlottingWindow(object):
         caption : str
             Add a textual description of the image.
         """
+        import pygame
         assert isinstance(im, np.ndarray) and len(im.shape) == 2, "Image must be a 2D ndarray"
         anchor, size = self._anchor_and_size(subplot)
 
@@ -159,6 +162,7 @@ class PlottingWindow(object):
         subplot : int
             Zero-based index of subplot.
         """
+        import pygame
         N = len(x) 
         if N < 2:
             return # Just don't draw anything
