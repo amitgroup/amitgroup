@@ -1,6 +1,10 @@
 import amitgroup as ag
 import numpy as np
-import random
+import random, collections
+
+
+BernoulliMixtureSimple = collections.namedtuple('BernoulliMixtureSimple',
+                                                'log_templates log_invtemplates weights')
 
 class BernoulliMixture:
     """
@@ -95,7 +99,7 @@ class BernoulliMixture:
 
 
     # TODO: save_template never used!
-    def run_EM(self, tol, min_probability=0.05):
+    def run_EM(self, tol, min_probability=0.05,init_seed=0):
         """ 
         Run the EM algorithm to specified convergence.
         
@@ -106,11 +110,17 @@ class BernoulliMixture:
             If the loglikelihood decreased with less than ``tol``, then it will break the loop.
         min_probability : float
             Disallow probabilities to fall below this value, and extend below one minus this value.
+        init_seed : integer or None
         """
         self.min_probability = 0.05
         loglikelihood = -np.inf
         # First E step plus likelihood computation
         new_loglikelihood = self._compute_loglikelihoods()
+
+        # set the random seed
+        self.seed = init_seed
+        np.random.seed(self.seed)
+
 
         self.iterations = 0
         while new_loglikelihood - loglikelihood > tol:
@@ -135,6 +145,11 @@ class BernoulliMixture:
         self.log_templates = np.log(self.work_templates)
         self.log_invtemplates = np.log(1-self.work_templates)
 
+    def get_bernoulli_mixture_named_tuple():
+        return BernoulliMixtureSimple(log_templates=self.log_templates,
+                                      log_invtemplates=self.log_invtemplates,
+                                      weights=self.weights)
+                                      
         
     def threshold_templates(self):
         self.work_templates = np.clip(self.work_templates, self.min_probability, 1-self.min_probability) 
@@ -176,6 +191,9 @@ class BernoulliMixture:
 
     def set_templates(self):
         self.templates = self.work_templates.reshape((self.num_mix,)+self.data_shape)
+        self.log_templates = np.log(self.templates)
+        self.log_invtemplates = np.log(1-self.templates)
+                                     
 
     def set_weights(self,new_weights):
         np.testing.assert_approx_equal(np.sum(new_weights),1.)
@@ -226,3 +244,19 @@ class BernoulliMixture:
         if save_affinities:
             entries['affinities'] = self.affinities
         np.savez(filename, **entries) 
+
+
+def compute_likelihood(bernoulli_mixture,
+                       data_mat,ignore_weights=True):
+    """
+    Compute the likelihood of the model on the data. Should work with either 
+    a named tuple mixture representation or a BernoulliMixture object
+    """
+    num_data = data_mat.shape[0]
+    affinities = np.array([ np.tile(log_template,
+            (num_data,1)) * data_mat + np.tile(log_invtemplate,
+                                               (num_data,1)) *(
+                    1 - data_mat) for log_template, log_invtemplate in zip(
+                    bernoulli_mixture.log_templates,
+                    bernoulli_mixture.log_invtemplates)])
+    
