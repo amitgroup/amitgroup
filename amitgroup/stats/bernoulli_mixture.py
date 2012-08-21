@@ -125,7 +125,7 @@ class BernoulliMixture:
         np.random.seed(self.seed)
 
         self.iterations = 0
-        while new_loglikelihood - loglikelihood > tol or self.iterations != 3000:
+        while new_loglikelihood - loglikelihood > tol:
             ag.info("Iteration {0}: loglikelihood {1}".format(self.iterations, loglikelihood))
             loglikelihood = new_loglikelihood
             # M-step
@@ -135,18 +135,17 @@ class BernoulliMixture:
             
             self.iterations += 1
 
-            if debug_plot:
-                self._plot(plw)            
+            if debug_plot and not self._plot(plw):
+                raise ag.AbortException 
 
         self.set_templates()
         
 
     def _plot(self, plw):
         if not plw.tick():
-            break
+            return False 
         self.set_templates()
         for m in xrange(self.num_mix):
-            print self.templates.shape
             # TODO: Fix this somehow
             if self.templates.ndim == 3:
                 plw.imshow(self.templates[m], subplot=m)
@@ -154,6 +153,7 @@ class BernoulliMixture:
                 plw.imshow(self.templates[m].mean(axis=0), subplot=m)
             else:
                 raise ValueError("debug_plot not supported for 5 or more dimensional data")
+        return True
  
     def M_step(self):
         self.weights = np.mean(self.affinities,axis=0)
