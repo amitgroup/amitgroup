@@ -95,7 +95,7 @@ class BernoulliMixture:
 
 
     # TODO: save_template never used!
-    def run_EM(self, tol, min_probability=0.05):
+    def run_EM(self, tol, min_probability=0.05, debug_plot=False):
         """ 
         Run the EM algorithm to specified convergence.
         
@@ -112,8 +112,11 @@ class BernoulliMixture:
         # First E step plus likelihood computation
         new_loglikelihood = self._compute_loglikelihoods()
 
+        if debug_plot:
+            plw = ag.plot.PlottingWindow(subplots=(1, self.num_mix), figsize=(self.num_mix*3, 3))
+
         self.iterations = 0
-        while new_loglikelihood - loglikelihood > tol:
+        while new_loglikelihood - loglikelihood > tol or self.iterations != 3000:
             ag.info("Iteration {0}: loglikelihood {1}".format(self.iterations, loglikelihood))
             loglikelihood = new_loglikelihood
             # M-step
@@ -123,8 +126,25 @@ class BernoulliMixture:
             
             self.iterations += 1
 
+            if debug_plot:
+                self._plot(plw)            
+
         self.set_templates()
         
+
+    def _plot(self, plw):
+        if not plw.tick():
+            break
+        self.set_templates()
+        for m in xrange(self.num_mix):
+            print self.templates.shape
+            # TODO: Fix this somehow
+            if self.templates.ndim == 3:
+                plw.imshow(self.templates[m], subplot=m)
+            elif self.templates.ndim == 4:
+                plw.imshow(self.templates[m].mean(axis=0), subplot=m)
+            else:
+                raise ValueError("debug_plot not supported for 5 or more dimensional data")
  
     def M_step(self):
         self.weights = np.mean(self.affinities,axis=0)

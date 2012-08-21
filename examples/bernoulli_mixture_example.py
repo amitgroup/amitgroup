@@ -27,5 +27,5 @@ for X in XS:
 
 
 bm = ag.stats.BernoulliMixture(3,XS)
-bm.run_EM(.0001)
+bm.run_EM(.0001, debug_plot=True)
 
