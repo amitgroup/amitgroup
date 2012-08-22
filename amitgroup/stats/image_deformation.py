@@ -54,7 +54,7 @@ def _cost_deriv(u, imdef, F, I, delF, x, y, level):
     return ret
     
 def image_deformation(F, I, last_level=3, penalty=1.0, rho=2.0, wavelet='db2', tol=1e-5, \
-                      maxiter=5, start_level=1, debug_plot=False):
+                      maxiter=5, start_level=1, means=None, variances=None, debug_plot=False):
     """
     Deforms an a prototype image `F` into a data image `I` using a Daubechies wavelet basis and maximum a posteriori. 
 
@@ -79,6 +79,10 @@ def image_deformation(F, I, last_level=3, penalty=1.0, rho=2.0, wavelet='db2', t
         Cost change must be less than `tol` before succesful termination at each coarse-to-fine level.
     first_level : int, optional
         First coarse-to-fine coefficient level.
+    means : ndarray or None, optional
+        Manually specify the means of the prior coefficients. If this and `variances` are set, then `penalty` and `rho` are unused. Must be of size ``(2, C)``, where `C` is the number of coefficients for the wavelet.
+    variances : ndarray or None, optional
+        Analagous to `means`, for specifying variances of the prior coefficients. Size should be the same as for `means`.
     debug_plot : bool, optional
         Output deformation progress live using :class:`PlottingWindow`. 
     
@@ -121,11 +125,20 @@ def image_deformation(F, I, last_level=3, penalty=1.0, rho=2.0, wavelet='db2', t
     import pywt
 
     level_capacity = last_level
-
     delF = np.gradient(F, 1/F.shape[0], 1/F.shape[1])
-    imdef = ag.util.DisplacementFieldWavelet(F.shape, penalty=penalty, rho=rho, wavelet=wavelet, level_capacity=level_capacity)
-    x, y = imdef.meshgrid()
     dx = 1/np.prod(F.shape)
+
+    settings = dict(
+        penalty=penalty, 
+        rho=rho, 
+        wavelet=wavelet, 
+        level_capacity=level_capacity, 
+        means=means,
+        variances=variances,
+    ) 
+    
+    imdef = ag.util.DisplacementFieldWavelet(F.shape, **settings)
+    x, y = imdef.meshgrid()
 
     if debug_plot:
         plw = ag.plot.PlottingWindow(figsize=(8, 4), subplots=(1,2))
