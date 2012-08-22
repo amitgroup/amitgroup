@@ -157,6 +157,7 @@ class BernoulliMixture:
  
     def M_step(self):
         self.weights = np.mean(self.affinities,axis=0)
+        import pdb; pdb.set_trace()
         self.work_templates = np.dot(self.affinities.T, self.data_mat)
         self.work_templates /= self.num_data 
         self.work_templates /= self.weights.reshape((self.num_mix, 1))

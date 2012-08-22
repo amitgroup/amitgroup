@@ -83,7 +83,7 @@ def _cost_num_deriv(u, imdef, F, X, neg_X, delFjs, x, y, level, all_js):
     deriv = deriv[:,:limit].flatten()
     return deriv
 
-def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.1, rho=2.0, wavelet='db2', maxiter=50, start_level=1, debug_plot=False, means=None, variances=None):
+def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.1, rho=2.0, wavelet='db2', maxiter=50, start_level=1, means=None, variances=None, debug_plot=False):
     assert F.ndim == 3, "F must have 3 axes"
     assert F.shape == I.shape, "F and I shape mismatch {0} {1}".format(F.shape, I.shape)
     assert F.shape[0] == 8, "Currently only supports 8 features (not {0})".format(F.shape[0])
@@ -110,7 +110,7 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.1, rho=2.0,
         rho=rho, 
         level_capacity=level_capacity, 
         means=means, 
-        variances=variances
+        variances=variances,
     )
     
     imdef = ag.util.DisplacementFieldWavelet(F.shape[1:], **settings)
