@@ -21,7 +21,7 @@ def _cost(u, imdef, F, I, delF, x, y, level):
 
     # Cost
     terms = Fzs - I
-    loglikelihood = -(terms**2).sum() * dx / 2.0
+    loglikelihood = -(terms**2).sum() / 2.0 #  * dx
     logprior = imdef.logprior(level)
 
     cost = -logprior - loglikelihood
@@ -47,7 +47,7 @@ def _cost_deriv(u, imdef, F, I, delF, x, y, level):
     W = np.empty((2,) + terms.shape)     
     for q in range(2):
         W[q] = delFzs[q] * terms
-    W *= dx
+    #W *= dx
     limit = imdef.flat_limit(level)
     vqks = imdef.transform(W, level)
     ret = (-imdef.logprior_derivative(level) + vqks[:,:limit]).flatten()
