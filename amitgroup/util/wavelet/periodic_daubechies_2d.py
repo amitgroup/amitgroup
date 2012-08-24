@@ -37,6 +37,7 @@ def _bottom_left_quad(A):
     N = len(A)//2
     return A[N:,:N]
 
+# forward == deconstruction
 def daubechies2d_forward_factory(shape, levels=3):
     db4g = np.array([0.48296291314469025, 0.83651630373746899, 0.22414386804185735, -0.12940952255092145])
     db4h = db4g[::-1].copy()
@@ -50,40 +51,32 @@ def daubechies2d_forward_factory(shape, levels=3):
 
     levels_list = range(1, int(np.log2(shape[0]))+1)
 
+    max_level = int(np.log2(max(shape)))
+
     # Setup matrices
     Ws = [_create_W(shape, level, filter_low, filter_high) for level in levels_list]
     Gs = [_create_single(shape, level, filter_low) for level in levels_list]
     # Combine all the matrices for the steps where we throw away the coefficients.
-    Wg = Gs[0]
-    for l in xrange(1, levels-1):
+    
+    Wg = np.eye(shape[0], shape[1])
+    for l in xrange(0, max_level-levels):
         Wg = np.dot(Gs[l], Wg)
     # Also include the first Wavelet transform.
-    Wg = np.dot(Ws[levels-1], Wg)
+    Wg = np.dot(Ws[max_level-levels], Wg)
 
-    def daubechies2d_forward(A, level):
-        assert A.shape == (32, 32)
+    def daubechies2d_forward(A, level=np.inf):
         Ab = _qdot(Wg, A) 
-        Abc = Ab.copy()
-        B = _top_left_quad(Ab)
-        Bb = _qdot(Ws[3], B)
-        C = _top_left_quad(Bb)
-        Cb = _qdot(Ws[4], C)
-        #D = _top_left_quad(Cb)
+        for l in xrange(levels-1, 0, -1):
+            N = 1 << l 
+            Ab[:N,:N] = _qdot(Ws[max_level-l], Ab[:N,:N])
 
-        R = np.zeros(Ab.shape)
-        
-        if level >= 3:
-            R[:] = Ab
-        if level >= 2:
-            R[:4,:4] = Bb
-        if level >= 1:
-            R[:2,:2] = Cb
-        if level >= 0:
-            R[0,0] = Cb[0,0]
-             
+        N = 2**min(levels, level)
+        R = np.zeros((N, N))
+        R[:N,:N] = Ab[:N,:N]
         return R
     return daubechies2d_forward
         
+# inverse == reconstruction
 def daubechies2d_inverse_factory(shape, levels=3):
     db4g = np.array([0.48296291314469025, 0.83651630373746899, 0.22414386804185735, -0.12940952255092145])
     db4h = db4g[::-1].copy()
@@ -97,26 +90,23 @@ def daubechies2d_inverse_factory(shape, levels=3):
 
     levels_list = range(1, int(np.log2(shape[0]))+1)
 
+    max_level = int(np.log2(max(shape)))
+
     # Setup matrices
     Ws = [_create_W(shape, level, filter_low, filter_high) for level in levels_list]
     Gs = [_create_single(shape, level, filter_low) for level in levels_list]
     # Combine all the matrices for the steps where we throw away the coefficients.
-    Wg = Gs[0]
-    for l in xrange(1, levels-1):
+    Wg = np.eye(shape[0], shape[1])
+    for l in xrange(0, max_level-levels):
         Wg = np.dot(Gs[l], Wg)
     # Also include the first Wavelet transform.
-    Wg = np.dot(Ws[levels-1], Wg)
+    Wg = np.dot(Ws[max_level-levels], Wg)
     
-    def daubechies2d_inverse(R, level):
-        #print R.shape
-        R = R.copy().reshape(8, 8)
-        #assert R.shape == (8, 8)
-
-        R[:2,:2] = _qdot(Ws[4].T, R[:2,:2])
-        R[:4,:4] = _qdot(Ws[3].T, R[:4,:4])
-        #R[:8,:8] = qdot(Ws[2].T
+    def daubechies2d_inverse(R, level=np.inf):
+        for l in xrange(1, levels):
+            N = 1 << l 
+            R[:N,:N] = _qdot(Ws[max_level-l].T, R[:N,:N])
         R = _qdot(Wg.T, R)
-        #C = qdot(W
         return R
 
     return daubechies2d_inverse
@@ -147,4 +137,18 @@ def old2new(olds):
         new_indices[index] = i
     news = olds[new_indices].reshape(8, 8).copy()
     return news 
+
+def pywt2array(coefficients):
+    """Converts pywt list-of-tuples result to a monolithic array. This is only applicable for some wavelets."""
+    assert coefficients[0].shape == (1,1) or len(coefficients[0]) == 1
+    N = 2*len(coefficients[-1][0])
+    u = np.zeros((N, N))
+    u[0,0] = float(coefficients[0])
+    for level, c in enumerate(coefficients): 
+        if level != 0:
+            S = len(c[0]) 
+            u[S:2*S,:S] = c[0]
+            u[:S,S:2*S] = c[1]
+            u[S:2*S,S:2*S] = c[2]
+    return u
 
