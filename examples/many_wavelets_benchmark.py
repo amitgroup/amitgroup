@@ -99,36 +99,44 @@ def wavedec2_32(A):
     #res[48:64] = bottom_right_quad(Ab).flatten()
     #return res
 
+N = 1
+
 t1 = time()
-for i in range(1000):
+for i in range(N):
     u = pywt.wavedec2(x, 'db2', mode='per', level=5)
     coefs = ag.util.DisplacementFieldWavelet.pywt2array(u, imdef.levelshape, 3, 3)
 t2 = time()
 
 t1b = time()
-for i in range(1000):
+for i in range(N):
     pywt.waverec2(u, 'db2', mode='per')
 t2b = time()
 
 t1c = time()
-for i in range(1000):
+for i in range(N):
     coefs2 = wavedec2_32(x)
 t2c = time()
 
 import amitgroup.util.wavelet
-wavedec2 = ag.util.wavelet.daubechies2d_forward_factory((32, 32), 4)
+wavedec2 = ag.util.wavelet.daubechies2d_forward_factory((32, 32), levels=3)
 
 t1d = time()
-for i in range(1000):
+for i in range(N):
     coefs2 = wavedec2(x)
 t2d = time()
 
-print u
+#print u
+print 'coefs'
+print coefs
+print 'coefs2'
+print ag.util.wavelet.new2old(coefs2)
 
-#np.testing.assert_array_almost_equal(coefs, coefs2)
+np.testing.assert_array_almost_equal(coefs, ag.util.wavelet.new2old(coefs2))
+
+np.testing.assert_array_almost_equal(ag.util.wavelet.old2new(ag.util.wavelet.new2old(coefs2)), coefs2)
 
 print (t2-t1)/(t2c-t1c)
-print "Deconstruction time:", (t2-t1), " ms"
-print "Deconstruction mine:", (t2c-t1c), " ms"
-print "Deconstruction new :", (t2d-t1d), " ms"
-print "Reconstruction time:", (t2b-t1b), " ms"
+print "Deconstruction time:", 1000*(t2-t1)/N, "ms"
+print "Deconstruction mine:", 1000*(t2c-t1c)/N, "ms"
+print "Deconstruction new :", 1000*(t2d-t1d)/N, "ms"
+print "Reconstruction time:", 1000*(t2b-t1b)/N, " ms"

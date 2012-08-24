@@ -48,9 +48,9 @@ def _cost_deriv(u, imdef, F, I, delF, x, y, level):
     for q in range(2):
         W[q] = delFzs[q] * terms
     #W *= dx
-    limit = imdef.flat_limit(level)
     vqks = imdef.transform(W, level)
-    ret = (-imdef.logprior_derivative(level) + vqks[:,:limit]).flatten()
+    N = 2**level
+    ret = (-imdef.logprior_derivative() + vqks)[:,:N,:N].flatten()
     return ret
     
 def image_deformation(F, I, last_level=3, penalty=1.0, rho=2.0, wavelet='db2', tol=1e-5, \
@@ -165,7 +165,7 @@ def image_deformation(F, I, last_level=3, penalty=1.0, rho=2.0, wavelet='db2', t
         if cost < min_cost:
             # If the algorithm makes mistakes and returns a really high cost, don't use it.
             min_cost = cost
-            imdef.u[:,:u.shape[1]] = new_u.reshape(u.shape)
+            imdef.u[:,:u.shape[1],:u.shape[2]] = new_u.reshape(u.shape)
 
     #if debug_plot:
     #    plw.mainloop()

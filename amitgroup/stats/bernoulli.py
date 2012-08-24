@@ -56,32 +56,33 @@ def _cost_deriv(u, imdef, F, X, neg_X, delFjs, x, y, level, all_js):
         grad = delFjzs[q]
         W[q] = (s * grad).sum(axis=0) 
 
-    limit = imdef.flat_limit(level) 
     vqks = imdef.transform(W, level)
-    return (-imdef.logprior_derivative() + vqks)[:,:limit].flatten()
+    N = 2**level
+    return (-imdef.logprior_derivative() + vqks)[:,:N,:N].flatten()
 
-def _cost_num_deriv(u, imdef, F, X, neg_X, delFjs, x, y, level, all_js):
-    """Numerical derivative of the cost. Can be used for comparison."""
-    imdef.set_flat_u(u)
+if 0:
+    def _cost_num_deriv(u, imdef, F, X, neg_X, delFjs, x, y, level, all_js):
+        """Numerical derivative of the cost. Can be used for comparison."""
+        imdef.set_flat_u(u)
 
-    orig_u = np.copy(imdef.u)
-    
-    deriv = np.zeros(orig_u.shape)
-    limit = imdef.flat_limit(level) 
-    dt = 0.00001
-    for q in range(2):
-        for i in range(limit):
-            u = np.copy(orig_u)
-            u[q,i] -= dt
-            cost0 = _cost(u, imdef, F, X, delFjs, x, y, level, all_js)
-            u = np.copy(orig_u)
-            u[q,i] += dt
-            cost1 = _cost(u, imdef, F, X, delFjs, x, y, level, all_js)
-            deriv[q,i] = (cost1-cost0)/(2*dt)
+        orig_u = np.copy(imdef.u)
+        
+        deriv = np.zeros(orig_u.shape)
+        limit = imdef.flat_limit(level) 
+        dt = 0.00001
+        for q in range(2):
+            for i in range(limit):
+                u = np.copy(orig_u)
+                u[q,i] -= dt
+                cost0 = _cost(u, imdef, F, X, delFjs, x, y, level, all_js)
+                u = np.copy(orig_u)
+                u[q,i] += dt
+                cost1 = _cost(u, imdef, F, X, delFjs, x, y, level, all_js)
+                deriv[q,i] = (cost1-cost0)/(2*dt)
 
-    # Compare
-    deriv = deriv[:,:limit].flatten()
-    return deriv
+        # Compare
+        deriv = deriv[:,:2**(level),2**(level)].flatten()
+        return deriv
 
 def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.1, rho=2.0, wavelet='db2', maxiter=50, start_level=1, means=None, variances=None, debug_plot=False):
     assert F.ndim == 3, "F must have 3 axes"
@@ -132,6 +133,7 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.1, rho=2.0,
     for level in range(start_level, last_level+1): 
         ag.info("Running coarse-to-fine level", level)
         u = imdef.abridged_u(level)
+        #u = imdef.u.reshape(2, 8, 8)[:,:2**(level-1),:2**(level-1)]
         args = (imdef, F, X, 1-X, delFjs, x, y, level, all_js)
         try:
             new_u, cost, min_deriv, Bopt, func_calls, grad_calls, warnflag = \
@@ -144,7 +146,7 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.1, rho=2.0,
         if cost < min_cost:
             # If the algorithm makes mistakes and returns a really high cost, don't use it.
             min_cost = cost
-            imdef.u[:,:u.shape[1]] = new_u.reshape(u.shape)
+            imdef.u[:,:u.shape[1],:u.shape[2]] = new_u.reshape(u.shape)
 
     #if debug_plot:
     #    plw.mainloop()

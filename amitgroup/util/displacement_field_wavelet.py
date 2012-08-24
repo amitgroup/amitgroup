@@ -8,38 +8,11 @@ from copy import deepcopy
 from .displacement_field import DisplacementField
 from .interp2d import interp2d
 
-def _size2levelshape(size):
-    return tuple(map(int, map(np.log2, size)))
+from amitgroup.util import wavelet
 
-def _levels2shape(levelshape, level=np.inf):
-    levels = max(levelshape)
-    level = min(level, levels)
-    return tuple([2**(max(0, level + levelshape[q] - levels - 1)) for q in range(2)])
-
-# This shape include alpha
-def _levels2fullshape(levelshape, level):
-    sh = _levels2shape(levelshape, level)
-    return ((1,) if level == 0 else (3,)) + sh 
-
-def _total_length(levelshape, level=np.inf):
-    return _flat_start(min(level, max(levelshape))+1, 0, levelshape)
-
-def _flat_length_one_alpha(levelshape, level):
-    return np.prod(_levels2shape(levelshape, level))
-
-def _flat_length(levelshape, level):
-    return np.prod(_levels2fullshape(levelshape, level))
-
-def flat_start(level, alpha, levelshape):
-    return _flat_start(level, alpha, levelshape)
-
-def _flat_start(level, alpha, levelshape):
-    start = 0
-    for l in range(level):
-        start += _flat_length(levelshape, l)
-
-    start += alpha * _flat_length_one_alpha(levelshape, level)
-    return start    
+# TODO: Move these functions somewhere.
+func = wavelet.daubechies2d_forward_factory((32, 32), levels=3)
+invfunc = wavelet.daubechies2d_inverse_factory((32, 32), levels=3)
 
 class DisplacementFieldWavelet(DisplacementField):
     """
@@ -71,13 +44,9 @@ class DisplacementFieldWavelet(DisplacementField):
         self.prepare_shape()
         self.rho = rho 
         biggest = self.scriptNs[-1]        
-        coefshape = _levels2shape(self.levelshape)
         self.level_capacity = level_capacity or np.inf
-        if level_capacity is not None:
-            N = _total_length(self.levelshape, level_capacity)
-        else:
-            N = _total_length(self.levelshape)
-        self.ushape = (2, N)
+        N = 2**level_capacity 
+        self.ushape = (2, N, N)
 
         # We divide the penalty, since the raw penalty is the ratio
         # of the variance between the coefficients and the loglikelihood.
@@ -103,25 +72,17 @@ class DisplacementFieldWavelet(DisplacementField):
 
     @classmethod
     def shape_for_size(cls, size, level_capacity=np.inf):
-        levelshape = _size2levelshape(size)
-        return (2, _total_length(levelshape, level_capacity))
+        N = 2**level_capacity
+        return (2, N, N)
 
     def _init_u(self):
-        # Could also default to mean values
-        #self.u = np.zeros(self.ushape)
-        # Start with self.mu, since it offers the least cost
         self.u = np.copy(self.mu)
 
     def _init_default_lmbks(self):
-        values = np.zeros(self.ushape)
-        for i in range(self.levels+1):
-            # We decrease the self.scriptNs[i] so that the first level
-            # is only the penalty
-            n0 = _flat_start(i, 0, self.levelshape)
-            n1 = n0 + _flat_length(self.levelshape, i)
-            values[:,self.range_slice(i)] = self.penalty_adjusted * 2.0**(self.rho * (self.scriptNs[i]-1))
-
-        self.lmbks = values
+        self.lmbks = np.zeros(self.ushape)
+        for level in range(self.levels+1)[::-1]:
+            N = 2**level
+            self.lmbks[:,:N,:N] = self.penalty_adjusted * 2.0**(self.rho * (self.scriptNs[level]-1))
 
     def set_flat_u(self, flat_u, level):
         """
@@ -132,8 +93,9 @@ class DisplacementFieldWavelet(DisplacementField):
         assert level <= self.level_capacity, "Please increase coefficient capacity for this level"
         # First reset
         self.u.fill(0.0)
-        shape = self.coef_shape(level)
-        self.u[:shape[0],:shape[1]] = flat_u.reshape(shape)
+        #shape = self.coef_shape(level)
+        N = 2**level
+        self.u[:,:N,:N] = flat_u.reshape((2, N, N))
 
     def prepare_shape(self):
         side = max(self.shape)
@@ -154,38 +116,27 @@ class DisplacementFieldWavelet(DisplacementField):
         """
         Forward transform of the wavelet.
         """ 
-        return np.asarray([
-            self.pywt2array(pywt.wavedec2(f[q], self.wavelet, mode=self.mode, level=self.levels), self.levelshape, level, self.level_capacity) for q in range(2)
-        ])
+        #old = np.asarray([
+        #    self.pywt2array(pywt.wavedec2(f[q], self.wavelet, mode=self.mode, level=self.levels), self.levelshape, level, self.level_capacity) for q in range(2)
+        #])
+        #new = np.asarray([
+        #    func(f[q], level) for q in range(2)
+        #    ag.util.wavelet.new2old(func(f[q], level)) for q in range(2)
+        #])
+        
+        new = np.zeros(self.ushape)
+        new[0] = func(f[0], level)    
+        new[1] = func(f[1], level)
+        
+        #np.testing.assert_array_almost_equal(old, new)
+        return new 
 
+    # TODO: last_level not used
     def invtransform(self, x, y, last_level=np.inf):
         """See :func:`DisplacementField.deform_map`"""
-        # Here we have a choice of doing a smaller wave reconstruction, and then doing linear
-        # interpolation. This sounds as though it would be faster (maybe it is for extremely large images), but
-        # it is not since it induces too many iterations (not as precise, I suppose). 
-        # Note: It is actually faster if you use Haar (db1) wavelets.
-        #levels = min(self.levels, levels)
-        last_level = self.levels
-        #last_level = min(last_level, self.last_level)
 
-        defx0 = pywt.waverec2(self.array2pywt(self.u[0], self.levelshape, last_level), self.wavelet, mode=self.mode) 
-        defx1 = pywt.waverec2(self.array2pywt(self.u[1], self.levelshape, last_level), self.wavelet, mode=self.mode)
-
-        # Interpolated defx at xs 
-        if x.shape == defx0.shape:
-            Ux = defx0
-            Uy = defx1
-        else:
-            # Adjust the values, since the size of the mother wavelet depends on the number of coefficients
-            assert 0
-            adjust = 2**(last_level - self.levels)
-            defx0 *= adjust
-            defx1 *= adjust 
-
-            dx = np.array([1/(defx0.shape[0]-1), 1/(defx0.shape[1]-1)])
-            Ux = interp2d(x, y, defx0, dx=dx)
-            Uy = interp2d(x, y, defx1, dx=dx)
-
+        Ux = invfunc(self.u[0], self.levels)
+        Uy = invfunc(self.u[1], self.levels)
         return Ux, Uy 
 
     def deform(self, F, levels=np.inf):
@@ -198,18 +149,21 @@ class DisplacementFieldWavelet(DisplacementField):
         return im
     
     def abridged_u(self, last_level=None):
-        return self.u[:,:self.flat_limit(last_level)]
+        #return self.u[:,:self.flat_limit(last_level)]
+        N = 2**(last_level)
+        return self.u[:,:N,:N]
 
     def coef_shape(self, last_level=None):
         return (self.ushape[0], self.flat_limit(last_level))
 
     def logprior(self, last_level=None):
-        limit = self.flat_limit(last_level) 
-        return -(self.lmbks * (self.u - self.mu)**2)[:,:limit].sum() / 2
+        N = None if last_level is None else 2**last_level
+        return -(self.lmbks * (self.u - self.mu)**2).reshape(2, 8, 8)[:,:N,:N].sum() / 2
 
     def logprior_derivative(self, last_level=None):
-        limit = self.flat_limit(last_level) 
-        return (-self.lmbks * (self.u - self.mu))[:,:limit] # Introduce mu here.
+        N = None if last_level is None else 2**last_level
+        ret = (-self.lmbks * (self.u - self.mu))[:,:N,:N]
+        return ret
 
     def sum_of_coefficients(self, last_level=None):
         # Return only lmbks[0], because otherwise we'll double-count every
