@@ -40,9 +40,8 @@ u2 = wavedec2(x)
 
 
 if __name__ == '__main__':
-    #for shapes in [(16, 16), (32, 32), (64, 64), (256, 256), (1024, 1024)]:
-    for shapes in [(32, 32)]:
+    for shapes in [(16, 16), (32, 32), (64, 64), (256, 256), (1024, 1024)]:
         max_level = int(np.log2(max(shapes)))
-        levels = max_level//2
-        #for levels in xrange(max_level, max_level+1):
-        run_test(shapes, levels)
+        #levels = max_level//2
+        for levels in xrange(1, max_level+1):
+            run_test(shapes, levels)

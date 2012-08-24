@@ -76,6 +76,14 @@ class TestWavelet(unittest.TestCase):
         for i in range(1, 7):
             self._test_waverec2d('db2', (64, 64), i)
 
+    # Non-square
+    def test_wavedec2d_32_16(self):
+        for i in range(1, 5):
+            self._test_wavedec2d('db2', (32, 16), i)
+
+    def test_wavedec2d_16_32(self):
+        for i in range(1, 5):
+            self._test_wavedec2d('db2', (16, 32), i)
 
 if __name__ == '__main__':
     unittest.main()
