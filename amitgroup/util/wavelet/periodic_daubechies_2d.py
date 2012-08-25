@@ -134,8 +134,6 @@ def wavedec2_factory(shape, wavelet='db2', levels=np.inf):
     >>> coefs = wavedec2(A) 
     """
     Wg, Ws, max_level, levels = _arrange_filter_matrices(shape, wavelet, levels) 
-    print wavelet
-    print Ws[0]
     def wavedec2(A):
         coefs = _qdot(Wg, A) 
         for l in xrange(levels-1, 0, -1):
