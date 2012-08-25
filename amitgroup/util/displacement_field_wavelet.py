@@ -11,8 +11,8 @@ from .interp2d import interp2d
 from amitgroup.util import wavelet
 
 # TODO: Move these functions somewhere.
-func = wavelet.daubechies2d_forward_factory((32, 32), levels=3)
-invfunc = wavelet.daubechies2d_inverse_factory((32, 32), levels=3)
+func = wavelet.wavedec2_factory((32, 32), levels=3)
+invfunc = wavelet.waverec2_factory((32, 32), levels=3)
 
 class DisplacementFieldWavelet(DisplacementField):
     """
@@ -44,8 +44,8 @@ class DisplacementFieldWavelet(DisplacementField):
         self.prepare_shape()
         self.rho = rho 
         biggest = self.scriptNs[-1]        
-        self.level_capacity = level_capacity or np.inf
-        N = 2**level_capacity 
+        self.level_capacity = level_capacity or self.levels
+        N = 2**self.level_capacity 
         self.ushape = (2, N, N)
 
         # We divide the penalty, since the raw penalty is the ratio
@@ -198,59 +198,60 @@ class DisplacementFieldWavelet(DisplacementField):
             n1 = n0 + _flat_length_one_alpha(self.levelshape, level)
         return slice(n0,n1)
 
-    def randomize(self, sigma=0.01, rho=2.5, start_level=1, levels=3):
-        """
-        Randomly sets the coefficients up to a certain level by sampling a Gaussian. 
+    if 0: # TODO: Recreate
+        def randomize(self, sigma=0.01, rho=2.5, start_level=1, levels=3):
+            """
+            Randomly sets the coefficients up to a certain level by sampling a Gaussian. 
+            
+            Parameters
+            ----------  
+            sigma : float
+                Standard deviation of the Gaussian. The `sigma` is adjusted to a normalized image
+                scale and not the scale of coefficient values (nor pixels). This means that setting `sigma` to 1, the standard
+                deviation is the same size as the image, which is a lot. A more appropriate value is
+                thus 0.01.
+            rho : float
+                A value higher than 1, will cause more dampening for higher coefficients, which will
+                result in a smoother deformation.
+            levels: int
+                Number of levels that should be randomized. The levels above will be set to zero. For a funny-mirror-type deformation, this should be limited to about 3.
+
+            Examples
+            --------
+            >>> import amitgroup as ag
+            >>> import matplotlib.pylab as plt
+
+            Generate 9 randomly altered faces.
+            
+            >>> face = ag.io.load_example('faces')[0]
+            >>> imdef = ag.util.DisplacementFieldWavelet(face.shape, 'db8')
+            >>> ag.plot.images([imdef.randomize(0.1).deform(face) for i in range(9)])
+            >>> plt.show()
+            """
+            # Reset all values first
+            self.u *= 0.0
         
-        Parameters
-        ----------  
-        sigma : float
-            Standard deviation of the Gaussian. The `sigma` is adjusted to a normalized image
-            scale and not the scale of coefficient values (nor pixels). This means that setting `sigma` to 1, the standard
-            deviation is the same size as the image, which is a lot. A more appropriate value is
-            thus 0.01.
-        rho : float
-            A value higher than 1, will cause more dampening for higher coefficients, which will
-            result in a smoother deformation.
-        levels: int
-            Number of levels that should be randomized. The levels above will be set to zero. For a funny-mirror-type deformation, this should be limited to about 3.
+            for q in range(2):
+                for level in range(start_level, min(self.levels+1, start_level+levels)):
+                    N, M = _levels2shape(self.levelshape, level)
 
-        Examples
-        --------
-        >>> import amitgroup as ag
-        >>> import matplotlib.pylab as plt
+                    # First of all, a coefficient of 1, will be shift the image 1/2**self.levels, 
+                    # so first we have to adjust for that.
+                    # Secondly, higher coefficient should be adjusted by roughly 2**-s, to account
+                    # for the different amplitudes of a wavelet basis (energy-conserving reasons).
+                    # Finally, we might want to dampen higher coefficients even further, to create
+                    # a smoother image. This is done by rho.
+                    adjust = 2.0**(self.levels - rho * max(level-1, 0))# * 2**self.levels
 
-        Generate 9 randomly altered faces.
-        
-        >>> face = ag.io.load_example('faces')[0]
-        >>> imdef = ag.util.DisplacementFieldWavelet(face.shape, 'db8')
-        >>> ag.plot.images([imdef.randomize(0.1).deform(face) for i in range(9)])
-        >>> plt.show()
-        """
-        # Reset all values first
-        self.u *= 0.0
-    
-        for q in range(2):
-            for level in range(start_level, min(self.levels+1, start_level+levels)):
-                N, M = _levels2shape(self.levelshape, level)
-
-                # First of all, a coefficient of 1, will be shift the image 1/2**self.levels, 
-                # so first we have to adjust for that.
-                # Secondly, higher coefficient should be adjusted by roughly 2**-s, to account
-                # for the different amplitudes of a wavelet basis (energy-conserving reasons).
-                # Finally, we might want to dampen higher coefficients even further, to create
-                # a smoother image. This is done by rho.
-                adjust = 2.0**(self.levels - rho * max(level-1, 0))# * 2**self.levels
-
-                if level == 0:
-                    self.u[q,self.range_slice(level, 0)] = np.random.normal(0.0, sigma, (n1-n0)) * adjust
-                else:
-                    als = []
-                    for alpha in range(3):
-                        n0 = _flat_start(level, 0, self.levelshape)
-                        n1 = n0 + _flat_length_one_alpha(self.levelshape, level)
-                        self.u[q,self.range_slice(level, alpha)] = np.random.normal(0.0, sigma, (n1-n0)) * adjust
-        return self
+                    if level == 0:
+                        self.u[q,self.range_slice(level, 0)] = np.random.normal(0.0, sigma, (n1-n0)) * adjust
+                    else:
+                        als = []
+                        for alpha in range(3):
+                            n0 = _flat_start(level, 0, self.levelshape)
+                            n1 = n0 + _flat_length_one_alpha(self.levelshape, level)
+                            self.u[q,self.range_slice(level, alpha)] = np.random.normal(0.0, sigma, (n1-n0)) * adjust
+            return self
 
     def ilevels(self):
         for level in range(self.levels+1):

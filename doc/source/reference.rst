@@ -38,6 +38,8 @@ Statistics (:mod:`amitgroup.stats`)
    :toctree: generated/
 
    BernoulliMixture
+   bernoulli_deformation
+   image_deformation
 
 Utilities (:mod:`amitgroup.util`)
 ---------------------------------
@@ -52,15 +54,18 @@ Utilities (:mod:`amitgroup.util`)
    interp2d
    zeropad
 
-Machine Learning (:mod:`amitgroup.ml`)
---------------------------------------
-.. currentmodule:: amitgroup.ml
+Wavelets (:mod:`amitgroup.util.wavelet`)
+----------------------------------------
+.. currentmodule:: amitgroup.util.wavelet
 
 .. autosummary::
    :toctree: generated/
-
-   bernoulli_deformation
-   image_deformation
+  
+   wavedec2_factory
+   waverec2_factory
+   smart_flatten
+   smart_deflatten
+   pywt2array
 
 Plotting (:mod:`amitgroup.plot`)
 --------------------------------

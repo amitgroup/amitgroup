@@ -17,6 +17,7 @@ Contents:
    :maxdepth: 2
 
    reference
+   wavelet
 
 Indices and tables
 ==================
