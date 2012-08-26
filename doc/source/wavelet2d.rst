@@ -12,13 +12,14 @@ With our approach, you first create the transform function, where you get to spe
 
 Usage
 -----
-Wavelets transforms are done by first creating the transform function using one of the following factory functions. Further instructions and examples can be seen by clicking the links below:
+Wavelets transforms can be done by first creating the wavelet decomposition and reconstruction functions using a factory function. This will precalculate as much as possible in order to make the transforms as fast as possible. An alternative is to use :func:`wavedec2` and :func:`waverec2`, which in the back-end runs the factory function and caches the result.
 
 .. autosummary:: 
    :toctree: generated/
      
-   wavedec2_factory
-   waverec2_factory
+   daubechies_factory
+   wavedec2
+   waverec2
 
 Speed improvements
 ------------------
@@ -31,7 +32,7 @@ PyWavelets_ returns a list of tuples of numpy arrays, for 2D wavelets. This take
 
     [cA3, (cH3, cV3, cD3), (cH2, cV2, cD2), (cH1, cV1, cD1)]
 
-But instead, in our code it is stored in a 8 x 8 array with the following layout::
+But instead, in our code it is stored in a 8x8 array with the following layout::
 
     -----------------------------------------------------------------
     |  cA3  |  cH3  |               |                               |
@@ -64,8 +65,8 @@ Throw-away coefficients
 
 Another speed improvement can be made if you plan to throw away some of the highest frequency coefficients. For instance, if you know that in the above 8x8 transform, you know you do not need any of the 4x4 coefficients, you can specify that as following::
 
-    >>> wavedec2 = ag.util.wavelet.wavedec2_factory((8, 8), wavelet='db2', levels=2)
-    >>> coefs = wavedec2(np.ones((8, 8)))
+    >>> wavedec2, waverec2 = ag.util.wavelet.daubechies_factory((8, 8), wavelet='db2')
+    >>> coefs = wavedec2(np.ones((8, 8)), levels=2)
     >>> print coefs.shape
     (4, 4)
 
@@ -76,7 +77,7 @@ Coefficient conversions
 
 .. note::
 
-    These conversions will hurt your performance, and should be avoided for performance-sensitive code.
+    These conversions will hurt performance, and should be avoided for performance-sensitive code.
 
 The coefficients arrays can be converted to and from the same layout as pyWavelets_, which is great for comparison or migration:
 
@@ -96,8 +97,10 @@ If you ever need to plot the coefficient on one axis, it can be good to have a f
 Benchmarks
 ----------
 
-PyWavelets_ is a great library with a rich feature set. However, even though it is largely Cython-powered, the performance can be lacking, especially for 2D transforms (where my profiler tells me that a lot of time is spent shuffling memory, such as running ``transpose()``), and especially if you are running small-image transforms, but *a lot* of them:
+PyWavelets_ is a great library with a rich feature set. However, even though it is largely Cython-powered, the performance can be lacking for 2D transforms (where my profiler tells me that a lot of time is spent shuffling memory, such as running ``transpose()``), and especially if you are running small-image transforms, but *a lot* of them:
 
-.. image:: images/wavelet_benchmark.png 
+.. image:: images/wavelet_benchmark_2d.png 
+
+The benchmark tests the D4 (``'db4'``) wavelet. This benchmark does not include the time it takes to create the functions using the factory. However, this is not a significant time and becomes neglible compared to module loading costs in Python.
 
 .. _pyWavelets: http://www.pybytes.com/pywavelets/ 

@@ -58,14 +58,29 @@ Wavelets (:mod:`amitgroup.util.wavelet`)
 ----------------------------------------
 .. currentmodule:: amitgroup.util.wavelet
 
+Read more about wavelets in the chapter :ref:`wavelet`.
+
+Main functions
+~~~~~~~~~~~~~~
+
 .. autosummary::
    :toctree: generated/
   
-   wavedec2_factory
-   waverec2_factory
-   smart_flatten
-   smart_deflatten
+   daubechies_factory
+   wavedec
+   waverec
+   wavedec2
+   waverec2
+
+Helper functions
+~~~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+  
    pywt2array
+   smart_deflatten
+   smart_flatten
 
 Plotting (:mod:`amitgroup.plot`)
 --------------------------------

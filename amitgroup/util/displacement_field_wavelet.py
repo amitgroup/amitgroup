@@ -10,10 +10,6 @@ from .interp2d import interp2d
 
 from amitgroup.util import wavelet
 
-# TODO: Move these functions somewhere.
-func = wavelet.wavedec2_factory((32, 32), levels=3)
-invfunc = wavelet.waverec2_factory((32, 32), levels=3)
-
 class DisplacementFieldWavelet(DisplacementField):
     """
     Displacement field using wavelets.
@@ -125,8 +121,8 @@ class DisplacementFieldWavelet(DisplacementField):
         #])
         
         new = np.zeros(self.ushape)
-        new[0] = func(f[0], level)    
-        new[1] = func(f[1], level)
+        new[0] = ag.util.wavelet.wavedec2(f[0], self.wavelet, level)
+        new[1] = ag.util.wavelet.wavedec2(f[1], self.wavelet, level)
         
         #np.testing.assert_array_almost_equal(old, new)
         return new 
@@ -135,8 +131,8 @@ class DisplacementFieldWavelet(DisplacementField):
     def invtransform(self, x, y, last_level=np.inf):
         """See :func:`DisplacementField.deform_map`"""
 
-        Ux = invfunc(self.u[0], self.levels)
-        Uy = invfunc(self.u[1], self.levels)
+        Ux = ag.util.wavelet.waverec2(self.u[0], self.wavelet)
+        Uy = ag.util.wavelet.waverec2(self.u[1], self.wavelet)
         return Ux, Uy 
 
     def deform(self, F, levels=np.inf):

@@ -2,6 +2,9 @@
 
 import numpy as np
 import scipy
+import scipy.sparse
+
+SPARSITY_THRESHOLD = 256
 
 def _populate(W, filtr, yoffset):
     N = len(filtr)
@@ -10,23 +13,35 @@ def _populate(W, filtr, yoffset):
             W[yoffset+i, (-(N-2)//2+2*i+j)%W.shape[1]] += filtr[j]
 
 def _create_W(shape, level, filter_low, filter_high):
-    d = 2**(level-1)
-    W = np.zeros((shape[0]//d, shape[1]//d))
+    d = 1 << (level-1)
+    sh = (shape[0]//d, shape[1]//d)
+    if min(sh) >= SPARSITY_THRESHOLD:
+        W = scipy.sparse.lil_matrix(sh)
+    else:
+        W = np.asmatrix(np.zeros(sh))
+
     _populate(W, filter_low, 0)
     _populate(W, filter_high, shape[0]//(2*d))
-    return np.asmatrix(W)
-
-#def create_W(*args, **kwargs):
-    #return _create_W(*args, **kwargs)
+    if scipy.sparse.issparse(W):
+        return W.tocsr() # Faster if you're not changing it anymore
+    else:
+        return W
 
 def _create_single(shape, level, filtr):
-    d = 2**(level-1)
-    GH = np.zeros((shape[0]//(2*d), shape[1]//d))
+    d = 1 << (level-1)
+    sh = (shape[0]//(2*d), shape[1]//d)
+    if min(sh) >= SPARSITY_THRESHOLD:
+        GH = scipy.sparse.lil_matrix(sh)
+    else:
+        GH = np.asmatrix(np.zeros(sh))
     _populate(GH, filtr, 0)
-    return np.asmatrix(GH)
+    if scipy.sparse.issparse(GH):
+        return GH.tocsr() # Faster if you're not changing it anymore
+    else:
+        return GH 
 
 def _qdot(X, A):
-    return X * A * X.T#np.dot(X, np.dot(A, X.T))
+    return X * A * X.T
 
 _db_kernels = {
     'haar': np.array([0.70710678118654757, 0.70710678118654757]),
@@ -57,12 +72,12 @@ def _get_filters(wavelet):
     try:
         lowpass = _db_kernels[wavelet]
     except KeyError:
-        raise ValueError("Wavlet type not supported!")
+        raise ValueError("Wavelet type not supported: ('{0}')".format(wavelet))
     highpass = lowpass[::-1].copy()
     highpass[1::2] *= -1
     return lowpass, highpass
 
-def _arrange_filter_matrices(shape, wavelet, levels):
+def _arrange_filter_matrices(shape, wavelet):
     filter_low, filter_high = _get_filters(wavelet)
 
     assert len(shape) == 2
@@ -71,35 +86,30 @@ def _arrange_filter_matrices(shape, wavelet, levels):
     levels_list = range(1, int(np.log2(shape[0]))+1)
 
     max_level = int(np.log2(max(shape)))
-    levels = min(max_level, levels)
 
     # Setup matrices
     Ws = [_create_W(shape, level, filter_low, filter_high) for level in levels_list]
+    Wgs = []
 
     # Combine all the matrices for the steps where we throw away the coefficients.
     Wg = np.asmatrix(np.eye(shape[0], shape[1]))
-    for l in xrange(0, max_level-levels):
+    for l in xrange(0, max_level):
+        new_M = Ws[l] * Wg
+        if min(new_M.shape) >= SPARSITY_THRESHOLD:
+            new_M = scipy.sparse.csr_matrix(new_M)
+        Wgs.append(new_M)
         Wg = _create_single(shape, l+1, filter_low) * Wg
-    # Also include the first Wavelet transform.
-    Wg = Ws[max_level-levels] * Wg
+    Wgs.append(Wg)
 
-    sparse_threshold = 512 
+    Wgs = Wgs[::-1]
 
-    if min(Wg.shape) >= sparse_threshold:
-        Wg = scipy.sparse.lil_matrix(Wg)
+    return Wgs, Ws, max_level
 
-    for i, W in enumerate(Ws):
-        if min(W.shape) > sparse_threshold:
-            Ws[i] = scipy.sparse.lil_matrix(W)
-    
-    return Wg, Ws, max_level, levels
-
-# forward == deconstruction
-def wavedec2_factory(shape, wavelet='db2', levels=np.inf):
+def daubechies_factory(shape, wavelet='db2'):
     """
-    Creates a forward discrete wavelet transform function.
+    Creates a forward and an inverse discrete wavelet transform function.
 
-    The function is specialized for a specific size, wavelet and number of coefficient levels.
+    The function is specialized for a specific size and wavelet.
 
     .. seealso::
 
@@ -111,59 +121,11 @@ def wavedec2_factory(shape, wavelet='db2', levels=np.inf):
         A tuple describing the size of the input, for instance ``(32, 32)``. Values must be powers of two.
     wavelet : str
         Type of wavelet described as a string. Supported values are ``'db1'``, ``'db2'``, ... ``'db20'``. What is called, for instance, `db3` is what is generally called the D6 wavelet (since it uses a kernel of size 6). The string ``'haar'`` is a synonym for ``'db1'``.
-    levels : int
-        Specify how many levels of coefficients you plan to use. The default is ``np.inf``, which will default to the maximum number possible, which will make the coefficient array the same size as `shape`. Notice that `levels` is zero-based, in the sense that entering 0 is valid and will the transform operate only on the energy-level coefficient.
 
     Returns
     -------
-    wavedec2 : func(A)
-        Returns a function that takes a single argument, `A`, input data that must be of the size specified above.
-
-    Examples
-    --------
-    >>> import amitgroup as ag
-    >>> import amitgroup.util.wavelet
-    
-    Create a wavelet decomposition function:
-
-    >>> wavedec2 = ag.util.wavelet.wavedec2_factory((8, 8), 'db2')
-
-    Transform something:
-    
-    >>> A = np.arange(8 * 8).reshape((8, 8))
-    >>> coefs = wavedec2(A) 
-    """
-    Wg, Ws, max_level, levels = _arrange_filter_matrices(shape, wavelet, levels) 
-    def wavedec2(A):
-        coefs = _qdot(Wg, A) 
-        for l in xrange(levels-1, 0, -1):
-            N = 1 << l 
-            coefs[:N,:N] = _qdot(Ws[max_level-l], coefs[:N,:N])
-        return np.asarray(coefs)
-    return wavedec2 
-        
-# inverse == reconstruction
-def waverec2_factory(shape, wavelet='db2', levels=np.inf):
-    """
-    Creates an inverse discrete wavelet transform function.
-
-    The function is specialized for a specific size, wavelet and number of coefficient levels.
-
-    .. seealso::
-
-        :ref:`wavelet2d`
-
-    Parameters
-    ----------
-    shape : tuple 
-        A tuple describing the size of the input, for instance ``(32, 32)``. Values must be powers of two.
-    wavelet : str
-        Type of wavelet described as a string. Supported values are ``'db1'``, ``'db2'``, ... ``'db20'``. What is called, for instance, `db3` is what is generally called the D6 wavelet (since it uses a kernel of size 6). The string ``'haar'`` is a synonym for ``'db1'``.
-    levels : int
-        Specify how many levels of coefficients you plan to use. The default is ``np.inf``, which will default to the maximum number possible, which will make the coefficient array the same size as `shape`. Notice that `levels` is zero-based, in the sense that entering 0 is valid and will the transform operate only on the energy-level coefficient.
-
-    Returns
-    -------
+    wavedec2 : func(A[, levels])
+        Returns a function that takes an argument, `A`, input data that must be of the size specified above. It also takes an optional argument `levels`, where you can specify how many coefficient levels you plan to use. It will return an array with the coefficients of shape ``(2**levels, 2**levels)``.
     waverec2 : func(coefs)
         Returns a function that takes a single argument, `coefs`, the coefficients to use to reconstruct the spatial information. 
 
@@ -176,32 +138,213 @@ def waverec2_factory(shape, wavelet='db2', levels=np.inf):
 
     To compress a face and then inspect the results, let's first create the transform functions:
 
-    >>> wavedec2 = ag.util.wavelet.wavedec2_factory(face.shape, 'db2', levels=4)
-    >>> waverec2 = ag.util.wavelet.waverec2_factory(face.shape, 'db2', levels=4)
+    >>> wavedec2, waverec2 = ag.util.wavelet.daubechies_factory(face.shape, 'db8')
 
     And then deconstruct a face to coefficients and the reconstruct it again. Since we only used 4 coefficient levels, information will be lost. 
     
-    >>> new_face = waverec2(wavedec2(face))
+    >>> new_face = waverec2(wavedec2(face, levels=4))
     >>> ag.plot.images([face, new_face])
     >>> plt.show()
     """
-    Wg, Ws, max_level, levels = _arrange_filter_matrices(shape, wavelet, levels) 
-    def waverec2(coefs):
-        A = coefs.copy()
-        for l in xrange(1, levels):
-            N = 1 << l 
-            A[:N,:N] = _qdot(Ws[max_level-l].T, A[:N,:N])
-        A = _qdot(Wg.T, A)
-        return np.asarray(A)
-    return waverec2 
+    if isinstance(shape, int): # One dimensional!
+        Wgs, Ws, max_level = _arrange_filter_matrices((shape, shape), wavelet) 
+        def wavedec(A, levels=np.inf):
+            A = A.reshape((len(A), 1))
+            levels = min(max_level, levels)
+            coefs = Wgs[levels] * A 
+            for l in xrange(levels-1, 0, -1):
+                N = 1 << l 
+                coefs[:N] = Ws[max_level-l] * coefs[:N]
+            return np.asarray(coefs).flatten()
+        def waverec(coefs):
+            levels = int(np.log2(coefs.shape[0]))
+            A = coefs.reshape((len(coefs), 1)).copy()
+            for l in xrange(1, levels):
+                N = 1 << l 
+                A[:N] = Ws[max_level-l].T * A[:N]
+            A = Wgs[levels].T * A
+            return np.asarray(A).flatten()
+        return wavedec, waverec 
+
+    elif isinstance(shape, tuple) and len(shape) == 2: # 2 dimensional!
+        Wgs, Ws, max_level = _arrange_filter_matrices(shape, wavelet) 
+        def wavedec2(A, levels=np.inf):
+            levels = min(max_level, levels)
+            coefs = _qdot(Wgs[levels], A) 
+            for l in xrange(levels-1, 0, -1):
+                N = 1 << l 
+                coefs[:N,:N] = _qdot(Ws[max_level-l], coefs[:N,:N])
+            return np.asarray(coefs)
+        def waverec2(coefs):
+            levels = int(np.log2(coefs.shape[0]))
+            A = coefs.copy()
+            for l in xrange(1, levels):
+                N = 1 << l 
+                A[:N,:N] = _qdot(Ws[max_level-l].T, A[:N,:N])
+            A = _qdot(Wgs[levels].T, A)
+            return np.asarray(A)
+        return wavedec2, waverec2 
 
 
-# TODO: Make this general to any size (starting with squares)
+# CACHED 1-D
+################################################################################
+
+_db_wavedec_cache = {}
+_db_waverec_cache = {}
+
+def wavedec(A, wavelet='db2', levels=np.inf):
+    """
+    Performs a 1D wavelet decomposition (forward transform).
+
+    .. note::
+
+        This function runs :func:`daubechies_factory` for you and caches the value. This means that first time you call it,
+        performance will be slower than expected. You will also incur a dictionary lookup, which might cost you 100 ns. 
+
+    .. seealso::
+
+        :ref:`wavelet1d`
+
+    Parameters
+    ----------
+    A : ndarray
+        1D input data. Length must be powers of two.
+    wavelet : str
+        Wavelet type. See :func:`daubechies_factory`.
+    levels : int
+        Specify how many levels of coefficients you plan to use. The default is ``np.inf``, which will default to the maximum number possible, which will make the coefficient array the same length as `A`. Notice that `levels` is zero-based, in the sense that entering 0 is valid and will the transform operate only on the energy-level coefficient.
+    """
+    global _db_wavedec_cache, _db_waverec_cache
+    tup = (len(A), wavelet)
+    try:
+        dec = _db_wavedec_cache[tup]
+    except KeyError:
+        dec, rec = daubechies_factory(len(A), wavelet) 
+        _db_wavedec_cache[tup] = dec
+        _db_waverec_cache[rec] = dec
+
+    return dec(A, levels) 
+
+def waverec(coefs, wavelet='db2'):
+    """
+    Performs a 1D wavelet reconstruction (inverse transform).
+
+    In :func:`wavedec`, you specify `levels`, which is not done in this function since it can be inferred from the shape of `coefs`.
+    
+    .. note::
+
+        This function runs :func:`daubechies_factory` for you and caches the value. This means that first time you call it,
+        performance will be slower than expected. You will also incur a dictionary lookup, which might cost you 100 ns. 
+
+    .. seealso::
+
+        :ref:`wavelet1d`
+
+    Parameters
+    ----------
+    A : ndarray
+        1D input data. Length must be powers of two and square.
+    wavelet : str
+        Wavelet type. See :func:`daubechies_factory`.
+    """
+    global _db_wavedec_cache, _db_waverec_cache
+    tup = (len(coefs), wavelet)
+    try:
+        rec = _db_waverec_cache[tup]
+    except KeyError:
+        dec, rec = daubechies_factory(len(coefs), wavelet) 
+        _db_wavedec_cache[tup] = dec
+        _db_waverec_cache[rec] = dec
+
+    return rec(coefs) 
+
+# CACHED 2-D
+################################################################################
+
+_db_wavedec2_cache = {}
+_db_waverec2_cache = {}
+
+def wavedec2(A, wavelet='db2', levels=np.inf):
+    """
+    Performs a 2D wavelet decomposition (forward transform).
+
+    .. note::
+
+        This function runs :func:`daubechies_factory` for you and caches the value. This means that first time you call it,
+        performance will be slower than expected. You will also incur a dictionary lookup, which might cost you 100 ns. 
+
+    .. seealso::
+
+        :ref:`wavelet2d`
+
+    Parameters
+    ----------
+    A : ndarray
+        2D input data. Shape must be powers of two and square.
+    wavelet : str
+        Wavelet type. See :func:`daubechies_factory`.
+    levels : int
+        Specify how many levels of coefficients you plan to use. The default is ``np.inf``, which will default to the maximum number possible, which will make the coefficient array the same size as `A`. Notice that `levels` is zero-based, in the sense that entering 0 is valid and will the transform operate only on the energy-level coefficient.
+    """
+    global _db_wavedec2_cache, _db_waverec2_cache
+    tup = (A.shape, wavelet)
+    try:
+        dec = _db_wavedec2_cache[tup]
+    except KeyError:
+        dec, rec = daubechies_factory(A.shape, wavelet) 
+        _db_wavedec2_cache[tup] = dec
+        _db_waverec2_cache[rec] = dec
+
+    return dec(A, levels) 
+
+def waverec2(coefs, wavelet='db2'):
+    """
+    Performs a 2D wavelet reconstruction (inverse transform).
+
+    In :func:`wavedec2`, you specify `levels`, which is not done in this function since it can be inferred from the shape of `coefs`.
+    
+    .. note::
+
+        This function runs :func:`daubechies_factory` for you and caches the value. This means that first time you call it,
+        performance will be slower than expected. You will also incur a dictionary lookup, which might cost you 100 ns. 
+
+    .. seealso::
+
+        :ref:`wavelet2d`
+
+    Parameters
+    ----------
+    A : ndarray
+        2D input data. Shape must be powers of two and square.
+    wavelet : str
+        Wavelet type. See :func:`daubechies_factory`.
+    """
+    global _db_wavedec2_cache, _db_waverec2_cache
+    tup = (coefs.shape, wavelet)
+    try:
+        rec = _db_waverec2_cache[tup]
+    except KeyError:
+        dec, rec = daubechies_factory(coefs.shape, wavelet) 
+        _db_wavedec2_cache[tup] = dec
+        _db_waverec2_cache[rec] = dec
+
+    return rec(coefs) 
+
+# HELPER FUNCTIONS
+################################################################################
+
 def smart_flatten(coefficients):
     """
-    This flattens the coefficients in a smart way, so that all coefficients levels are grouped into contiguous blocks, starting from the low-frequency coefficients going to the high-frequency ones.
+    This flattens 2D coefficients in a smart way, so that all coefficients levels are grouped into contiguous blocks, starting from the low-frequency coefficients going to the high-frequency ones.
+
+    Notice that 1D coefficients are already flat and sorted.
+
+    Parameters
+    ----------
+    coefficients : ndarray
+        Wavelet coefficients returned by :func:`wavedec2`.
     """
-    assert coefficients.shape == (8, 8), "Not {0}".format(coefficients.shape)
+    assert coefficients.shape == (8, 8), "TODO: Has not been generalized, only works with shape (8, 8), not {0}".format(coefficients.shape)
     olds = np.zeros(64)
     olds[0] = coefficients[0,0]
     olds[1] = coefficients[1,0]
@@ -218,6 +361,11 @@ def smart_flatten(coefficients):
 def smart_deflatten(flatcoefs):
     """
     Inverse function of :func:`smart_flatten`.
+
+    Parameters
+    ----------
+    flatcoefs : ndarray
+        Flat array of coefficients returned by :func:`smart_flatten`.
     """
     N = int(np.sqrt(len(flatcoefs)))
     A = np.arange(N*N, dtype=int).reshape(N, N)
@@ -228,12 +376,25 @@ def smart_deflatten(flatcoefs):
     news = flatcoefs[new_indices].reshape(8, 8).copy()
     return news 
 
+def pywt2array_1d(coefficients):
+    #assert coefficients[0].shape == (1,1) or len(coefficients[0]) == 1
+    N = 1 << (len(coefficients)-1)
+    u = np.zeros(N)
+    u[0] = float(coefficients[0])
+    for level, c in enumerate(coefficients): 
+        if level != 0:
+            S = len(c) 
+            u[S:2*S] = c
+    return u
+
 def pywt2array(coefficients):
     """
     Converts pywt list-of-tuples result to a monolithic array. This is only applicable for some wavelets.
+
+    Works for both 1D and 2D coefficients. TODO
     """
     assert coefficients[0].shape == (1,1) or len(coefficients[0]) == 1
-    N = 2*len(coefficients[-1][0])
+    N = 1 << (len(coefficients)-1)
     u = np.zeros((N, N))
     u[0,0] = float(coefficients[0])
     for level, c in enumerate(coefficients): 
