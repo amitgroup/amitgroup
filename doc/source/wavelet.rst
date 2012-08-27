@@ -1,3 +1,4 @@
+.. _wavelet:
 
 ==================
 Wavelet Transforms

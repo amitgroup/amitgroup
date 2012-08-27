@@ -6,7 +6,7 @@
 Wavelet Transforms in 2D
 ========================
 
-We provide 2D periodic Daubechies wavelet transforms as a faster alternative to for instance pyWavelets_, especially if you plan to do repeated transforms on the same size input.
+We provide 2D periodic Daubechies wavelet transforms as a faster alternative to for instance PyWavelets_, especially if you plan to do repeated transforms on the same size input.
 
 With our approach, you first create the transform function, where you get to specify the size of the input data, the wavelet type and how many coefficient levels that you plan to use. 
 
@@ -79,12 +79,13 @@ Coefficient conversions
 
     These conversions will hurt performance, and should be avoided for performance-sensitive code.
 
-The coefficients arrays can be converted to and from the same layout as pyWavelets_, which is great for comparison or migration:
+The coefficients arrays can be converted to and from the same layout as PyWavelets_, which is great for comparison or migration:
 
 .. autosummary:: 
    :toctree: generated/
      
-   pywt2array
+   contiguous_to_structured 
+   structured_to_contiguous
 
 If you ever need to plot the coefficient on one axis, it can be good to have a flattened array, that is sorted in terms of the different levels of coefficients (notice that simply running ``flatten()`` on coefficients will not achieve this):
 
@@ -103,4 +104,4 @@ PyWavelets_ is a great library with a rich feature set. However, even though it 
 
 The benchmark tests the D4 (``'db4'``) wavelet. This benchmark does not include the time it takes to create the functions using the factory. However, this is not a significant time and becomes neglible compared to module loading costs in Python.
 
-.. _pyWavelets: http://www.pybytes.com/pywavelets/ 
+.. _PyWavelets: http://www.pybytes.com/pywavelets/ 

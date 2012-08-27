@@ -38,9 +38,7 @@ def _cost_deriv(u, imdef, F, I, delF, x, y, level):
     Fzs = ag.util.interp2d(z0, z1, F)
 
     # Interpolate delF at zs 
-    delFzs = np.empty((2,) + F.shape) 
-    for q in range(2):
-        delFzs[q] = ag.util.interp2d(z0, z1, delF[q], fill_value=0.0)
+    delFzs = ag.util.interp2d(z0, z1, delF, fill_value=0.0)
 
     terms = Fzs - I
 
@@ -125,7 +123,7 @@ def image_deformation(F, I, last_level=3, penalty=1.0, rho=2.0, wavelet='db2', t
     import pywt
 
     level_capacity = last_level
-    delF = np.gradient(F, 1/F.shape[0], 1/F.shape[1])
+    delF = np.asarray(np.gradient(F, 1/F.shape[0], 1/F.shape[1]))
     dx = 1/np.prod(F.shape)
 
     settings = dict(

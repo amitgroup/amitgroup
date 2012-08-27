@@ -8,7 +8,7 @@ Wavelet Transforms in 1D
 
 .. warning::
     
-    Our support for 1D Wavelet is an extension of our support for 2D Wavelets, which was created to outperform pyWavelets_ specifically on 2D wavelet transforms. Scroll down to the benchmarks and you will see that pyWavelets_ is faster at 1D transforms, so you might want to use that instead.
+    Our support for 1D Wavelet is an extension of our support for 2D Wavelets, which was created to outperform PyWavelets_ specifically on 2D wavelet transforms. Scroll down to the benchmarks and you will see that PyWavelets_ is faster at 1D transforms, so you might want to use that instead.
 
 Usage
 -----
@@ -24,7 +24,7 @@ You can run :func:`wavedec` or :func:`waverec` directly, or you can use the :fun
 Coefficient layout
 ------------------
 
-The way we store coefficients in 1D is similar, but not exactly, like pyWavelets_ and MATLAB Wavelet Toolbox. In pyWavelets_, for a signal of length 8, we get the coefficients::
+The way we store coefficients in 1D is similar, but not exactly, like PyWavelets_ and MATLAB Wavelet Toolbox. In PyWavelets_, for a signal of length 8, we get the coefficients::
 
     [cA3, cD3, cD2, cD1]
 
@@ -42,9 +42,9 @@ In our functions, it is stored in the same order, but in a contiguous block of m
 Benchmarks
 ----------
 
-Again, our support for 1D wavelets is really just to complement our support for 2D wavelets. We use the same method as for 2D, which in this case hurts performance. A comparison with pyWavelets_ makes it clear that you should probably be using that library instead if you are working with 1D signals and concerned with speed.
+Again, our support for 1D wavelets is really just to complement our support for 2D wavelets. We use the same method as for 2D, which in this case hurts performance. A comparison with PyWavelets_ makes it clear that you should probably be using that library instead if you are working with 1D signals and concerned with speed.
 
 .. image:: images/wavelet_benchmark_1d.png 
 
 
-.. _pyWavelets: http://www.pybytes.com/pywavelets/ 
+.. _PyWavelets: http://www.pybytes.com/pywavelets/ 

@@ -78,9 +78,10 @@ Helper functions
 .. autosummary::
    :toctree: generated/
   
-   pywt2array
+   contiguous_to_structured
    smart_deflatten
    smart_flatten
+   structured_to_contiguous
 
 Plotting (:mod:`amitgroup.plot`)
 --------------------------------

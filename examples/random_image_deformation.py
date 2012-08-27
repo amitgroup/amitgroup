@@ -8,7 +8,7 @@ def main():
     F = ag.io.load_example('two-faces')[0]
     images = [F]
     for i in range(8):
-        imdef = ag.util.DisplacementFieldWavelet(F.shape, 'db7')
+        imdef = ag.util.DisplacementFieldWavelet(F.shape, 'db4')
         imdef.randomize(0.01)
         Fdef = imdef.deform(F) 
         images.append(Fdef)

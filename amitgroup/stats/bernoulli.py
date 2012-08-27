@@ -16,9 +16,7 @@ def _cost(u, imdef, F, X, neg_X, delFjs, x, y, level, all_js):
     z0, z1 = imdef.deform_x(x, y, level)
 
     # Interpolate F at zs
-    Fjzs = np.empty(F.shape) 
-    for j in all_js: 
-        Fjzs[j] = ag.util.interp2d(z0, z1, F[j])
+    Fjzs = ag.util.interp2d(z0, z1, F)
 
     # 3. Cost
 
@@ -39,20 +37,15 @@ def _cost_deriv(u, imdef, F, X, neg_X, delFjs, x, y, level, all_js):
     z0, z1 = imdef.deform_x(x, y, level)
 
     # Interpolate F at zs
-    Fjzs = np.empty(F.shape) 
-    for j in all_js: 
-        Fjzs[j] = ag.util.interp2d(z0, z1, F[j])
+    Fjzs = ag.util.interp2d(z0, z1, F)
     neg_Fjzs = 1 - Fjzs
 
     # Interpolate delF at zs 
-    delFjzs = np.empty((2, 8) + F.shape[1:]) 
-    for q in range(2):
-        for j in all_js: 
-            delFjzs[q,j] = ag.util.interp2d(z0, z1, delFjs[j][q], fill_value=0.0)
+    delFjzs = ag.util.interp2d(z0, z1, delFjs, fill_value=0.0)
 
     s = -(X/Fjzs - neg_X/neg_Fjzs)
     W = np.empty((2,) + x.shape) # Change to empty
-    for q in range(2):
+    for q in xrange(2):
         grad = delFjzs[q]
         W[q] = (s * grad).sum(axis=0) 
 
@@ -70,8 +63,8 @@ if 0:
         deriv = np.zeros(orig_u.shape)
         limit = imdef.flat_limit(level) 
         dt = 0.00001
-        for q in range(2):
-            for i in range(limit):
+        for q in xrange(2):
+            for i in xrange(limit):
                 u = np.copy(orig_u)
                 u[q,i] -= dt
                 cost0 = _cost(u, imdef, F, X, delFjs, x, y, level, all_js)
@@ -104,6 +97,7 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.1, rho=2.0,
         delF = np.gradient(F[j], 1/F[j].shape[0], 1/F[j].shape[1])
         # Normalize since the image covers the square around [0, 1].
         delFjs.append(delF)
+    delFjs = np.rollaxis(np.asarray(delFjs), 1)
 
     settings = dict(
         penalty=penalty, 
@@ -123,18 +117,20 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.1, rho=2.0,
         def cb(uk):
             if not plw.tick(1):
                 raise ag.AbortException() 
-            for j in range(8):
+            for j in xrange(8):
                 plw.imshow(imdef.deform(F[j]), subplot=j*2)
                 plw.imshow(I[j], subplot=j*2+1)
     else:
         cb = None 
 
     min_cost = np.inf
-    for level in range(start_level, last_level+1): 
+    for level in xrange(start_level, last_level+1): 
         ag.info("Running coarse-to-fine level", level)
-        u = imdef.abridged_u(level)
-        #u = imdef.u.reshape(2, 8, 8)[:,:2**(level-1),:2**(level-1)]
+        
+        imdef.reset(level)
+        u = imdef.u
         args = (imdef, F, X, 1-X, delFjs, x, y, level, all_js)
+
         try:
             new_u, cost, min_deriv, Bopt, func_calls, grad_calls, warnflag = \
                 fmin_bfgs(_cost, u, _cost_deriv, args=args, callback=cb, gtol=gtol, maxiter=maxiter, full_output=True, disp=False)
@@ -146,7 +142,8 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.1, rho=2.0,
         if cost < min_cost:
             # If the algorithm makes mistakes and returns a really high cost, don't use it.
             min_cost = cost
-            imdef.u[:,:u.shape[1],:u.shape[2]] = new_u.reshape(u.shape)
+            #imdef.u[:,:u.shape[1],:u.shape[2]] = new_u.reshape(u.shape)
+            imdef.u = new_u.reshape(imdef.u.shape)
 
     #if debug_plot:
     #    plw.mainloop()

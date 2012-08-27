@@ -17,7 +17,7 @@ class TestWavelet(unittest.TestCase):
         A = np.arange(length)
 
         coefs = pywt.wavedec(A, wavelet, mode='per', level=ll)
-        u_ref = ag.util.wavelet.pywt2array_1d(coefs[:levels+1]) # including 0th level as one
+        u_ref = ag.util.wavelet.structured_to_contiguous(coefs[:levels+1]) # including 0th level as one
 
         wavedec, waverec = ag.util.wavelet.daubechies_factory(length, wavelet=wavelet)
         u = wavedec(A, levels=levels)
@@ -90,7 +90,7 @@ class TestWavelet(unittest.TestCase):
         A = np.arange(np.prod(shape)).reshape(shape)
 
         coefs = pywt.wavedec2(A, wavelet, mode='per', level=ll)
-        u_ref = ag.util.wavelet.pywt2array(coefs[:levels+1]) # including 0th level as one
+        u_ref = ag.util.wavelet.structured_to_contiguous(coefs[:levels+1]) # including 0th level as one
 
         wavedec2, waverec2 = ag.util.wavelet.daubechies_factory(shape, wavelet=wavelet)
         u = wavedec2(A, levels=levels)

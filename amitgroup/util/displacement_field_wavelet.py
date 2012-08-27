@@ -39,9 +39,18 @@ class DisplacementFieldWavelet(DisplacementField):
         self.shape = shape
         self.prepare_shape()
         self.rho = rho 
+        self.penalty = penalty
         biggest = self.scriptNs[-1]        
+        self.u = None
+        self.full_size_means = means
+        self.full_size_variances = variances
+
+        self.reset(level_capacity)
+
+
+    def reset(self, level_capacity):
         self.level_capacity = level_capacity or self.levels
-        N = 2**self.level_capacity 
+        N = 1 << self.level_capacity 
         self.ushape = (2, N, N)
 
         # We divide the penalty, since the raw penalty is the ratio
@@ -51,16 +60,16 @@ class DisplacementFieldWavelet(DisplacementField):
         # implies an adjustment of 2**self.levels for the s.d. We take
         # the square of this since we're dealing with the variance. 
         # Notice: Penalty is only applicable if means and variances are not set manually
-        if penalty:
-            self.penalty_adjusted = penalty / 4**self.levels 
+        if self.penalty:
+            self.penalty_adjusted = self.penalty / 4**self.levels 
 
-        if means is not None:
-            self.mu = means 
+        if self.full_size_means is not None:
+            self.mu = self.full_size_means[:N,:N]
         else:
             self.mu = np.zeros(self.ushape)
 
-        if variances is not None:
-            self.lmbks = 1/variances
+        if self.full_size_variances is not None:
+            self.lmbks = 1/self.full_size_variances[:N,:N]
         else:
             self._init_default_lmbks()
 
@@ -72,11 +81,18 @@ class DisplacementFieldWavelet(DisplacementField):
         return (2, N, N)
 
     def _init_u(self):
-        self.u = np.copy(self.mu)
+        if self.u is not None:
+            # Resizes the coefficients, and fills with self.mu
+            new_u = np.copy(self.mu)
+            A, B = min(new_u.shape[1], self.u.shape[1]), min(new_u.shape[2], self.u.shape[2])
+            new_u[:,:A,:B] = self.u[:,:A,:B]
+            self.u = new_u
+        else:
+            self.u = np.copy(self.mu)
 
     def _init_default_lmbks(self):
         self.lmbks = np.zeros(self.ushape)
-        for level in range(self.levels+1)[::-1]:
+        for level in xrange(self.levels, -1, -1):
             N = 2**level
             self.lmbks[:,:N,:N] = self.penalty_adjusted * 2.0**(self.rho * (self.scriptNs[level]-1))
 
@@ -91,7 +107,8 @@ class DisplacementFieldWavelet(DisplacementField):
         self.u.fill(0.0)
         #shape = self.coef_shape(level)
         N = 2**level
-        self.u[:,:N,:N] = flat_u.reshape((2, N, N))
+        # TODO: Should not need 2*N*N
+        self.u[:,:N,:N] = flat_u[:2*N*N].reshape((2, N, N))
 
     def prepare_shape(self):
         side = max(self.shape)
@@ -112,27 +129,18 @@ class DisplacementFieldWavelet(DisplacementField):
         """
         Forward transform of the wavelet.
         """ 
-        #old = np.asarray([
-        #    self.pywt2array(pywt.wavedec2(f[q], self.wavelet, mode=self.mode, level=self.levels), self.levelshape, level, self.level_capacity) for q in range(2)
-        #])
-        #new = np.asarray([
-        #    func(f[q], level) for q in range(2)
-        #    ag.util.wavelet.new2old(func(f[q], level)) for q in range(2)
-        #])
-        
-        new = np.zeros(self.ushape)
-        new[0] = ag.util.wavelet.wavedec2(f[0], self.wavelet, level)
-        new[1] = ag.util.wavelet.wavedec2(f[1], self.wavelet, level)
-        
-        #np.testing.assert_array_almost_equal(old, new)
+        new = np.empty(self.ushape)
+        S = 1 << level
+        # TODO: Slicing should not be necessary
+        new[0,:S,:S] = ag.util.wavelet.wavedec2(f[0], self.wavelet, level, shape=self.shape)
+        new[1,:S,:S] = ag.util.wavelet.wavedec2(f[1], self.wavelet, level, shape=self.shape)
         return new 
 
     # TODO: last_level not used
     def invtransform(self, x, y, last_level=np.inf):
         """See :func:`DisplacementField.deform_map`"""
-
-        Ux = ag.util.wavelet.waverec2(self.u[0], self.wavelet)
-        Uy = ag.util.wavelet.waverec2(self.u[1], self.wavelet)
+        Ux = ag.util.wavelet.waverec2(self.u[0], self.wavelet, shape=self.shape)
+        Uy = ag.util.wavelet.waverec2(self.u[1], self.wavelet, shape=self.shape)
         return Ux, Uy 
 
     def deform(self, F, levels=np.inf):
@@ -144,20 +152,20 @@ class DisplacementFieldWavelet(DisplacementField):
         im = interp2d(z0, z1, F)
         return im
     
-    def abridged_u(self, last_level=None):
+    def abridged_u(self, levels=None):
         #return self.u[:,:self.flat_limit(last_level)]
-        N = 2**(last_level)
-        return self.u[:,:N,:N]
+        S = 1 << levels 
+        return self.u[:,:S,:S].copy()
 
     def coef_shape(self, last_level=None):
         return (self.ushape[0], self.flat_limit(last_level))
 
     def logprior(self, last_level=None):
-        N = None if last_level is None else 2**last_level
-        return -(self.lmbks * (self.u - self.mu)**2).reshape(2, 8, 8)[:,:N,:N].sum() / 2
+        N = None if last_level is None else 1 << last_level
+        return -(self.lmbks * (self.u - self.mu)**2)[:,:N,:N].sum() / 2
 
     def logprior_derivative(self, last_level=None):
-        N = None if last_level is None else 2**last_level
+        N = None if last_level is None else 1 << last_level
         ret = (-self.lmbks * (self.u - self.mu))[:,:N,:N]
         return ret
 
@@ -176,81 +184,56 @@ class DisplacementFieldWavelet(DisplacementField):
         # TODO: Come up with better name, and maybe place
         return None if last_level is None else _flat_start(last_level+1, 0, self.levelshape)
 
-    def range_slice(self, level, alpha=None):
+    def randomize(self, sigma=0.01, rho=2.5, start_level=1, levels=3):
         """
-        Return a slice object corresponding to the range in the flattened coefficient array.
-
-        Parameters
-        ----------
-        level : int
-            Coefficient level.
-        alpha : int or None
-            If None, then the range of all alphas are returned. Otherwise, only the specified alpha.
-        """
-        n0 = _flat_start(level, 0, self.levelshape)
-        if alpha is None:
-            n1 = n0 + _flat_length(self.levelshape, level)
-        else:
-            n1 = n0 + _flat_length_one_alpha(self.levelshape, level)
-        return slice(n0,n1)
-
-    if 0: # TODO: Recreate
-        def randomize(self, sigma=0.01, rho=2.5, start_level=1, levels=3):
-            """
-            Randomly sets the coefficients up to a certain level by sampling a Gaussian. 
-            
-            Parameters
-            ----------  
-            sigma : float
-                Standard deviation of the Gaussian. The `sigma` is adjusted to a normalized image
-                scale and not the scale of coefficient values (nor pixels). This means that setting `sigma` to 1, the standard
-                deviation is the same size as the image, which is a lot. A more appropriate value is
-                thus 0.01.
-            rho : float
-                A value higher than 1, will cause more dampening for higher coefficients, which will
-                result in a smoother deformation.
-            levels: int
-                Number of levels that should be randomized. The levels above will be set to zero. For a funny-mirror-type deformation, this should be limited to about 3.
-
-            Examples
-            --------
-            >>> import amitgroup as ag
-            >>> import matplotlib.pylab as plt
-
-            Generate 9 randomly altered faces.
-            
-            >>> face = ag.io.load_example('faces')[0]
-            >>> imdef = ag.util.DisplacementFieldWavelet(face.shape, 'db8')
-            >>> ag.plot.images([imdef.randomize(0.1).deform(face) for i in range(9)])
-            >>> plt.show()
-            """
-            # Reset all values first
-            self.u *= 0.0
+        Randomly sets the coefficients up to a certain level by sampling a Gaussian. 
         
-            for q in range(2):
-                for level in range(start_level, min(self.levels+1, start_level+levels)):
-                    N, M = _levels2shape(self.levelshape, level)
+        Parameters
+        ----------  
+        sigma : float
+            Standard deviation of the Gaussian. The `sigma` is adjusted to a normalized image
+            scale and not the scale of coefficient values (nor pixels). This means that setting `sigma` to 1, the standard
+            deviation is the same size as the image, which is a lot. A more appropriate value is
+            thus 0.01.
+        rho : float
+            A value higher than 1, will cause more dampening for higher coefficients, which will
+            result in a smoother deformation.
+        levels: int
+            Number of levels that should be randomized. The levels above will be set to zero. For a funny-mirror-type deformation, this should be limited to about 3.
 
-                    # First of all, a coefficient of 1, will be shift the image 1/2**self.levels, 
-                    # so first we have to adjust for that.
-                    # Secondly, higher coefficient should be adjusted by roughly 2**-s, to account
-                    # for the different amplitudes of a wavelet basis (energy-conserving reasons).
-                    # Finally, we might want to dampen higher coefficients even further, to create
-                    # a smoother image. This is done by rho.
-                    adjust = 2.0**(self.levels - rho * max(level-1, 0))# * 2**self.levels
+        Examples
+        --------
+        >>> import amitgroup as ag
+        >>> import matplotlib.pylab as plt
 
-                    if level == 0:
-                        self.u[q,self.range_slice(level, 0)] = np.random.normal(0.0, sigma, (n1-n0)) * adjust
-                    else:
-                        als = []
-                        for alpha in range(3):
-                            n0 = _flat_start(level, 0, self.levelshape)
-                            n1 = n0 + _flat_length_one_alpha(self.levelshape, level)
-                            self.u[q,self.range_slice(level, alpha)] = np.random.normal(0.0, sigma, (n1-n0)) * adjust
-            return self
+        Generate 9 randomly altered faces.
+        
+        >>> face = ag.io.load_example('faces')[0]
+        >>> imdef = ag.util.DisplacementFieldWavelet(face.shape, 'db8')
+        >>> ag.plot.images([imdef.randomize(0.1).deform(face) for i in range(9)])
+        >>> plt.show()
+        """
+        # Reset all values first
+        self.u.fill(0.0)
+    
+        end_level = min(self.levels+1, start_level+levels)
+        for q in xrange(2):
+            for level in xrange(end_level, start_level-1, -1):
+                N = 1 << level
+
+                # First of all, a coefficient of 1, will be shift the image 1/2**self.levels, 
+                # so first we have to adjust for that.
+                # Secondly, higher coefficient should be adjusted by roughly 2**-s, to account
+                # for the different amplitudes of a wavelet basis (energy-conserving reasons).
+                # Finally, we might want to dampen higher coefficients even further, to create
+                # a smoother image. This is done by rho.
+                adjust = 2.0**(self.levels - rho * max(level-1, 0))
+
+                self.u[:,:N,:N] = np.random.normal(0.0, sigma, (2, N, N)) * adjust
+        return self
 
     def ilevels(self):
-        for level in range(self.levels+1):
+        for level in xrange(self.levels+1):
             alphas = 1 if level == 0 else 3
             yield level, (alphas,)+_levels2shape(self.levelshape, level)
 
@@ -275,46 +258,3 @@ class DisplacementFieldWavelet(DisplacementField):
         alphas = 1 if level == 0 else 3
         size = _levels2shape(self.levelshape, level)
         return self.lmbks[:,level,:alphas,:size[0],:size[1]]
-
-    if 0:
-        @classmethod
-        def pywt2array(cls, coefficients, levelshape, last_level=np.inf, level_capacity=np.inf):
-            N = _total_length(levelshape, level_capacity)
-            u = np.zeros(N)
-            pos = 0
-            for i in range(min(level_capacity+1, last_level+1, max(levelshape)+1)):
-                L = _flat_length_one_alpha(levelshape, i)
-                if i == 0:
-                    u[pos:pos+L] = coefficients[i].flatten()
-                    pos += L
-                else:
-                    for a in range(3): 
-                        u[pos:pos+L] = coefficients[i][a].flatten()
-                        pos += L
-                
-            return u
-
-        @classmethod
-        def array2pywt(cls, u, levelshape, last_level):
-            coefficients = []
-            pos = 0
-            lenU = len(u)
-            for level in range(last_level+1): 
-                alphas, N, M = _levels2fullshape(levelshape, level)
-                sh = _levels2shape(levelshape, level)
-                L = _flat_length_one_alpha(levelshape, level)
-                if level == 0:  
-                    coefficients.append(u[pos:pos+L].reshape(sh))
-                    pos += L
-                else:
-                    als = []
-                    for alpha in range(3):
-                        if pos+L <= lenU:
-                            u_segment = u[pos:pos+L]
-                            als.append(u_segment.reshape(sh))
-                        else:
-                            als.append(np.zeros(sh))
-                        pos += L
-                    coefficients.append(tuple(als))
-            return coefficients
-

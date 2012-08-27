@@ -10,7 +10,7 @@ import matplotlib.pylab as plt
 
 def run_test(length, levels):
     setup = "x = np.arange({0})".format(length)
-    N = 20
+    N = 1 
 
     max_level = int(np.log2(length))
 
@@ -36,7 +36,7 @@ u2 = wavedec(x, levels={1})
 
 if __name__ == '__main__':
     #shapes = [(16, 16), (32, 32), (64, 64), (256, 256), (512, 512), (1024, 1024)][:
-    shapes = [(1 << i) for i in range(3, 11+1)]
+    shapes = [(1 << i) for i in range(3, 13+1)]
     shapes_labels = ["{0}".format(shape) for shape in shapes]
     print shapes
     data = np.zeros((len(shapes), 4))
