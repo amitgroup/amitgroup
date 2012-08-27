@@ -33,6 +33,8 @@ class DisplacementFieldWavelet(DisplacementField):
     """
     def __init__(self, shape, wavelet='db2', rho=2.0, penalty=1.0, means=None, variances=None, level_capacity=None):
         #super(DisplacementFieldWavelet, self).__init__(shape)
+        assert means is None or means.ndim == 3
+        assert variances is None or variances.ndim == 3
         
         self.wavelet = wavelet 
         self.mode = 'per'
@@ -85,9 +87,6 @@ class DisplacementFieldWavelet(DisplacementField):
         return (2, N, N)
 
     def _init_u(self):
-        print self.u
-        print '----->' 
-        #N = 1 << self.level_capacity
         new_u = np.copy(self.mu)
         if self.u is not None:
             # Resizes the coefficients, and fills with self.mu
@@ -95,7 +94,6 @@ class DisplacementFieldWavelet(DisplacementField):
             new_u[:,:A,:B] = self.u[:,:A,:B]
 
         self.u = new_u
-        print self.u
 
     def _init_default_lmbks(self):
         self.lmbks = np.zeros(self.ushape)
@@ -113,10 +111,12 @@ class DisplacementFieldWavelet(DisplacementField):
         """
         assert level <= self.level_capacity, "Please increase coefficient capacity for this level"
         # First reset
+        # TODO: This might not be needed either
         self.u.fill(0.0)
         #shape = self.coef_shape(level)
-        N = 2**level
+        N = 1 << level
         # TODO: Should not need 2*N*N
+        self.u.shape, flat_u.shape, N
         self.u[:,:N,:N] = flat_u[:2*N*N].reshape((2, N, N))
 
     def prepare_shape(self):
