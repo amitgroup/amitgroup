@@ -49,7 +49,10 @@ class DisplacementFieldWavelet(DisplacementField):
 
 
     def reset(self, level_capacity):
-        self.level_capacity = level_capacity or self.levels
+        if level_capacity is None:
+            self.level_capacity = self.levels
+        else:
+            self.level_capacity = level_capacity
         N = 1 << self.level_capacity 
         self.ushape = (2, N, N)
 
@@ -64,12 +67,12 @@ class DisplacementFieldWavelet(DisplacementField):
             self.penalty_adjusted = self.penalty / 4**self.levels 
 
         if self.full_size_means is not None:
-            self.mu = self.full_size_means[:N,:N]
+            self.mu = self.full_size_means[:,:N,:N]
         else:
             self.mu = np.zeros(self.ushape)
 
         if self.full_size_variances is not None:
-            self.lmbks = 1/self.full_size_variances[:N,:N]
+            self.lmbks = 1/self.full_size_variances[:,:N,:N]
         else:
             self._init_default_lmbks()
 
@@ -77,24 +80,30 @@ class DisplacementFieldWavelet(DisplacementField):
 
     @classmethod
     def shape_for_size(cls, size, level_capacity=np.inf):
-        N = 2**level_capacity
+        # TODO: Is this function used? It won't play nice if level_capacity has its default value.
+        N = 1 << level_capacity
         return (2, N, N)
 
     def _init_u(self):
+        print self.u
+        print '----->' 
+        #N = 1 << self.level_capacity
+        new_u = np.copy(self.mu)
         if self.u is not None:
             # Resizes the coefficients, and fills with self.mu
-            new_u = np.copy(self.mu)
             A, B = min(new_u.shape[1], self.u.shape[1]), min(new_u.shape[2], self.u.shape[2])
             new_u[:,:A,:B] = self.u[:,:A,:B]
-            self.u = new_u
-        else:
-            self.u = np.copy(self.mu)
+
+        self.u = new_u
+        print self.u
 
     def _init_default_lmbks(self):
         self.lmbks = np.zeros(self.ushape)
         for level in xrange(self.levels, -1, -1):
             N = 2**level
             self.lmbks[:,:N,:N] = self.penalty_adjusted * 2.0**(self.rho * (self.scriptNs[level]-1))
+    
+        #print self.lmbks
 
     def set_flat_u(self, flat_u, level):
         """

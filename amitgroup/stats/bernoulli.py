@@ -128,6 +128,7 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.1, rho=2.0,
         ag.info("Running coarse-to-fine level", level)
         
         imdef.reset(level)
+        
         u = imdef.u
         args = (imdef, F, X, 1-X, delFjs, x, y, level, all_js)
 
