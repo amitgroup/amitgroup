@@ -77,13 +77,14 @@ if 0:
         deriv = deriv[:,:2**(level),2**(level)].flatten()
         return deriv
 
-def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.1, rho=2.0, wavelet='db2', maxiter=50, start_level=1, means=None, variances=None, debug_plot=False):
+def bernoulli_deformation(F, I, last_level=None, penalty=1.0, tol=0.001, rho=2.0, wavelet='db2', maxiter=50, start_level=1, means=None, variances=None, debug_plot=False):
     assert F.ndim == 3, "F must have 3 axes"
     assert F.shape == I.shape, "F and I shape mismatch {0} {1}".format(F.shape, I.shape)
     assert F.shape[0] == 8, "Currently only supports 8 features (not {0})".format(F.shape[0])
 
     import pywt
-    from scipy.optimize import fmin_bfgs
+    #from scipy.optimize import fmin_bfgs
+    from amitgroup.stats.fmin_bfgs_tol import fmin_bfgs_tol as fmin_bfgs
 
     # This, or an assert
     X = I.astype(float)
@@ -134,7 +135,7 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, gtol=0.1, rho=2.0,
 
         try:
             new_u, cost, min_deriv, Bopt, func_calls, grad_calls, warnflag = \
-                fmin_bfgs(_cost, u, _cost_deriv, args=args, callback=cb, gtol=gtol, maxiter=maxiter, full_output=True, disp=False)
+                fmin_bfgs(_cost, u, _cost_deriv, args=args, callback=cb, tol=tol, maxiter=maxiter, full_output=True, disp=False)
         except ag.AbortException:
             return None, {}
     

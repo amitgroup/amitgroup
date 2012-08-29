@@ -66,7 +66,8 @@ class DisplacementFieldWavelet(DisplacementField):
         # the square of this since we're dealing with the variance. 
         # Notice: Penalty is only applicable if means and variances are not set manually
         if self.penalty:
-            self.penalty_adjusted = self.penalty / 4**self.levels 
+            # Removed for now, since the penalty is pretty arbitrary anyway
+            self.penalty_adjusted = self.penalty# / 4**self.levels 
 
         if self.full_size_means is not None:
             self.mu = self.full_size_means[:,:N,:N]

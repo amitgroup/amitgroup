@@ -40,6 +40,8 @@ class BernoulliMixture:
         The probabilities of drawing from a certain mixture component. Array of length ``num_mix``.
     affinities : ndarray
         The contribution of each original data point to each mixture component. Array of shape ``(num_data, num_mix)``.
+    init_seed : integer
+        Seed for randomness.
 
     Examples
     --------
@@ -114,7 +116,6 @@ class BernoulliMixture:
             If the loglikelihood decreased with less than ``tol``, then it will break the loop.
         min_probability : float
             Disallow probabilities to fall below this value, and extend below one minus this value.
-        init_seed : integer or None
         """
         self.min_probability = min_probability 
         loglikelihood = -np.inf
@@ -175,7 +176,7 @@ class BernoulliMixture:
 
     def init_affinities_templates(self,init_type):
         if init_type == 'unif_rand':
-            random.seed()
+            random.seed(self.seed)
             idx = range(self.num_data)
             random.shuffle(idx)
             self.affinities = np.zeros((self.num_data,
@@ -187,7 +188,7 @@ class BernoulliMixture:
                 self.work_templates[mix_id] = np.mean(self.data_mat[self.affinities[:,mix_id]==1],axis=0)
                 self.threshold_templates()
         elif init_type == 'specific':
-            random.seed()
+            random.seed(self.seed)
             idx = range(self.num_data)
             random.shuffle(idx)
             self.affinities = np.zeros((self.num_data,
