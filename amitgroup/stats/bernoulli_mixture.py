@@ -125,7 +125,7 @@ class BernoulliMixture:
             plw = ag.plot.PlottingWindow(subplots=(1, self.num_mix), figsize=(self.num_mix*3, 3))
 
         self.iterations = 0
-        while (new_loglikelihood - loglikelihood)/loglikelihood > tol:
+        while np.isinf(loglikelihood) or np.fabs((new_loglikelihood - loglikelihood)/loglikelihood) > tol:
             ag.info("Iteration {0}: loglikelihood {1}".format(self.iterations, loglikelihood))
             loglikelihood = new_loglikelihood
             # M-step
@@ -157,7 +157,6 @@ class BernoulliMixture:
  
     def M_step(self):
         self.weights = np.mean(self.affinities,axis=0)
-        import pdb; pdb.set_trace()
         self.work_templates = np.dot(self.affinities.T, self.data_mat)
         self.work_templates /= self.num_data 
         self.work_templates /= self.weights.reshape((self.num_mix, 1))
