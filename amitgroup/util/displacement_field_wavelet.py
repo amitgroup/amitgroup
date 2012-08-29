@@ -100,7 +100,7 @@ class DisplacementFieldWavelet(DisplacementField):
         self.lmbks = np.zeros(self.ushape)
         for level in xrange(self.levels, -1, -1):
             N = 2**level
-            self.lmbks[:,:N,:N] = self.penalty_adjusted * 2.0**(self.rho * (self.scriptNs[level]-1))
+            self.lmbks[:,:N,:N] = self.penalty_adjusted * 2.0**(self.rho * level)
     
         #print self.lmbks
 
