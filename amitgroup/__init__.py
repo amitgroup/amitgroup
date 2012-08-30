@@ -6,7 +6,6 @@ from .core import *
 # Lazy load these?
 import amitgroup.io
 import amitgroup.features
-import amitgroup.ml
 import amitgroup.stats
 import amitgroup.util
 import amitgroup.plot

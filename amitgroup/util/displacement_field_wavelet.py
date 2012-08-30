@@ -96,6 +96,16 @@ class DisplacementFieldWavelet(DisplacementField):
 
         self.u = new_u
 
+    @classmethod
+    def make_lambdas(cls, shape, levels, eta=1.0, rho=1.0):
+        N = 1 << levels
+        lambdas = np.zeros((N, N))
+        for level in xrange(levels, -1, -1):
+            S = 1 << level 
+            lambdas[:S,:S] = eta * 2.0**(rho * level)
+        return lambdas
+        
+
     def _init_default_lmbks(self):
         self.lmbks = np.zeros(self.ushape)
         for level in xrange(self.levels, -1, -1):
