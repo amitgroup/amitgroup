@@ -77,7 +77,10 @@ def ff_mult(pp,XY,numperc):
 
     # Simple learing rule or field learning rule.
     Jmid=np.ceil(pp.Jmax/2)
-    J=np.ones((pp.d,numperc))*Jmid    
+    # Feed forward synspases
+    J=np.ones((pp.d,numperc))*Jmid
+    # Feedback synapses
+    Jfb=np.ones((pp.d,numperc))*Jmid
     II=range(Ntot)
     for it in range(pp.numit):
         np.random.shuffle(II)
@@ -85,45 +88,84 @@ def ff_mult(pp,XY,numperc):
         down=0
         for i in range(Ntot):
             ii=II[i]
+            # Field at each perceptron for this class.
             h=np.dot(X[ii,:],J-Jmid)
+            # Set of active input features
             XI=X[ii,:]==1
+            XIz=X[ii,:]==0
+            # Prepare for matrix multiplication.
             XI.shape=[pp.d,1]
             h.shape=[1,numperc]
-            #XI.transpose()
             if (Y[ii]==1):
-                hii=h<=pp.theta+pp.delta;
-                imat=np.dot(XI,hii)
-                # Find synapses that can potentiate J(j)<2 and X(j)=1.
-                Jh=J[imat]
-                IJ=Jh<pp.Jmax
-                g=Jh[IJ]
-                # Modify with stochastic ltp probability.
-                RR=np.random.rand(g.size)<pp.pltp
-                g=g+RR;
-                Jh[IJ]=g;
-                J[imat]=Jh;
-                up=up+sum(RR);
+                up+=potentiate_ff(pp,h,XI,J)
+                modify_fb(pp,XI,XIz,Jfb)
             else:
-                hii=h>=pp.theta-pp.delta;
-                imat=np.dot(XI,hii)
-                Jh=J[imat];
-                # Find synapses that can depress
-                IJ=Jh>0
-                g=Jh[IJ]
-                # Modify with stochastic ltp probability.
-                RR=np.random.rand(g.size)<pp.pltd
-                g=g-RR;
-                Jh[IJ]=g;
-                J[imat]=Jh;
-                down=down+sum(RR);
-            
+                down+=depress_ff(pp,h,XI,J)
+        # Report fraction of modified synapses (potentiated, depressed)
         print [np.double(up)/(numperc*pp.d), np.double(down)/(numperc*pp.d)]
-
     N=[]
     for p in range(numperc):
-        N.append(netout(J[:,p]))
-                  
+        N.append(netout(J[:,p],Jfb[:,p]))
     return N
+
+def modify_fb(pp,XI,XIz,Jfb):
+
+    # All feedback synapses connected to active features can be potentiated if less than max.
+    
+    XI.shape=XI.size
+    temp=Jfb[XI,:]
+    
+    IJ=temp<pp.Jmax
+    
+    g=temp[IJ]
+    
+    g+=np.random.rand(g.size)<pp.pltp
+    temp[IJ]=g
+    Jfb[XI,:]=temp
+   
+    # All feedback synapses connected to inactive features can be depressed if greater than 0.
+    XIz.shape=XIz.size
+    temp=Jfb[XIz,:]
+    IJ=temp>0
+    g=temp[IJ]
+    g-=np.random.rand(g.size)<pp.pltd
+    temp[IJ]=g
+    Jfb[XIz,:]=temp
+    
+def potentiate_ff(pp,h,XI,J):
+    # Perceptrons with field below potentiation threshold.
+    hii=h<=pp.theta+pp.delta;
+    # Logical matrix of all synapses that can be potentiated ... 
+    # If less than maximal synaptic value
+    imat=np.dot(XI,hii)
+    Jh=J[imat]
+    # Final list of synapses that can be potentiated
+    IJ=Jh<pp.Jmax
+    g=Jh[IJ]
+    # Modify with stochastic ltp probability.
+    RR=np.random.rand(g.size)<pp.pltp
+    g=g+RR;
+    Jh[IJ]=g;
+    J[imat]=Jh;
+    return sum(RR)
+
+def depress_ff(pp,h,XI,J):
+     # Perceptrons with field above depression threshold.
+    hii=h>=pp.theta-pp.delta;
+    # Logical matrix of all synapses that can be depressed ... 
+    # If greater than minimal synaptic value
+    imat=np.dot(XI,hii)
+    Jh=J[imat];
+    # Final list of synapses that can depress
+    IJ=Jh>0
+    g=Jh[IJ]
+    # Modify with stochastic ltd probability.
+    RR=np.random.rand(g.size)<pp.pltd
+    g=g-RR;
+    Jh[IJ]=g;
+    J[imat]=Jh;
+    return sum(RR);
+
 
 
 def rearrange(dd,c,numtrain=0):
@@ -153,11 +195,11 @@ def rearrange(dd,c,numtrain=0):
 
 class pars:
     
-        d=1000
+        d=7200
         N=1000
         Jmax=2
         pobj=.5
-        numit=100
+        numit=5
         pltp=.01
         pltd=.01
         nofield=0
@@ -171,9 +213,10 @@ class pars:
 
 class netout:
     JJ=[];
-
-    def __init__(self,J):
+    JJfb=[];
+    def __init__(self,J,Jfb):
         self.JJ=J
+        self.JJfb=Jfb
     
 
 class pars:

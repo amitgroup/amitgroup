@@ -35,11 +35,12 @@ setup(name='amitgroup',
         'amitgroup', 
         'amitgroup.features',
         'amitgroup.io',
-        'amitgroup.stats'
+        'amitgroup.stats',
+        'amitgroup.util',
+        'amitgroup.plot',
     ],
     ext_modules = [
         cython_extension("amitgroup.features.features"),
         cython_extension("amitgroup.util.interp2d"),
-        cython_extension("amitgroup.ml.aux"),
     ]
 )
