@@ -175,3 +175,26 @@ class netout:
     def __init__(self,J):
         self.JJ=J
     
+
+class pars:
+    
+        d=7200
+        N=1000
+        Jmax=2
+        pobj=.5
+        numit=5
+        pltp=.01
+        pltd=.01
+        nofield=0
+        theta=0
+        delta=5
+        pt=0
+        
+
+        def __init__(self):
+            self.cat=np.array([[.1, .8, .1], [.4, .3, .2], [.3, .3, .3]])
+        
+    
+    
+
+
