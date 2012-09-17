@@ -1,5 +1,5 @@
 
-from scipy.signal import convolve
+import scipy.signal
 import numpy as np
 import amitgroup as ag
 
@@ -16,7 +16,7 @@ def _gauss_kern(size, sizey=None):
 
 def _blur_and_shrink(im, n, ny=None):
     g = _gauss_kern(n, sizey=ny)
-    improc = convolve(im,g, mode='valid')
+    improc = scipy.signal.convolve(im,g, mode='valid')
     return(improc)
 
 def blur_image(im, n, ny=None, maintain_size=True):
