@@ -9,7 +9,7 @@ def _powerof2(v):
     # Does not handle 0, but that's not valid for image deformations anyway
     return (v & (v-1)) == 0 
 
-def _cost(u, imdef, F, I, delF, x, y, level):
+def _cost(u, imdef, F, I, delF, x, y, level, llh_variances):
     """Calculate the cost."""
     imdef.set_flat_u(u, level)
 
@@ -21,13 +21,17 @@ def _cost(u, imdef, F, I, delF, x, y, level):
 
     # Cost
     terms = Fzs - I
-    loglikelihood = -(terms**2).sum() / 2.0 #  * dx
+    llhs = -terms**2
+    #loglikelihood = -(terms**2).sum() / 2.0 #  * dx
+    if llh_variances is not None:
+        llhs /= llh_variances
+    loglikelihood = llhs.sum()/2.0
     logprior = imdef.logprior(level)
 
     cost = -logprior - loglikelihood
     return cost
 
-def _cost_deriv(u, imdef, F, I, delF, x, y, level):
+def _cost_deriv(u, imdef, F, I, delF, x, y, level, llh_variances):
     """Calculate the derivative of the cost."""
     imdef.set_flat_u(u, level)
 
@@ -45,6 +49,8 @@ def _cost_deriv(u, imdef, F, I, delF, x, y, level):
     W = np.empty((2,) + terms.shape)     
     for q in range(2):
         W[q] = delFzs[q] * terms
+        if llh_variances is not None:
+            W[q] /= llh_variances
     #W *= dx
     vqks = imdef.transform(W, level)
     N = 2**level
@@ -52,7 +58,7 @@ def _cost_deriv(u, imdef, F, I, delF, x, y, level):
     return ret
     
 def image_deformation(F, I, last_level=3, penalty=1.0, rho=2.0, wavelet='db2', tol=1e-5, \
-                      maxiter=5, start_level=1, means=None, variances=None, debug_plot=False):
+                      maxiter=5, start_level=1, means=None, variances=None, llh_variances=None, debug_plot=False):
     """
     Deforms an a prototype image `F` into a data image `I` using a Daubechies wavelet basis and maximum a posteriori. 
 
@@ -81,6 +87,8 @@ def image_deformation(F, I, last_level=3, penalty=1.0, rho=2.0, wavelet='db2', t
         Manually specify the means of the prior coefficients. If this and `variances` are set, then `penalty` and `rho` are unused. Must be of size ``(2, C)``, where `C` is the number of coefficients for the wavelet.
     variances : ndarray or None, optional
         Analagous to `means`, for specifying variances of the prior coefficients. Size should be the same as for `means`.
+    llh_variances : ndarray or None, optional
+        Specify log-likelihood variances per-pixel as a ``(W, H)`` array, or overall as a scalar. 
     debug_plot : bool, optional
         Output deformation progress live using :class:`PlottingWindow`. 
     
@@ -153,7 +161,7 @@ def image_deformation(F, I, last_level=3, penalty=1.0, rho=2.0, wavelet='db2', t
     for level in range(start_level, last_level+1):
         ag.info("Running coarse-to-fine level", level)
         u = imdef.abridged_u(level)
-        args = (imdef, F, I, delF, x, y, level)
+        args = (imdef, F, I, delF, x, y, level, llh_variances)
         try:
             new_u, cost, min_deriv, Bopt, func_calls, grad_calls, warnflag = \
                 fmin_bfgs(_cost, u, _cost_deriv, args=args, callback=cb, tol=tol, maxiter=maxiter, full_output=True, disp=False)
