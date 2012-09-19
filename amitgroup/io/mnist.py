@@ -17,7 +17,7 @@ def load_mnist(dataset="training", digits=None, path=None, asbytes=False, select
     asbytes : bool
         If True, returns data as ``numpy.uint8`` in [0, 255] as opposed to ``numpy.float64`` in [0.0, 1.0].
     selection : slice
-        Using a ``slice`` object, specify what subset of the dataset to load. An example is ``slice(0, 20, 2)``, which would load every other digit until but not including the twenthieth.
+        Using a ``slice`` object, specify what subset of the dataset to load. An example is ``slice(0, 20, 2)``, which would load every other digit until--but not including--the twentieth.
     return_labels : bool
         Specify whether or not labels should be returned. This is also a speed performance if digits are not specified, since then the labels file does not need to be read at all.
     return_indicies : bool
@@ -27,10 +27,10 @@ def load_mnist(dataset="training", digits=None, path=None, asbytes=False, select
     Returns
     -------
     images : ndarray
-        Image data of shape ``(N, rows, cols)``, where ``N`` is the number of images. 
+        Image data of shape ``(N, rows, cols)``, where ``N`` is the number of images. If neither labels nor inices are returned, then this is returned directly, and not inside a 1-sized tuple.
     labels : ndarray
         Array of size ``N`` describing the labels. Returned only if ``return_labels`` is `True`, which is default.
-    indicies : ndarray
+    indices : ndarray
         The indices in the database that were returned.
 
     Examples
@@ -101,4 +101,7 @@ def load_mnist(dataset="training", digits=None, path=None, asbytes=False, select
         ret += (labels,)
     if return_indices:
         ret += (indices,)
-    return ret
+    if len(ret) == 1:
+        return ret[0] # Don't return a tuple of one
+    else:
+        return ret
