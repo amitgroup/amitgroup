@@ -8,40 +8,85 @@ def read_data(s,numclass,numfeat):
         f=open(ss,'rb')
         dd.append(np.fromfile(file=f,dtype=np.uint8))
         ll=dd[c].shape[0]/numfeat
+        print dd[c].shape
         dd[c].shape=[ll,numfeat]
 
     return dd
 
-def test_net(ddte,pp,NO,numtest=0):
+def append_nets(NO,N1):
 
-    numperc=len(NO[0]);
-    numclass=len(ddte);
+   
+    numclass=len(NO)
+    N=[None]*numclass
+    for c in range(numclass):
+        N[c]=np.copy(NO[c])
+        N[c].extend(N1[c])
+    return N
 
 
-    JJ=np.zeros((ddte[0].shape[1],numperc,numclass));
+
+def nets_to_mat(NO,numperc=0):
+
+    numclass=len(NO);
+    if numperc==0:
+        numperc=len(NO[0]);
+    print numperc
+    numfeat=NO[0][0].JJ.size;
+    JJ=np.zeros((numfeat,numperc,numclass));
     for c in range(numclass):
        for p in range(numperc):
-           JJ[:,p,c]=np.double(NO[c][p].JJ)-1
+           NO[c][p].JJ.shape=(numfeat,);
+           JJ[:,p,c]=np.double(NO[c][p].JJ)-1;
+
+    return JJ
+
+def test_averages(ddte,pp,NO, numperc=0, numtest=0):
+
+    numclass=len(NO);
+    JJ=nets_to_mat(NO,numperc);
+    WW=np.mean(JJ,1);
+    CONF=np.zeros((numclass,numclass))
+    Ntot=0
+    for c in range(numclass):
+        if numtest==0:
+            N=ddte[c].shape[0]
+        else:
+            N=numtest
+        Ntot+=N
+        H=np.zeros((N,numclass));
+        H=np.dot(ddte[c],WW);
+        i=np.argmax(H,1);
+        for d in range(numclass):
+            CONF[c,d]=np.double(np.sum(i==d))
+        
+    print np.sum(np.diag(CONF))/Ntot
+    return CONF
+
+        
+def test_net(ddte,pp,NO,numperc=0, numtest=0):
+
+    numclass=len(ddte);    
+    JJ=nets_to_mat(NO,numperc);
     print JJ[:,:,0].shape
     CONF=np.zeros((numclass,numclass))
+    Ntot=0
     for c in range(numclass):
-        if numtest!=0:
-            N=numtest 
-        else:
+        if numtest==0:
             N=ddte[c].shape[0]
-        
+        else:
+            N=numtest
+        Ntot+=N
         H=np.zeros((N,numclass));
         for d in range(numclass):
             temp=np.dot(ddte[c][0:N,:],JJ[:,:,d])>pp.theta
             H[:,d]=np.sum(temp,1)
         
-   
+       
         i=np.argmax(H,1);
-        
         for d in range(numclass):
-            CONF[c,d]=np.double(np.sum(i==d))/N
-        
-    print np.mean(np.diag(CONF))
+            CONF[c,d]=np.double(np.sum(i==d))
+
+    print np.sum(np.diag(CONF))/Ntot
     return CONF
 
 def train_net(ddtr,pp,numperc,numtrain):
@@ -63,29 +108,39 @@ def ff_mult_top(pp,ddtr,c,numperc, numtrain=0):
         numtrain=ddtr[c].shape[0]
     # Rearrange data for this class with class at top of array and all the rest after.
     XY=rearrange(ddtr,c, numtrain)
+    # Train class against the rest perceptron/s
     NO=ff_mult(pp,XY, numperc)
 
+    
+    
     return NO
 
 def ff_mult(pp,XY,numperc):
 
+    # Features
     X=XY[0]
+    # Labels 1/0
     Y=XY[1]
     Ntot=X.shape[0]
 
 
 
     # Simple learing rule or field learning rule.
+    # Synapses are positive and Jmid is the `middle'. Instead of being symmetric around 0.
     Jmid=np.ceil(pp.Jmax/2)
-    # Feed forward synspases
+    # Feed forward synspases - initial value 1 -> 0.
     J=np.ones((pp.d,numperc))*Jmid
     # Feedback synapses
     Jfb=np.ones((pp.d,numperc))*Jmid
     II=range(Ntot)
+    # Iterate
     for it in range(pp.numit):
+        # Random arrangement of examples. Stochastic gradient.
         np.random.shuffle(II)
+        # Variables to keep track of changes
         up=0
         down=0
+        # Loop over examples
         for i in range(Ntot):
             ii=II[i]
             # Field at each perceptron for this class.
@@ -96,11 +151,14 @@ def ff_mult(pp,XY,numperc):
             # Prepare for matrix multiplication.
             XI.shape=[pp.d,1]
             h.shape=[1,numperc]
+            # A class example
             if (Y[ii]==1):
-                up+=potentiate_ff(pp,h,XI,J)
-                modify_fb(pp,XI,XIz,Jfb)
+                # Update in up direction.
+                up+=potentiate_ff(pp,h,XI,J,Jmid)
+                modify_fb(pp,XI,XIz,Jfb,Jmid)
             else:
-                down+=depress_ff(pp,h,XI,J)
+                # Update in down direction.
+                down+=depress_ff(pp,h,XI,J,Jmid)
         # Report fraction of modified synapses (potentiated, depressed)
         print [np.double(up)/(numperc*pp.d), np.double(down)/(numperc*pp.d)]
     N=[]
@@ -108,7 +166,7 @@ def ff_mult(pp,XY,numperc):
         N.append(netout(J[:,p],Jfb[:,p]))
     return N
 
-def modify_fb(pp,XI,XIz,Jfb):
+def modify_fb(pp,XI,XIz,Jfb,Jmid):
 
     # All feedback synapses connected to active features can be potentiated if less than max.
     
@@ -132,41 +190,70 @@ def modify_fb(pp,XI,XIz,Jfb):
     temp[IJ]=g
     Jfb[XIz,:]=temp
     
-def potentiate_ff(pp,h,XI,J):
+def potentiate_ff(pp,h,XI,J,Jmid):
     # Perceptrons with field below potentiation threshold.
     hii=h<=pp.theta+pp.delta;
-    # Logical matrix of all synapses that can be potentiated ... 
-    # If less than maximal synaptic value
+    # Logical matrix of all synapses that can be potentiated ... below potentiation threshold
+    # and the feature is on. (Synapses with off features don't create a change.
     imat=np.dot(XI,hii)
+    # Extract changeable synapses.
     Jh=J[imat]
-    # Final list of synapses that can be potentiated
-    IJ=Jh<pp.Jmax
-    g=Jh[IJ]
-    # Modify with stochastic ltp probability.
-    RR=np.random.rand(g.size)<pp.pltp
-    g=g+RR;
-    Jh[IJ]=g;
-    J[imat]=Jh;
-    return sum(RR)
 
-def depress_ff(pp,h,XI,J):
+    # Bounded synapses option
+    if pp.stoch>=0:
+        # If less than maximal synaptic value
+        IJ=Jh<pp.Jmax
+        g=Jh[IJ]
+        # Modify with stochastic ltp probability.
+        if pp.stoch==1:
+            RR=np.random.rand(g.size)<pp.pltp
+            r=sum(RR);
+        # Small gradient step for stochastic gradient descent.
+        else:
+            RR=pp.pltp;
+            r=RR;
+        g=g+RR
+        Jh[IJ]=g
+    # SVM option, no bound on synapses - all of them get updated by small amount.
+    else:
+        Jh=Jh+pp.pltp
+    J[imat]=Jh
+    # The gradient of the L2 weight on ALL synapses for SVM option.
+    if pp.stoch<0:
+        J=J+(J-Jmid)*pp.stoch
+        r=Jh.size
+    return r
+
+def depress_ff(pp,h,XI,J,Jmid):
      # Perceptrons with field above depression threshold.
     hii=h>=pp.theta-pp.delta;
-    # Logical matrix of all synapses that can be depressed ... 
-    # If greater than minimal synaptic value
+    # Logical matrix of all synapses that can be depressed ...above depression threshold
+    # and the feature is on. (Synapses with off features don't create a change.)
     imat=np.dot(XI,hii)
     Jh=J[imat];
-    # Final list of synapses that can depress
-    IJ=Jh>0
-    g=Jh[IJ]
-    # Modify with stochastic ltd probability.
-    RR=np.random.rand(g.size)<pp.pltd
-    g=g-RR;
-    Jh[IJ]=g;
-    J[imat]=Jh;
-    return sum(RR);
+    # If greater than minimal synaptic value
+    if pp.stoch>=0:
+        IJ=Jh>0
+        g=Jh[IJ]
+        # Modify with stochastic ltd probability.
+        if pp.stoch==1:
+            RR=np.random.rand(g.size)<pp.pltd
+        # Small gradient step for stochastic gradient descent.
+        else:
+            RR=pp.pltd*np.ones(g.size);
+        g=g-RR
+        Jh[IJ]=g
+        r=sum(RR)
+    # SVM option, no bound on synapses - all of them get updated by small amount.
+    else:
+        Jh=Jh-pp.pltd
+    J[imat]=Jh
 
-
+    # The gradient of the L2 weight on ALL synapses for SVM option.
+    if pp.stoch<0:
+        J=J+pp.stoch*(J-Jmid)
+        r=Jh.size
+    return r
 
 def rearrange(dd,c,numtrain=0):
 
@@ -202,6 +289,7 @@ class pars:
         numit=5
         pltp=.01
         pltd=.01
+        stoch=1
         nofield=0
         theta=0
         delta=5
