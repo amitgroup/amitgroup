@@ -33,14 +33,14 @@ cdef inline void _checkedge(DTYPE_t[:,:,:] images, np.uint8_t[:,:,:,:] ret, int 
     #    d > dabs(images[ii, z0-v0, z1-v1] - Iz) and \
     #    d > dabs(images[ii, y0+v0, y1+v1] - Iy):
     if num_edges >= k:
-        ret[ii, z0, z1, vi + 4*<int>(Iy > Iz)] = 1 
+        ret[ii, vi + 4*<int>(Iy > Iz), z0, z1] = 1 
 
 def array_bedges(np.ndarray[DTYPE_t, ndim=3] images, k):
     assert(images.dtype == DTYPE)
     cdef int N = images.shape[0]
     cdef int rows = images.shape[1]
     cdef int cols = images.shape[2] 
-    cdef np.ndarray[np.uint8_t, ndim=4] ret = np.zeros((N, rows, cols, 8), dtype=np.uint8)
+    cdef np.ndarray[np.uint8_t, ndim=4] ret = np.zeros((N, 8, rows, cols), dtype=np.uint8)
     cdef np.uint8_t[:,:,:,:] ret_mv = ret
     cdef DTYPE_t[:,:,:] images_mv = images
     cdef Py_ssize_t i
