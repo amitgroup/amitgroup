@@ -79,7 +79,7 @@ def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
                 W[pi]=W[pi]-fac2
         if pp.stoch<0:
             td=td+1
-        if (np.mod(it,pp.sh)==0):
+        if (np.mod(it,pp.showing)==0):
             DD=np.sum(np.maximum(np.zeros(Ntot),pp.delta-np.dot(XY[0],W)*XY[1]));
             PP=-.5*pp.stoch*np.sum(W*W)
             EE=DD+PP
