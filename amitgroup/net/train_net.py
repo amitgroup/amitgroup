@@ -99,7 +99,7 @@ def test_net(expi, numtest=0):  #$ddte,pp,NO,numperc=0, numtest=0):
     Ntot=0
     for c in range(numclass):
         if numtest==0:
-            N=ddte[c].shape[0]
+            N=expi.ddte[c].shape[0]
         else:
             N=numtest
         Ntot+=N
@@ -388,10 +388,11 @@ class pars:
             self.theta=0
             self.delta=5
             self.pt=0
-            self.sh=100000
+            self.showing=100000
             self.min_edges=40
             self.part_size=7
             self.pinc=1
+            self.reduction_factor=.9
             
 def compress_nets(NN):
 
