@@ -56,38 +56,65 @@ def train_parts(expi):
             i=0
             for P in Parts:
                 h=np.dot(pptr[t,:].flatten(),P-Jmid)
-                print 'image ', t,' part ', i,' field ', h
-                inp=raw_input('--> ')
-                if (inp=='s'):
-                   break
                 # Part activated, apply potentiations.
                 if (h>expi.pp.theta):
                     hits+=1
                     tn.potentiate_ff(expi.pp,h,XI,P,Jmid)
                     break
-                else:
-                   tn.depress_ff(expi.pp,h,XI,P,Jmid)
+                #else:
+                #   tn.depress_ff(expi.pp,h,XI,P,Jmid)
                 i+=1
-            if (inp=='s'):
-               break
             if (hits==0):
                 J=np.ones((numfeat,1))*Jqtr
                 h=np.dot(pptr[t,:].flatten(),J-Jmid)
                 print 'h before ', h
                 tn.potentiate_ff(expi.pp,h,XI,J,Jmid)
-                print J
                 print 'h after ', np.dot(pptr[t,:].flatten(),J-Jmid)
                 Parts.append(J)
                 print t, len(Parts)
-    print len(Parts)
-    inp=raw_input('--> ')
-    if (inp!='s'):
-       for P in Parts:
-          fig=figure()
-          G=np.copy(P)
-          G.shape=[8,expi.pp.part_size,expi.pp.part_size]
-          for a in range(181,189):
-             subplot(a)
-             imshow(G[a-181,:,:])
-          
-    return Parts
+    print 'Final number of parts ', len(Parts)
+    n=1
+    pp=len(Parts)
+    #fig=figure()
+    #for P in Parts:
+    #   G=np.copy(P)
+    #   G.shape=[8,expi.pp.part_size,expi.pp.part_size]
+    #   for a in range(8):
+    #      subplot(pp,8,n)
+    #      n=n+1
+    #      imshow(G[a,:,:], cmap=get_cmap('gray'))
+    #      axis('off')
+    #  show_clusters(expi,pptr,Parts)
+    return Parts, pptr
+
+# I am making this change to get it onto the mac
+
+def show_clusters(expi,pptr,Parts):
+   
+   nump=len(Parts)
+   numparts=len(Parts)
+   numfeat=pptr.size/pptr.shape[0]
+   pptr.shape=[pptr.shape[0],numfeat]
+   TT=np.array(Parts)
+   TT.shape=[numparts,numfeat]
+   
+
+   H=np.dot(TT,transpose(pptr))
+   i=np.argmax(H,0);
+   print i.shape, H.shape
+   MM=np.zeros((numparts,numfeat))
+   n=1
+   for ip in range(numparts):
+      print 'size of cluster ', np.sum(i==ip)
+
+      if (np.sum(i==ip)>0):
+         Hm=np.mean(pptr[i==ip,:],0).flatten()
+         MM[ip,:]=Hm
+         G=MM[ip,:]
+         G.shape=[8,expi.pp.part_size,expi.pp.part_size]
+         for a in range(8):
+            subplot(numparts,8,n)
+            n=n+1
+            imshow(G[a,:,:], cmap=get_cmap('gray'))
+            axis('off')
+      
