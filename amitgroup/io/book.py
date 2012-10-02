@@ -6,6 +6,15 @@ import numpy as np
 
 __all__ = ['load_image', 'load_all_images']
 
+def get_tr(path,index):
+    aa=int(np.floor(index/100))
+    rr=np.mod(index,100)
+    filename=path+'/Images_'+str(aa)
+    N, buf = _get_buf_and_length(filename)
+    offset, = struct.unpack('>I', buf[4+rr*4:4+rr*4+4])
+    tr, = struct.unpack('>I',buf[offset:offset+4])
+    return tr
+
 def _get_buf_and_length(filename):
     f = open(filename, 'rb')
     buf = f.read()
@@ -16,16 +25,56 @@ def _unpack_image(buf, index, asbytes):
     # Get offset
     offset, = struct.unpack('>I', buf[4+index*4:4+index*4+4])
 
+    # Get label
+    tr, = struct.unpack('>I',buf[offset:offset+4])
     # Get width and height
     width, height = struct.unpack('>II', buf[4+offset:4+offset+8])
 
     # Finally get the image data put into numpy array
-    image = np.array(python_array('B', buf[4+offset+8:4+offset+8+width*height])).reshape((width, height))
+    img = np.array(python_array('B', buf[4+offset+8:4+offset+8+width*height])).reshape((width, height))
 
     if asbytes:
-        return image 
+        return image(tr,img)
     else:
-        return image/255.0
+        return image(tr,img/255.)
+
+def load_imagep(path, index, asbytes=False):
+    aa=int(np.floor(index/100))
+    rr=np.mod(index,100)
+    filename=path+'/Images_'+str(aa)
+    return(load_image(filename, rr, asbytes))
+
+
+def imslant(img):
+    aa=np.transpose(img)
+    dimx=aa.shape[0]
+    dimy=aa.shape[1]
+    dimxh=aa.shape[0]/2
+    dimyh=aa.shape[1]/2
+    ii=np.where(aa>0)
+    cc=len(ii[0])
+    xa=np.mean(ii[0])
+    ya=np.mean(ii[1])
+    slopenum=np.sum(ii[1]*(ii[0]-xa))
+    slopeden=np.sum(ii[1]*(ii[1]-ya))
+    slope=slopenum/slopeden
+    #print slope, xa, ya
+    ii=np.outer(range(28),np.ones(28))
+    jj=np.outer(np.ones(28),range(28))
+    fx=ii-xa+(jj-ya)*slope+dimxh
+    fy=jj-ya+dimyh
+    x=np.int16(fx)
+    y=np.int16(fy)
+    a=fx-x
+    b=fy-y
+    xx1=x+1
+    yy1=y+1
+    timg=np.zeros((2*dimx+img.shape[0],2*dimy+img.shape[1]))
+    timg[dimx:(dimx+img.shape[0]),dimy:(dimy+img.shape[1])]=aa
+    imout=a*b*timg[xx1+dimx,yy1+dimy]+a*(1.-b)*timg[xx1+dimx,y+dimy]+(1.-a)*b*timg[x+dimx,yy1+dimy]+(1.-a)*(1.-b)*timg[x+dimx,y+dimy]
+    #imout=timg[x+dimxh,y+dimyh]
+    
+    return(np.transpose(imout))
 
 def load_image(filename, index, asbytes=False):
     """
@@ -77,3 +126,13 @@ def load_all_images(filename, asbytes=False):
         images.append(_unpack_image(buf, i, asbytes))
     
     return np.array(images) 
+
+class image:
+    truth=None
+    img=None
+    features=None
+
+    def __init__(self,tr,a,f=[]):
+        self.truth=tr
+        self.img=a
+        self.features=f
