@@ -5,20 +5,24 @@ import time
 import train_net as tn
 
 def train_sv(expi, flag=0):
+    expi.pp.delatD=expi.pp.deltaP
     numclass=len(expi.ddtr)
-    expi.NO=np.zeros((expi.pp.d,numclass))
+    numfeat=expi.ddtr[0][0].features['V1'].size
+    print numfeat
+    expi.NO=np.zeros((numfeat,numclass))
     for c in range(numclass):
-        print c
-        W=one_against_rest(expi.pp,expi.ddtr,c,expi.numtrain, flag)
+        W=one_against_rest(expi.pp,expi.ddtr,c,expi.numtrain_per_class, flag)
         expi.NO[:,c]=W
     CC, e=tn.test_by_weights(expi.ddte,expi.NO)
     f=open(expi.out,"a")
-    f.write('stoch: '+str(expi.pp.stoch) + ' Del: ' + str(expi.pp.delta) + ' Rate: ' + str(e) + '\n')
+    f.write('stoch: '+str(expi.pp.stoch) + ' Del: ' + str(expi.pp.deltaP) + ' Rate: ' + str(e) + '\n')
 
 def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
+    print 'numtrain', numtrain
     if numtrain==0:
-        numtrain=ddtr[c].shape[0]
+        numtrain=len(ddtr[c])
     # Rearrange data for this class with class at top of array and all the rest after.
+    print numtrain
     XY=tn.rearrange(ddtr,c, numtrain)
     XY[1].shape=[XY[1].size]
     # just for fun make output 1/-1
@@ -69,18 +73,18 @@ def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
                         print 'hit lower bound'
                     tempw.shape=pi.shape
                     pi=np.logical_and(pi,tempw)
-            if (tempy==1 and h<=pp.delta):
+            if (tempy==1 and h<=pp.deltaP):
                 dup+=1
                 up+=np.count_nonzero(pi)
                 W[pi]=W[pi]+fac2
-            elif (tempy==-1 and h>=-pp.delta):
+            elif (tempy==-1 and h>=-pp.deltaD):
                 dup+=1
                 up+=np.count_nonzero(pi)
                 W[pi]=W[pi]-fac2
         if pp.stoch<0:
             td=td+1
         if (np.mod(it,pp.showing)==0):
-            DD=np.sum(np.maximum(np.zeros(Ntot),pp.delta-np.dot(XY[0],W)*XY[1]));
+            DD=np.sum(np.maximum(np.zeros(Ntot),pp.deltaP-np.dot(XY[0],W)*XY[1]));
             PP=-.5*pp.stoch*np.sum(W*W)
             EE=DD+PP
             print it, 'Number of syn changes ', up, ' at ', dup, ' Data term ', DD, 'Prior term ', PP, 'Total ', EE
@@ -91,7 +95,7 @@ def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
             s=raw_input('-->')
             if s=='z':
                 sys.exit()
-    DD=np.sum(np.maximum(np.zeros(Ntot),pp.delta-np.dot(XY[0],W)*XY[1]));
+    DD=np.sum(np.maximum(np.zeros(Ntot),pp.deltaP-np.dot(XY[0],W)*XY[1]));
     PP=-.5*pp.stoch*np.sum(W*W)
     EE=DD+PP
     print it, 'Number of syn changes ', up, ' at ', dup, ' Data term ', DD, 'Prior term ', PP, 'Total ', EE
