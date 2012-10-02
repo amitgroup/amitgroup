@@ -2,6 +2,10 @@ import numpy as np
 import sys
 import copy
 import time
+from pylab import *
+#import amitgroup as ag
+import book
+import bedges
 
 def top_train(expi):
 
@@ -13,6 +17,63 @@ def top_train(expi):
 
     print "Finished Training"
 
+
+
+def extract_feature_matrix(ddt,s,num=0):
+    if (num==0):
+        l=len(ddt)
+    else:
+        l=num
+    numfeat=ddt[0].features[s].size
+    MM=np.zeros((l,numfeat))
+    i=0
+    for i in range(l):
+       MM[i,:]=ddt[i].features[s].flatten()
+    return MM
+
+def read_data_b(s,expi,numclass):
+
+    sstr=s+'/mnist_train'
+    sste=s+'/mnist_test'
+    expi.ddtr=[]
+    expi.ddte=[]
+    for i in range(numclass):
+        bb=[]
+        expi.ddtr.append(bb)
+        cc=[]
+        expi.ddte.append(cc)
+
+    if (expi.numtrain_per_class==0):
+        for i in range(expi.numtrain):
+            tim=book.load_imagep(sstr,i,True)
+            if (expi.slant==True):
+                tim.img=book.imslant(tim.img)
+                feat=bedges.bedges(double(tim.img),5,'box')
+                tim.features={'V1': feat}
+                tr=tim.truth
+                expi.ddtr[tr].append(tim)
+    else:
+        for c in range(numclass):
+            i=0
+            while len(expi.ddtr[c])<expi.numtrain_per_class:
+                if (book.get_tr(sstr,i)==c):
+                    tim=book.load_imagep(sstr,i,True)
+                    if (expi.slant==True):
+                        tim.img=book.imslant(tim.img)
+                        feat=bedges.bedges(double(tim.img),5,'box')
+                        tim.features={'V1': feat}
+                        tr=tim.truth
+                        expi.ddtr[tr].append(tim)
+                i+=1
+
+    for i in range(10000):
+        tim=book.load_imagep(sste,i,True)
+        if (expi.slant==True):
+            tim.img=book.imslant(tim.img)
+        feat=bedges.bedges(double(tim.img),5,'box')
+        tim.features={'V1': feat}
+        tr=tim.truth
+        expi.ddte[tr].append(tim)
 
 def read_data(s,numclass,numfeat,const=0):
 
@@ -73,12 +134,12 @@ def test_by_weights(ddte,WW,numtest=0):
     Ntot=0
     for c in range(numclass):
         if numtest==0:
-            N=ddte[c].shape[0]
+            N=len(ddte[c])
         else:
             N=numtest
         Ntot+=N
         H=np.zeros((N,numclass));
-        H=np.dot(ddte[c][0:N,:],WW);
+        H=np.dot(extract_feature_matrix(ddte[c],'V1',N),WW);
         i=np.argmax(H,1);
         for d in range(numclass):
             CONF[c,d]=np.double(np.sum(i==d))
@@ -99,13 +160,13 @@ def test_net(expi, numtest=0):  #$ddte,pp,NO,numperc=0, numtest=0):
     Ntot=0
     for c in range(numclass):
         if numtest==0:
-            N=expi.ddte[c].shape[0]
+            N=len(expi.ddte[c])
         else:
             N=numtest
         Ntot+=N
         H=np.zeros((N,numclass));
         for d in range(numclass):
-            temp=np.dot(expi.ddte[c][0:N,:],JJ[:,:,d])>expi.pp.theta
+            temp=np.dot(extract_feature_matrix(expi.ddte[c],'V1',N),JJ[:,:,d])>expi.pp.theta
             H[:,d]=np.sum(temp,1)
         
        
@@ -127,24 +188,24 @@ def train_net(expi):
     NO=[None]*numclass
     for c in CI:
         f.write(str(CI[c])+'\n')
-        NO[CI[c]]=ff_mult_top(f,expi.pp,expi.ddtr,CI[c],expi.numperc, expi.numtrain)
+        NO[CI[c]]=ff_mult_top(f,expi.pp,expi.ddtr,CI[c],expi.numperc, expi.numtrain_per_class)
 
     return NO
 
 def all_at_one_top(expi):
     
     numclass=len(expi.ddtr)
-    N=expi.numtrain
+    N=expi.numtrain_per_class
     if N==0:
-        N=ddtr[0].shape[0]
+        N=len(expi.ddtr[0])
 
-    X=np.copy(expi.ddtr[0][0:N,:])
+    X=extract_feature_matrix(expi.ddtr[0],'V1',N)
     Y=np.zeros((N,1))
     for c in range(1,numclass):
-        N=expi.numtrain
+        N=expi.numtrain_per_class
         if N==0:
-            N=expi.ddtr[c].shape[0]
-        X=np.vstack((X,expi.ddtr[c][0:N,:]))
+            N=len(expi.ddtr[c])
+        X=np.vstack((X,extract_feature_matrix(expi.ddtr[c],'V1',N)))
         Y=np.vstack((Y,c*np.ones((N,1))))
     NN=ff_all_at_one(expi.out,expi.pp,X,Y,expi.numperc,numclass)
     return NN
@@ -184,7 +245,6 @@ def ff_all_at_one(out,pp,X,Y,numperc,numclass):
 
                 h=np.dot(X[ii,:],J[c]-Jmid)
                 h.shape=[1,numperc] 
-                XI.shape=[pp.d,1]
                 if Y[ii]==c:
                     # Update in up direction.
                     up+=potentiate_ff(pp,h,XI,J[c],Jmid)
@@ -205,7 +265,7 @@ def ff_all_at_one(out,pp,X,Y,numperc,numclass):
 # Train the network for each class.
 def ff_mult_top(f,pp,ddtr,c,numperc, numtrain=0):
     if numtrain==0:
-        numtrain=ddtr[c].shape[0]
+        numtrain=len(ddtr[c])
     # Rearrange data for this class with class at top of array and all the rest after.
     XY=rearrange(ddtr,c, numtrain)
     # Train class against the rest perceptron/s
@@ -219,16 +279,16 @@ def ff_mult(pp,XY,numperc,f):
     # Labels 1/0
     Y=XY[1]
     Ntot=X.shape[0]
-
+    numfeat=X.shape[1]
 
 
     # Simple learing rule or field learning rule.
     # Synapses are positive and Jmid is the `middle'. Instead of being symmetric around 0.
     Jmid=np.ceil(pp.Jmax/2)
     # Feed forward synspases - initial value 1 -> 0.
-    J=np.ones((pp.d,numperc))*Jmid
+    J=np.ones((numfeat,numperc))*Jmid
     # Feedback synapses
-    Jfb=np.ones((pp.d,numperc))*Jmid
+    Jfb=np.ones((numfeat,numperc))*Jmid
     II=range(Ntot)
     # Iterate
     for it in range(pp.numit):
@@ -246,7 +306,6 @@ def ff_mult(pp,XY,numperc,f):
             XI=X[ii,:]==1
             XIz=X[ii,:]==0
             # Prepare for matrix multiplication.
-            XI.shape=[pp.d,1]
             h.shape=[1,numperc]
             # A class example
             if (Y[ii]==1):
@@ -257,10 +316,6 @@ def ff_mult(pp,XY,numperc,f):
                 # Update in down direction.
                 down+=depress_ff(pp,h,XI,J,Jmid)
         # Report fraction of modified synapses (potentiated, depressed)
-        #print [np.double(up)/(numperc*pp.d), np.double(down)/(numperc*pp.d)]
-        ## s=raw_input('-->')
-        ## if s=='z':
-        ##     sys.exit()
         f.write('updown '+str(np.double(up)+np.double(down))+'\n')
         if up+down==0:
             break
@@ -296,10 +351,17 @@ def modify_fb(pp,XI,XIz,Jfb,Jmid):
     
 def potentiate_ff(pp,h,XI,J,Jmid):
     # Perceptrons with field below potentiation threshold.
-    hii=h<=pp.theta+pp.delta;
+    hii=h<=pp.theta+pp.deltaP;
+    if (np.sum(hii)==0):
+        return 0
+
     # Logical matrix of all synapses that can be potentiated ... below potentiation threshold
     # and the feature is on. (Synapses with off features don't create a change.
-    imat=np.dot(XI,hii)
+    imat=np.outer(XI,hii)
+
+    if (len(J.shape)==1):
+        imat=imat.flatten()
+    
     # Extract changeable synapses.
     Jh=J[imat]
 
@@ -316,10 +378,15 @@ def potentiate_ff(pp,h,XI,J,Jmid):
 
 def depress_ff(pp,h,XI,J,Jmid):
      # Perceptrons with field above depression threshold.
-    hii=h>=pp.theta-pp.delta;
+    hii=h>=pp.theta-pp.deltaD;
+    if (np.sum(hii)==0):
+        return 0
     # Logical matrix of all synapses that can be depressed ...above depression threshold
     # and the feature is on. (Synapses with off features don't create a change.)
-    imat=np.dot(XI,hii)
+    imat=np.outer(XI,hii)
+    if (len(J.shape)==1):
+        imat=imat.flatten()
+
     Jh=J[imat];
     # If greater than minimal synaptic value
     IJ=Jh>0
@@ -336,18 +403,21 @@ def rearrange(dd,c,numtrain=0):
     XY=[]   
     ic=range(len(dd))
     ic.remove(c)
-    if numtrain==0:
-        XY.append(dd[c])
-    else:
-        XY.append(dd[c][0:numtrain,:])
+    n=len(dd[c])
+    if numtrain>0:
+        n=min(numtrain,len(dd[c]))
+
+    XY.append(extract_feature_matrix(dd[c],'V1',n))
+
 
     N=XY[0].shape[0]
 
     for ii in ic:
-        if numtrain==0:
-            XY[0]=np.vstack((XY[0],dd[ii]))
-        else:
-            XY[0]=np.vstack((XY[0],dd[ii][0:numtrain,]))
+        n=len(dd[ii])
+        if numtrain>0:
+            n=min(numtrain,len(dd[ii]))
+        XY[0]=np.vstack((XY[0],extract_feature_matrix(dd[ii],'V1',n)))
+
         
     Ntot=XY[0].shape[0]
     Nbgd=Ntot-N
@@ -369,7 +439,8 @@ class pars:
         stoch=None
         nofield=None
         theta=None
-        delta=None
+        deltaP=None
+        deltaD=None
         pt=None
         sh=None
         min_edges=None
@@ -386,7 +457,8 @@ class pars:
             self.stoch=1
             self.nofield=0
             self.theta=0
-            self.delta=5
+            self.deltaP=5.
+            self.deltaD=5.
             self.pt=0
             self.showing=100000
             self.min_edges=40
@@ -407,15 +479,18 @@ class experiment:
     pp=[]
     numperc=[]
     numtrain=[]
+    numtrain_per_class=[]
+    slant=[]
     type=[]
     out=[]
     NO=[]
-    def __init__(self,ddtr,ddte,pp,numperc,numtrain,type,out):
+    def __init__(self,type,out,ddtr=[],ddte=[],pp=[],numperc=[],numtrain=0, numtrain_per_class=0):
         self.ddtr=ddtr
         self.ddte=ddte
         self.pp=pp
         self.numperc=numperc
         self.numtrain=numtrain
+        self.numtrain_per_class=numtrain_per_class
         self.type=type
         self.out=out
 
