@@ -2,13 +2,40 @@ import numpy as np
 import sys
 import copy
 import time
-from pylab import *
-#import amitgroup as ag
-import book
-import bedges
+#from pylab import *
+import amitgroup as ag
+
+
 
 def top_train(expi):
 
+    """
+    Call two types of network training. One which
+    updates perceptrons of one class against the rest
+    and then moves on to other classes. The second which
+    updates all the perceptrons at each iteration (this
+    is more natural). The first will probably be removed at somepoint.
+
+    Parameters
+    ----------
+
+    The input is an `experiment' class that has the training
+    and test data as submembers (.ddtr, .ddte) a list of lists.
+    len(ddtr) is number of classes. For each class len(ddtr[c]) is
+    number of training points. If exp.numtrain_per_class>0 then
+    exactly that number of training points per class are used.
+    exp.slant=1 - deslant the digits.
+    exp.out = output file for some printouts.
+    exp.pp = parameter class for network training, stochastic svm training, part training. (TODO break pp into sub parameter classes)
+
+    Returns
+    -------
+
+    The function add a list of lists of network classes into the input class and doesn't return anything. List length is number of classes.
+    For each class list length is number of perceptrons. Each perceptron
+    synapse matrix is given by a network class.
+
+    """
     expi.NO=[]
     if expi.type==0:
         expi.NO.append(train_net(expi))
@@ -20,6 +47,26 @@ def top_train(expi):
 
 
 def extract_feature_matrix(ddt,s,num=0):
+
+    """
+
+    Create one feature array from the features of a list of images.
+    The feature for each image is flattened and added as a row of the array.
+
+    Parameters
+    ----------
+
+    ddt - The list of images. s - a string denoting which level of features to use.
+    (For now we only have V1)
+    num=0 - number of images to extract if not all of them.
+
+    Returns
+    -------
+
+    Returns the features array.
+
+    """
+
     if (num==0):
         l=len(ddt)
     else:
@@ -33,6 +80,29 @@ def extract_feature_matrix(ddt,s,num=0):
 
 def read_data_b(s,expi,numclass):
 
+    """
+
+    Read training and test images  from path 's' and process them for features
+    put result in expi.ddtr, expi.ddte.
+
+    if expi.numtrain_per_class>0 extract exactly that number of training
+    examples for each class. Otherwise just take first exp.numtrain exaples
+    from training et.
+    if expi.slant=1 deslant the images.
+
+    Parameters
+    ----------
+
+    s-path, expi-experiment, numclass- number of classes.
+
+    Returns
+    -------
+
+    Nothing.
+
+    """
+
+    print 'Hello'
     sstr=s+'/mnist_train'
     sste=s+'/mnist_test'
     expi.ddtr=[]
@@ -45,64 +115,81 @@ def read_data_b(s,expi,numclass):
 
     if (expi.numtrain_per_class==0):
         for i in range(expi.numtrain):
-            tim=book.load_imagep(sstr,i,True)
+            tim=ag.io.load_imagep(sstr,i,True)
             if (expi.slant==True):
-                tim.img=book.imslant(tim.img)
-                feat=bedges.bedges(double(tim.img),5,'box')
-                tim.features={'V1': feat}
-                tr=tim.truth
-                expi.ddtr[tr].append(tim)
+                tim.img=ag.io.imslant(tim.img)
+            feat=ag.features.bedges(np.double(tim.img),5,'box',2)
+            tim.features={'V1': feat}
+            tr=tim.truth
+            expi.ddtr[tr].append(tim)
     else:
         for c in range(numclass):
             i=0
             while len(expi.ddtr[c])<expi.numtrain_per_class:
-                if (book.get_tr(sstr,i)==c):
-                    tim=book.load_imagep(sstr,i,True)
+                if (ag.io.get_tr(sstr,i)==c):
+                    tim=ag.io.load_imagep(sstr,i,True)
                     if (expi.slant==True):
-                        tim.img=book.imslant(tim.img)
-                        feat=bedges.bedges(double(tim.img),5,'box')
-                        tim.features={'V1': feat}
-                        tr=tim.truth
-                        expi.ddtr[tr].append(tim)
+                        tim.img=ag.io.imslant(tim.img)
+                    feat=ag.features.bedges(np.double(tim.img),5,'box',2)
+                    tim.features={'V1': feat}
+                    tr=tim.truth
+                    expi.ddtr[tr].append(tim)
                 i+=1
 
     for i in range(10000):
-        tim=book.load_imagep(sste,i,True)
+        tim=ag.io.load_imagep(sste,i,True)
         if (expi.slant==True):
-            tim.img=book.imslant(tim.img)
-        feat=bedges.bedges(double(tim.img),5,'box')
+            tim.img=ag.io.imslant(tim.img)
+        feat=ag.features.bedges(np.double(tim.img),5,'box',2)
         tim.features={'V1': feat}
         tr=tim.truth
         expi.ddte[tr].append(tim)
 
-def read_data(s,numclass,numfeat,const=0):
-
-    dd=[]
-    for c in range(numclass):
-        ss=s+str(c)+'.bin'
-        f=open(ss,'rb')
-        dd.append(np.fromfile(file=f,dtype=np.uint8))
-        ll=dd[c].shape[0]/numfeat
-        print dd[c].shape
-        dd[c].shape=[ll,numfeat]
-        if const>0:
-            dd[c]=np.hstack((dd[c],np.ones((ll,1))))
-
-    return dd
 
 def append_nets(NO,N1):
 
+    """
+    Append the perceptron lists of two net lists to create
+    a net with more perceptrons.
+
+    Parameters
+    ----------
+    Two input network lists. (This needs to be fixed.)
+    """
    
     numclass=len(NO)
-    N=[None]*numclass
+
+    N=[]
     for c in range(numclass):
-        N[c]=np.copy(NO[c])
+        a=[]
+        N.append(a)
+    
+    for c in range(numclass):
+        N[c].extend(NO[c])
         N[c].extend(N1[c])
     return N
 
 
 
 def nets_to_mat(NO,Jmid,numperc=0):
+
+    """
+    Convert a list of numclass lists of numperc networks 
+    to one big 3d matrix. numfeatxnumpercxnumclass
+
+    Parameters
+    ----------
+    NO-network list of lists. 
+    Jmid - middle synaptic value.
+    numperc - if not zero determines the number of networks
+    to take for each class.
+
+    Returns
+    -------
+
+    The array.
+
+    """
 
     numclass=len(NO);
     if numperc==0:
@@ -117,16 +204,55 @@ def nets_to_mat(NO,Jmid,numperc=0):
 
     return JJ
 
-def test_averages(ddte,pp,NO, numperc=0, numtest=0):
+def test_averages(expi, numtest=0):
 
-    numclass=len(NO);
-    Jmid=np.ceil(pp.Jmax/2)
-    JJ=nets_to_mat(NO,Jmid,numperc);
+    """
+
+    Test a network using the mean weights for each class
+    instead of the individual perceptrons. Make
+    the big matrix of synaptic binary weights. Get its mean for each
+    class and send to simple linear classifier.
+
+    Parameters
+    ----------
+
+    expi - experiment class, expi.numperc (if not zero) - number of perceptrons to use
+    numtest=0 - if not zero number of test examples per class to run.
+
+    Returns
+    -------
+
+    Confusion matrix and error.
+
+    """
+
+    numclass=len(expi.NO);
+    Jmid=np.ceil(exi.pp.Jmax/2)
+    JJ=nets_to_mat(expi.NO,Jmid,expi.numperc);
     WW=np.mean(JJ,1);
-    CC=test_by_weights(ddte,WW,numtest)
-    return CC
+    [CC, e]=test_by_weights(expi.ddte,WW,numtest)
+    return CC, e
+
 
 def test_by_weights(ddte,WW,numtest=0):
+
+    """
+    Simple linear tester. For each class apply weight
+    vector inner product with data and return highest value.
+
+    Parameters
+    ----------
+
+    ddte - test data.
+    WW - weight matrix.
+    numtest - if non zero - number of test examples per class
+
+    Returns
+    -------
+    Confusion matrix and error.
+
+    """
+
     numclass=len(ddte)
     d=WW.shape[0]
     WW.shape=[d,numclass]
@@ -149,7 +275,25 @@ def test_by_weights(ddte,WW,numtest=0):
     return [CONF, e]
 
         
-def test_net(expi, numtest=0):  #$ddte,pp,NO,numperc=0, numtest=0):
+def test_net(expi, numtest=0):
+
+    """
+    Test a network using the vote of the perceptrons
+
+
+    Parameters
+    ----------
+
+    expi - experiment class. expi.numperc - number of perceptrons to use if non-zero
+    numtest=0 - if not zero number of test examples per class to run.
+
+    Returns
+    -------
+
+    Confusion matrix and error.
+
+    """
+
 
     Jmid=np.ceil(expi.pp.Jmax/2)
     print Jmid
@@ -202,6 +346,7 @@ def all_at_one_top(expi):
     X=extract_feature_matrix(expi.ddtr[0],'V1',N)
     Y=np.zeros((N,1))
     for c in range(1,numclass):
+        print 'training class ', c
         N=expi.numtrain_per_class
         if N==0:
             N=len(expi.ddtr[c])
@@ -228,6 +373,7 @@ def ff_all_at_one(out,pp,X,Y,numperc,numclass):
     # Iterate
     II=range(Ntot)
     for it in range(pp.numit):
+        print 'iteration ', it
         # Random arrangement of examples. Stochastic gradient.
         np.random.shuffle(II)
         # Variables to keep track of changes
@@ -262,6 +408,8 @@ def ff_all_at_one(out,pp,X,Y,numperc,numclass):
         N.append(NN)
             
     return N            
+
+
 # Train the network for each class.
 def ff_mult_top(f,pp,ddtr,c,numperc, numtrain=0):
     if numtrain==0:
@@ -494,6 +642,15 @@ class experiment:
         self.type=type
         self.out=out
 
+    def ecopy(self,ine):
+        self.ddtr=ine.ddtr
+        self.ddte=ine.ddte
+        self.pp=copy.copy(ine.pp)
+        self.numperc=ine.numperc
+        self.numtrain=ine.numtrain
+        self.numtrain_per_class=ine.numtrain_per_class
+        self.type=ine.type
+        
 class netout:
     JJ=[];
     JJfb=[];
