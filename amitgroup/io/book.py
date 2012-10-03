@@ -4,7 +4,6 @@ import struct
 from array import array as python_array 
 import numpy as np
 
-__all__ = ['load_image', 'load_all_images']
 
 def get_tr(path,index):
     aa=int(np.floor(index/100))
