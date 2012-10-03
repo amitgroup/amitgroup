@@ -18,7 +18,7 @@ def train_sv(expi, flag=0):
     f.write('stoch: '+str(expi.pp.stoch) + ' Del: ' + str(expi.pp.deltaP) + ' Rate: ' + str(e) + '\n')
 
 def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
-    print 'numtrain', numtrain
+    print 'numtrain', numtrain, 'class ', c
     if numtrain==0:
         numtrain=len(ddtr[c])
     # Rearrange data for this class with class at top of array and all the rest after.
@@ -87,7 +87,7 @@ def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
             DD=np.sum(np.maximum(np.zeros(Ntot),pp.deltaP-np.dot(XY[0],W)*XY[1]));
             PP=-.5*pp.stoch*np.sum(W*W)
             EE=DD+PP
-            print it, 'Number of syn changes ', up, ' at ', dup, ' Data term ', DD, 'Prior term ', PP, 'Total ', EE
+            print 'td ', td, 'it ', it, 'Number of syn changes ', up, ' at ', dup, ' Data term ', DD, 'Prior term ', PP, 'Total ', EE
         if up==0:
             #time.sleep(20)
             break
