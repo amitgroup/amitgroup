@@ -82,7 +82,6 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, tol=0.001, rho=2.0
     assert F.shape == I.shape, "F and I shape mismatch {0} {1}".format(F.shape, I.shape)
     assert F.shape[0] == 8, "Currently only supports 8 features (not {0})".format(F.shape[0])
 
-    import pywt
     #from scipy.optimize import fmin_bfgs
     from amitgroup.stats.fmin_bfgs_tol import fmin_bfgs_tol as fmin_bfgs
 

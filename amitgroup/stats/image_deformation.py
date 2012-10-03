@@ -73,7 +73,7 @@ def image_deformation(F, I, last_level=3, penalty=1.0, rho=2.0, wavelet='db2', t
         Determines the weight of the prior as opposed to the likelihood. (arbitrarily proportional to the ratio of the inverse variance of the gaussian deformations of the prior and the likelihood). Reduce this value if you want more deformations.
     rho : float, optional
         Determines the penalty of more granular coefficients. Increase to smoothen. Must be strictly positive.
-    wavelet : str / `pywt.Wavelet`
+    wavelet : str
         Wavelet type. See :class:`DisplacementFieldWavelet` for more information.
     maxiter : int, optional
         Maximum number of iterations per level.
@@ -126,7 +126,6 @@ def image_deformation(F, I, last_level=3, penalty=1.0, rho=2.0, wavelet='db2', t
 
     #from scipy.optimize import fmin_bfgs
     from amitgroup.stats.fmin_bfgs_tol import fmin_bfgs_tol as fmin_bfgs
-    import pywt
 
     level_capacity = last_level
     delF = np.asarray(np.gradient(F, 1/F.shape[0], 1/F.shape[1]))
