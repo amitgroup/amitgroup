@@ -197,12 +197,14 @@ def nets_to_mat(NO,Jmid,numperc=0):
     print numperc
     numfeat=NO[0][0].JJ.size;
     JJ=np.zeros((numfeat,numperc,numclass));
+    JJfb=np.zeros((numfeat,numperc,numclass));
     for c in range(numclass):
        for p in range(numperc):
            NO[c][p].JJ.shape=(numfeat,);
+           NO[c][p].JJfb.shape=(numfeat,)
            JJ[:,p,c]=np.double(NO[c][p].JJ)-Jmid;
-
-    return JJ
+           JJfb[:,p,c]=np.double(NO[c][p].JJfb)-Jmid
+    return [JJ, JJfb]
 
 def test_averages(expi, numtest=0):
 
@@ -227,8 +229,8 @@ def test_averages(expi, numtest=0):
     """
 
     numclass=len(expi.NO);
-    Jmid=np.ceil(exi.pp.Jmax/2)
-    JJ=nets_to_mat(expi.NO,Jmid,expi.numperc);
+    Jmid=np.ceil(expi.pp.Jmax/2)
+    [JJ,JJfb]=nets_to_mat(expi.NO[0],Jmid,expi.numperc);
     WW=np.mean(JJ,1);
     [CC, e]=test_by_weights(expi.ddte,WW,numtest)
     return CC, e
@@ -298,7 +300,7 @@ def test_net(expi, numtest=0):
     Jmid=np.ceil(expi.pp.Jmax/2)
     print Jmid
     numclass=len(expi.ddte);    
-    JJ=nets_to_mat(expi.NO[0],Jmid,expi.numperc);
+    [JJ, JJfb]=nets_to_mat(expi.NO[0],Jmid,expi.numperc);
     print JJ[:,:,0].shape
     CONF=np.zeros((numclass,numclass))
     Ntot=0
