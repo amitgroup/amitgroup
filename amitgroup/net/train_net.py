@@ -2,8 +2,9 @@ import numpy as np
 import sys
 import copy
 import time
-#from pylab import *
 import amitgroup as ag
+import scipy.sparse
+from scipy.sparse import lil_matrix
 
 
 
@@ -42,6 +43,8 @@ def top_train(expi):
     else:
         expi.NO.append(all_at_one_top(expi))
 
+    [C,e]=test_averages(expi)
+    print "Test classification rate ", e
     print "Finished Training"
 
 
@@ -72,13 +75,13 @@ def extract_feature_matrix(ddt,s,num=0):
     else:
         l=num
     numfeat=ddt[0].features[s].size
-    MM=np.zeros((l,numfeat))
+    MM=np.zeros((l,numfeat), dtype=np.ubyte)
     i=0
     for i in range(l):
        MM[i,:]=ddt[i].features[s].flatten()
     return MM
 
-def read_data_b(s,expi,numclass):
+def read_data_b(s,expi,numclass,DIM=0):
 
     """
 
@@ -104,7 +107,7 @@ def read_data_b(s,expi,numclass):
 
     print 'Hello'
     sstr=s+'/mnist_train'
-    sste=s+'/mnist_test'
+    sste=s+'/mnist_train'
     expi.ddtr=[]
     expi.ddte=[]
     for i in range(numclass):
@@ -116,8 +119,7 @@ def read_data_b(s,expi,numclass):
     if (expi.numtrain_per_class==0):
         for i in range(expi.numtrain):
             tim=ag.io.load_imagep(sstr,i,True)
-            if (expi.slant==True):
-                tim.img=ag.io.imslant(tim.img)
+            tim.img=ag.io.process_im(tim.img, expi.slant, DIM)
             feat=ag.features.bedges(np.double(tim.img),5,'box',2)
             tim.features={'V1': feat}
             tr=tim.truth
@@ -128,18 +130,16 @@ def read_data_b(s,expi,numclass):
             while len(expi.ddtr[c])<expi.numtrain_per_class:
                 if (ag.io.get_tr(sstr,i)==c):
                     tim=ag.io.load_imagep(sstr,i,True)
-                    if (expi.slant==True):
-                        tim.img=ag.io.imslant(tim.img)
+                    tim.img=ag.io.process_im(tim.img, expi.slant, DIM)
                     feat=ag.features.bedges(np.double(tim.img),5,'box',2)
                     tim.features={'V1': feat}
                     tr=tim.truth
                     expi.ddtr[tr].append(tim)
                 i+=1
 
-    for i in range(10000):
+    for i in range(10000,20000):
         tim=ag.io.load_imagep(sste,i,True)
-        if (expi.slant==True):
-            tim.img=ag.io.imslant(tim.img)
+        tim.img=ag.io.process_im(tim.img, expi.slant, DIM)
         feat=ag.features.bedges(np.double(tim.img),5,'box',2)
         tim.features={'V1': feat}
         tr=tim.truth
@@ -196,8 +196,8 @@ def nets_to_mat(NO,Jmid,numperc=0):
         numperc=len(NO[0]);
     print numperc
     numfeat=NO[0][0].JJ.size;
-    JJ=np.zeros((numfeat,numperc,numclass));
-    JJfb=np.zeros((numfeat,numperc,numclass));
+    JJ=np.zeros((numfeat,numperc,numclass), dtype=np.int8);
+    JJfb=np.zeros((numfeat,numperc,numclass), dtype=np.int8);
     for c in range(numclass):
        for p in range(numperc):
            NO[c][p].JJ.shape=(numfeat,);
@@ -277,7 +277,7 @@ def test_by_weights(ddte,WW,numtest=0):
     return [CONF, e]
 
         
-def test_net(expi, numtest=0):
+def test_net(expi, tr=False, numtest=0):
 
     """
     Test a network using the vote of the perceptrons
@@ -304,18 +304,20 @@ def test_net(expi, numtest=0):
     print JJ[:,:,0].shape
     CONF=np.zeros((numclass,numclass))
     Ntot=0
+    ddt=expi.ddte
+    if tr:
+        ddt=expi.ddtr
     for c in range(numclass):
         if numtest==0:
-            N=len(expi.ddte[c])
+            N=len(ddt[c])
         else:
             N=numtest
         Ntot+=N
         H=np.zeros((N,numclass));
+        FF=extract_feature_matrix(ddt[c],'V1',N)
         for d in range(numclass):
-            temp=np.dot(extract_feature_matrix(expi.ddte[c],'V1',N),JJ[:,:,d])>expi.pp.theta
+            temp=np.dot(FF,JJ[:,:,d])>expi.pp.theta
             H[:,d]=np.sum(temp,1)
-        
-       
         i=np.argmax(H,1);
         for d in range(numclass):
             CONF[c,d]=np.double(np.sum(i==d))
@@ -327,6 +329,23 @@ def test_net(expi, numtest=0):
 
                 
 def train_net(expi):
+
+    """
+
+    Train each class separately. So rerun over everything numclass times.
+    This will probably be phased out.
+
+    Paremters
+    ---------
+
+    expi - experiment.
+
+    Returns
+    -------
+
+    Returns list of perceptrons (numperc) 
+
+    """
     f = open(expi.out,'w')
     numclass=len(expi.ddtr)
     CI=range(numclass)
@@ -339,41 +358,94 @@ def train_net(expi):
     return NO
 
 def all_at_one_top(expi):
+
+    """
+
+    Train everything together. Each  data point triggers
+    potentiatiation of perceptrons of its class and depression
+    on perceptrons of ALL other classes.
+
+    Parameters
+    ----------
+
+    expi - experiment. 
+    expi.numperc - number of perceptrons per class
+    expi.numtrain_per_class>0 - number of training data per class.
+
+    Returns
+    ------
+
+    List of lists of perceptrons (one list for each class.)
+
+    """
+
+
     
     numclass=len(expi.ddtr)
     N=expi.numtrain_per_class
     if N==0:
         N=len(expi.ddtr[0])
-
+    # Get the full data matrix for class 0
     X=extract_feature_matrix(expi.ddtr[0],'V1',N)
-    Y=np.zeros((N,1))
+    Y=np.zeros((N,1), dtype=np.ubyte)
+    # Stack up the data matrices for the other classes.
     for c in range(1,numclass):
-        print 'training class ', c
+
         N=expi.numtrain_per_class
         if N==0:
             N=len(expi.ddtr[c])
+        print 'Loading class ', c, N
         X=np.vstack((X,extract_feature_matrix(expi.ddtr[c],'V1',N)))
         Y=np.vstack((Y,c*np.ones((N,1))))
-    NN=ff_all_at_one(expi.out,expi.pp,X,Y,expi.numperc,numclass)
+    # Call the training routine
+    NN=ff_all_at_one(expi.pp,X,Y,expi.numperc,numclass)
     return NN
     
-def ff_all_at_one(out,pp,X,Y,numperc,numclass):
+def ff_all_at_one(pp,X,Y,numperc,numclass):
+
+    """
+
+    Actually loop through a random ordering of the data
+    and potentiate synapses to perceptron of same class 
+    depress synapses to perceptrons of other classes and
+    potentiate feedback synapses for same class from perceptron to features.
+
+    Parameters
+    ----------
+
+    out - file name for some printouts
+    pp - parameters of learning (pltp, pltd, deltaP, deltaD
+    X - feature data
+    Y - class labels
+    numperc - number of perceptrons per class
+    numclass - number of classes.
+
+    Returns
+    -------
+
+    List of list of perceptrons.
+
+    """
+
     #sys.stdout = open('out','w')
-    f=open(out,'w')
     Ntot=X.shape[0]
     numfeat=X.shape[1]
     print Ntot, numfeat
+
     # Synapses are positive and Jmid is the `middle'. Instead of being symmetric around 0.
     Jmid=np.ceil(pp.Jmax/2)
     # Feed forward synspases - initial value 1 -> 0.
     J=[]
     Jfb=[]
     for c in range(numclass):
-        J.append(np.ones((numfeat,numperc))*Jmid)
+        J.append(np.ones((numfeat,numperc), dtype=np.int8)*Jmid)
         # Feedback synapses
-        Jfb.append(np.ones((numfeat,numperc))*Jmid)
+        Jfb.append(np.ones((numfeat,numperc), dtype=np.int8)*Jmid)
     # Iterate
     II=range(Ntot)
+    h=np.zeros(numperc)
+    rnumclass=range(numclass)
+    rNtot=range(Ntot)
     for it in range(pp.numit):
         print 'iteration ', it
         # Random arrangement of examples. Stochastic gradient.
@@ -382,25 +454,25 @@ def ff_all_at_one(out,pp,X,Y,numperc,numclass):
         up=0
         down=0
         # Loop over examples
-        for i in range(Ntot):
+        for i in rNtot:
             ii=II[i]
             XI=X[ii,:]==1
             XIz=X[ii,:]==0
             # Prepare for matrix multiplication.
             
             # Field at each perceptron for this class.
-            for c in range(numclass):
-
-                h=np.dot(X[ii,:],J[c]-Jmid)
-                h.shape=[1,numperc] 
+            
+            for c in rnumclass:
+                h=(np.dot(X[ii,:],J[c]-Jmid)).T
+                #h.shape=[1,numperc] 
                 if Y[ii]==c:
                     # Update in up direction.
                     up+=potentiate_ff(pp,h,XI,J[c],Jmid)
-                    Jfb[c]=modify_fb(pp,XI,XIz,Jfb[c],Jmid)
+                    #Jfb[c]=modify_fb(pp,XI,XIz,Jfb[c],Jmid)
                 else:
                     down+=depress_ff(pp,h,XI,J[c],Jmid)
         # up+down
-        f.write('updown '+str(np.double(up)+np.double(down))+'\n')
+        #f.write('updown '+str(np.double(up)+np.double(down))+'\n')
         
     N=[]
     for c in range(numclass):
@@ -410,6 +482,188 @@ def ff_all_at_one(out,pp,X,Y,numperc,numclass):
         N.append(NN)
             
     return N            
+
+
+
+def modify_fb(pp,XI,XIz,Jfb,Jmid):
+
+    """
+
+    Potentiate or depress the feedback synapses.
+
+    Parameters:
+    ----------
+
+    pp - learning parameters.
+    XI - Which features are on.
+    XIz - Which features are off.
+    Jfb - array of synaptic values.
+    Jmid = pp.Jmax/2
+
+    Returns
+    -------
+
+    Returns update synaptic value array.
+
+    """
+    # All feedback synapses connected to active features can be potentiated if less than max.
+
+    XI.shape=XI.size
+    temp=Jfb[XI,:]
+    IJ=temp<pp.Jmax
+    g=temp[IJ]    
+    g+=np.random.rand(g.size)<pp.pltp
+    temp[IJ]=g
+    Jfb[XI,:]=temp
+   
+    # All feedback synapses connected to inactive features can be depressed if greater than 0.
+    XIz.shape=XIz.size
+    temp=Jfb[XIz,:]
+    IJ=temp>0
+    g=temp[IJ]
+    g-=np.random.rand(g.size)<pp.pltd
+    temp[IJ]=g
+    Jfb[XIz,:]=temp
+    return Jfb
+    
+
+def potentiate_ff(pp,h,XI,J,Jmid):
+
+
+    """
+
+    If field is below pp.theta+pp.deltaP
+    Potentiate feed forward synapses that have active features (XI)
+
+    Parameters
+    ----------
+    pp - learning parameters - pp.pltp, pp.deltaP
+    h - current field.
+    XI - active features.
+    J - synaptic array
+    Jmid = pp.Jmax/2
+
+    Returns
+    -------
+
+    Updates J but returns number of modifications.
+
+    """
+
+    # Perceptrons with field below potentiation threshold.
+    hii=h<=pp.theta+pp.deltaP
+    if (len(np.nonzero(hii)[0])==0):
+        return 0
+
+    # Logical matrix of all synapses that can be potentiated ... below potentiation threshold
+    # and the feature is on. (Synapses with off features don't create a change.
+    imat=np.outer(XI,hii)
+
+    if (len(J.shape)==1):
+        imat=imat.flatten()
+    
+    # Extract changeable synapses.
+    Jh=J[imat]
+
+    # If less than maximal synaptic value
+    IJ=Jh<pp.Jmax
+    g=Jh[IJ]
+    # Modify with stochastic ltp probability.
+    RR=(np.random.rand(g.size)<pp.pltp)
+    g=g+RR*pp.pinc
+    Jh[IJ]=g
+    r=len(np.nonzero(RR)[0])
+    J[imat]=Jh
+    return r
+
+def depress_ff(pp,h,XI,J,Jmid):
+
+    """
+
+    If field is above pp.theta-pp.deltaD
+    depress feed forward synapses that have active features (XI)
+
+    Parameters
+    ----------
+    pp - learning parameters - pp.pltd, pp.deltaP
+    h - current field.
+    XI - active features.
+    J - synaptic array
+    Jmid = pp.Jmax/2
+
+    Returns
+    -------
+
+    Updates J but returns number of modifications.
+
+    """
+
+     # Perceptrons with field above depression threshold.
+    hii=h>=pp.theta-pp.deltaD;
+    if (len(np.nonzero(hii)[0])==0):
+        return 0
+    # Logical matrix of all synapses that can be depressed ...above depression threshold
+    # and the feature is on. (Synapses with off features don't create a change.)
+    imat=np.outer(XI,hii)
+    if (len(J.shape)==1):
+        imat=imat.flatten()
+
+    Jh=J[imat];
+    # If greater than minimal synaptic value
+    IJ=Jh>0
+    g=Jh[IJ]
+    # Modify with stochastic ltd probability.
+    RR=(np.random.rand(g.size)<pp.pltd)
+    Jh[IJ]=g-RR*pp.pinc
+    r=len(np.nonzero(RR)[0])
+    J[imat]=Jh
+    return r
+
+def rearrange(dd,c,numtrain=0):
+
+    """
+
+    Arrange data matrix of class c at top of array
+    and then data of all other classes.
+
+    Parameters
+    ----------
+
+    dd - list of datas 
+    c - class to put on top.
+    numtrain - number per class to use.
+
+    Returns:
+    -------
+
+    Returns the matrix.
+
+    """
+
+    XY=[]   
+    ic=range(len(dd))
+    ic.remove(c)
+    n=len(dd[c])
+    if numtrain>0:
+        n=min(numtrain,len(dd[c]))
+
+    XY.append(extract_feature_matrix(dd[c],'V1',n))
+
+
+    N=XY[0].shape[0]
+
+    for ii in ic:
+        n=len(dd[ii])
+        if numtrain>0:
+            n=min(numtrain,len(dd[ii]))
+        XY[0]=np.vstack((XY[0],extract_feature_matrix(dd[ii],'V1',n)))
+
+        
+    Ntot=XY[0].shape[0]
+    Nbgd=Ntot-N
+    XY.append(np.vstack((np.ones((N,1), dtype=np.ubyte),np.zeros((Nbgd,1), dtype=np.int8))))
+
+    return XY
 
 
 # Train the network for each class.
@@ -474,107 +728,6 @@ def ff_mult(pp,XY,numperc,f):
         N.append(netout(J[:,p],Jfb[:,p]))
     return N
 
-def modify_fb(pp,XI,XIz,Jfb,Jmid):
-
-    # All feedback synapses connected to active features can be potentiated if less than max.
-    
-    XI.shape=XI.size
-    temp=Jfb[XI,:]
-    
-    IJ=temp<pp.Jmax
-    
-    g=temp[IJ]
-    
-    g+=np.random.rand(g.size)<pp.pltp
-    temp[IJ]=g
-    Jfb[XI,:]=temp
-   
-    # All feedback synapses connected to inactive features can be depressed if greater than 0.
-    XIz.shape=XIz.size
-    temp=Jfb[XIz,:]
-    IJ=temp>0
-    g=temp[IJ]
-    g-=np.random.rand(g.size)<pp.pltd
-    temp[IJ]=g
-    Jfb[XIz,:]=temp
-    return Jfb
-    
-def potentiate_ff(pp,h,XI,J,Jmid):
-    # Perceptrons with field below potentiation threshold.
-    hii=h<=pp.theta+pp.deltaP;
-    if (np.sum(hii)==0):
-        return 0
-
-    # Logical matrix of all synapses that can be potentiated ... below potentiation threshold
-    # and the feature is on. (Synapses with off features don't create a change.
-    imat=np.outer(XI,hii)
-
-    if (len(J.shape)==1):
-        imat=imat.flatten()
-    
-    # Extract changeable synapses.
-    Jh=J[imat]
-
-    # If less than maximal synaptic value
-    IJ=Jh<pp.Jmax
-    g=Jh[IJ]
-    # Modify with stochastic ltp probability.
-    RR=(np.random.rand(g.size)<pp.pltp)
-    g=g+RR*pp.pinc
-    Jh[IJ]=g
-    r=sum(RR)
-    J[imat]=Jh
-    return r
-
-def depress_ff(pp,h,XI,J,Jmid):
-     # Perceptrons with field above depression threshold.
-    hii=h>=pp.theta-pp.deltaD;
-    if (np.sum(hii)==0):
-        return 0
-    # Logical matrix of all synapses that can be depressed ...above depression threshold
-    # and the feature is on. (Synapses with off features don't create a change.)
-    imat=np.outer(XI,hii)
-    if (len(J.shape)==1):
-        imat=imat.flatten()
-
-    Jh=J[imat];
-    # If greater than minimal synaptic value
-    IJ=Jh>0
-    g=Jh[IJ]
-    # Modify with stochastic ltd probability.
-    RR=(np.random.rand(g.size)<pp.pltd)
-    Jh[IJ]=g-RR*pp.pinc
-    r=sum(RR)
-    J[imat]=Jh
-    return r
-
-def rearrange(dd,c,numtrain=0):
-
-    XY=[]   
-    ic=range(len(dd))
-    ic.remove(c)
-    n=len(dd[c])
-    if numtrain>0:
-        n=min(numtrain,len(dd[c]))
-
-    XY.append(extract_feature_matrix(dd[c],'V1',n))
-
-
-    N=XY[0].shape[0]
-
-    for ii in ic:
-        n=len(dd[ii])
-        if numtrain>0:
-            n=min(numtrain,len(dd[ii]))
-        XY[0]=np.vstack((XY[0],extract_feature_matrix(dd[ii],'V1',n)))
-
-        
-    Ntot=XY[0].shape[0]
-    Nbgd=Ntot-N
-    XY.append(np.vstack((np.ones((N,1)),np.zeros((Nbgd,1)))))
-
-    return XY
-
 
 class pars:
     
@@ -621,6 +774,7 @@ def compress_nets(NN):
     for Nc in NN:
         for P in Nc:
             P.JJ=np.ubyte(P.JJ)
+
 
 
 class experiment:
