@@ -41,6 +41,8 @@ setup(name='amitgroup',
     ],
     ext_modules = [
         cython_extension("amitgroup.features.features"),
+        cython_extension("amitgroup.features.spread_patches"),
+        cython_extension("amitgroup.features.code_parts"),
         cython_extension("amitgroup.util.interp2d"),
     ]
 )

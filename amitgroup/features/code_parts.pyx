@@ -12,7 +12,7 @@ ctypedef np.float32_t DTYPE_t
 
 ctypedef np.uint8_t UINT_t
 
-cdef count_edges(np.ndarray[ndim=3,dtype=UINT_t] X,
+cdef _count_edges(np.ndarray[ndim=3,dtype=UINT_t] X,
                  unsigned int i_start,
                  unsigned int i_end,
                  unsigned int j_start,
@@ -49,10 +49,30 @@ cdef count_edges(np.ndarray[ndim=3,dtype=UINT_t] X,
 
 
 
-def code_parts_fast(np.ndarray[ndim=3,dtype=UINT_t] X,
-                    np.ndarray[ndim=4,dtype=DTYPE_t] log_parts,
-                    np.ndarray[ndim=4,dtype=DTYPE_t] log_invparts,
-                    int threshold):
+def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
+               np.ndarray[ndim=4,dtype=DTYPE_t] log_parts,
+               np.ndarray[ndim=4,dtype=DTYPE_t] log_invparts,
+               int threshold):
+    """
+    At each location of `X`, find the log probabilities for each part and location. Outputs these part assignments in the same data dimensions as `X`. Neighborhoods of `X` with edge counts lower than `threshold` are regarded as background and assigned zero.
+
+    Parameters
+    ----------
+    X : ndarray[ndim=3,dtype=np.uint8]
+        The first two dimensions of the array specify locations. The last one specifies a binary edge type. The value ``X[s,t,e]`` is 1 iff there is an edge of type `e` detected at location `(s,t)`.
+    log_parts : ndarray[ndim=4]
+        We have a Bernoulli mixture model defined over patches of the input image. The `log_parts` is a logarithm applied to the array of edge probability maps for each part. Array of shape `(K, S, T, E)`, where `K` is the number of mixture component, `S` and `T` the shape of the data, and `E` the number of edges. The value of ``log_parts[k,s,t,e]`` is the log probability of observing an edge `e` at location `(s,t)`, conditioned on the mixture component being `k`.
+    log_invparts : ndarray[ndim=4]
+        Preprocessed inverse of `log_parts`, i.e. ``log(1-exp(log_parts))``.
+    threshold : int
+        The least number of edges in a patch to reject the null background hypothesis.
+    
+    Returns
+    -------
+    out_map : ndarray[ndim=3] 
+        Array of shape `(S, T, K+1)`. There are two cases, either the third dimension is `(0, -inf, -inf, ...)`, when there are insufficient edges in the neighborhood of a location. Otherwise, `out_map[s,t,i+1]` is the log likelihood of part `i` at location `(s,t)`. Additionally, `out_map[s,t,0]` is equal to `-inf`.
+    """
+
     cdef unsigned int num_parts = log_parts.shape[0]
     cdef unsigned int part_x_dim = log_parts.shape[1]
     cdef unsigned int part_y_dim = log_parts.shape[2]
@@ -67,9 +87,9 @@ def code_parts_fast(np.ndarray[ndim=3,dtype=UINT_t] X,
     # thresholded due to there not being enough edges
     
 
-    cdef np.ndarray[dtype=DTYPE_t, ndim=3] out_map = np.zeros((new_x_dim,
-                                                        new_y_dim,
-                                                                   num_parts+1),dtype=DTYPE)
+    cdef np.ndarray[dtype=DTYPE_t, ndim=3] out_map = -np.inf * np.ones((new_x_dim,
+                                                                        new_y_dim,
+                                                                        num_parts+1),dtype=DTYPE)
     # The first cell along the num_parts+1 axis contains a value that is either 0
     # if the area is deemed to have too few edges or min_val if there are sufficiently many
     # edges, min_val is just meant to be less than the value of the other cells
@@ -79,7 +99,7 @@ def code_parts_fast(np.ndarray[ndim=3,dtype=UINT_t] X,
         i_end = i_start + part_x_dim
         for j_start in range(X_y_dim-part_y_dim+1):
             j_end = j_start + part_y_dim
-            count = count_edges(X,i_start,i_end,j_start,j_end,X_z_dim)
+            count = _count_edges(X,i_start,i_end,j_start,j_end,X_z_dim)
             if count >= threshold:
                 for i in range(part_x_dim):
                     for j in range(part_y_dim):
@@ -90,12 +110,8 @@ def code_parts_fast(np.ndarray[ndim=3,dtype=UINT_t] X,
                             else:
                                 for k in range(num_parts):
                                     out_map[i_start,j_start,k+1] += log_invparts[k,i,j,z]
-                                    
-                # every term is a log-likelihood so adding them up will be bounded by the smallest log-likelihood
-                for k in range(num_parts):
-                    out_map[i_start,j_start,0] += out_map[i_start,j_start,k+1] - 1
             else:
-                out_map[i_start,j_start,0] = 1.
+                out_map[i_start,j_start,0] = 0.
                 
     return out_map
 

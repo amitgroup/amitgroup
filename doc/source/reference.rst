@@ -15,6 +15,8 @@ Feature extraction (:mod:`amitgroup.features`)
    :toctree: generated/
 
    bedges
+   spread_patches
+   code_parts
 
 .. _io:
 
