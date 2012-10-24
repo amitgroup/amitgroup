@@ -1,9 +1,9 @@
 
 from __future__ import absolute_import
-from .features import array_bedges
 import numpy as np
 import scipy.signal
 import amitgroup as ag
+from amitgroup.features.features import array_bedges
 
 # Builds a kernel along the edge direction
 def _along_kernel(direction, radius):

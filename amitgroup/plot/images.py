@@ -33,18 +33,21 @@ def images(data, zero_to_one=True, show=True, subplots=None):
         plt.imshow(data, **settings)
     else:
         # TODO: Better find out pleasing aspect ratios
+        N = len(data)
+        print N
         if subplots is not None:
             sh = subplots
             assert len(data) <= np.prod(subplots) 
-        elif len(data) <= 3:
+        elif N <= 3:
             sh = (1, len(data))
-        elif len(data) == 6:
+        elif N == 5 or N == 6:
             sh = (2, 3)
-        elif len(data) == 12:
+        elif N == 12:
             sh = (3, 4)
         else:
             perside = math.ceil(math.sqrt(len(data)))
             sh = (perside,)*2
+        print sh
         fig = plt.figure()
         for i, im in enumerate(data): 
             plt.subplot(sh[0], sh[1], 1+i).set_axis_off()
