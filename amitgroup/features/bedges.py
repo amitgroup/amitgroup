@@ -73,7 +73,26 @@ def bedges(images, k=6, inflate='box', radius=1, lastaxis=False):
 
     return features
 
-def bedges_from_image(im, k=6, inflate='box', radius=1, lastaxis=False):
+def bedges_from_image(im, k=6, inflate='box', radius=1, lastaxis=False, return_original=False):
+    """
+    This wrapper for :func:`bedges`, will take an image file, load it and compute binary edges for each color channel separately, and then finally OR the result.
+
+    Parameters
+    ----------
+    im : str / ndarray
+        This can be either a string with a filename to an image file, or an ndarray of three dimensions, where the third dimension is the color channels.
+
+    Returns
+    -------
+    edges : ndarray
+        An array of shape ``(8, rows, cols)`` if entered as a single image, or ``(N, 8, rows, cols)`` of multiple. Each pixel in the original image becomes a binary vector of size 8, one bit for each cardinal and diagonal direction. 
+    return_original : bool
+        If True, then the original image is returned as well as the edges.
+    image : ndarray
+        An array of shape ``(rows, cols, D)``, where `D` is the number of color channels, probably 3 or 4. This is only returned if `return_original` is set to True.
+
+    The rest of the argument are the same as :func:`bedges`.
+    """
     if isinstance(im, str):
         import matplotlib.pylab as plt
         im = plt.imread(im).astype(np.float64)
@@ -81,5 +100,11 @@ def bedges_from_image(im, k=6, inflate='box', radius=1, lastaxis=False):
     # Run bedges on each channel, and then OR it. 
     
     edges = [bedges(im[...,i], k, inflate, radius, lastaxis) for i in xrange(3)]
-    print edges[0].shape
-    return edges[0] | edges[1] | edges[2]
+
+    final = edges[0] | edges[1] | edges[2]
+
+    if return_original:
+        return final, im
+    else:
+        return final
+    
