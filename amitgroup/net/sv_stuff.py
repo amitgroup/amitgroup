@@ -5,7 +5,7 @@ import time
 import train_net as tn
 
 def train_sv(expi, flag=0):
-    expi.pp.delatD=expi.pp.deltaP
+    expi.pp.deltaD=expi.pp.deltaP
     numclass=len(expi.ddtr)
     numfeat=expi.ddtr[0][0].features['V1'].size
     print numfeat
@@ -14,11 +14,12 @@ def train_sv(expi, flag=0):
         W=one_against_rest(expi.pp,expi.ddtr,c,expi.numtrain_per_class, flag)
         expi.NO[:,c]=W
     CC, e=tn.test_by_weights(expi.ddte,expi.NO)
+    print 'result ', e
     f=open(expi.out,"a")
     f.write('stoch: '+str(expi.pp.stoch) + ' Del: ' + str(expi.pp.deltaP) + ' Rate: ' + str(e) + '\n')
 
 def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
-    print 'numtrain', numtrain
+    print 'numtrain', numtrain, 'class ', c
     if numtrain==0:
         numtrain=len(ddtr[c])
     # Rearrange data for this class with class at top of array and all the rest after.
@@ -45,8 +46,6 @@ def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
         np.random.shuffle(II)
         up=0
         dup=0
-        #fac1=(1.+pp.stoch*pp.pltp/sqtd)
-        #fac2=pp.pltp/sqtd
         fac1=0
         for i in II:
             if pp.stoch<0:
@@ -55,6 +54,8 @@ def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
             tempx=XY[0][i,:]
             tempy=XY[1][i]
             h=np.dot(tempx,W)
+            #print h
+            #raw_input()
             pi=tempx>0
             # If L2 weight penalization
             if pp.stoch<0:
@@ -87,7 +88,7 @@ def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
             DD=np.sum(np.maximum(np.zeros(Ntot),pp.deltaP-np.dot(XY[0],W)*XY[1]));
             PP=-.5*pp.stoch*np.sum(W*W)
             EE=DD+PP
-            print it, 'Number of syn changes ', up, ' at ', dup, ' Data term ', DD, 'Prior term ', PP, 'Total ', EE
+            print 'td ', td, 'it ', it, 'Number of syn changes ', up, ' at ', dup, ' Data term ', DD, 'Prior term ', PP, 'Total ', EE
         if up==0:
             #time.sleep(20)
             break

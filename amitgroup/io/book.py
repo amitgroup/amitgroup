@@ -4,7 +4,6 @@ import struct
 from array import array as python_array 
 import numpy as np
 
-__all__ = ['load_image', 'load_all_images']
 
 def get_tr(path,index):
     aa=int(np.floor(index/100))
@@ -42,8 +41,28 @@ def load_imagep(path, index, asbytes=False):
     aa=int(np.floor(index/100))
     rr=np.mod(index,100)
     filename=path+'/Images_'+str(aa)
-    return(load_image(filename, rr, asbytes))
+    imaget=load_image(filename, rr, asbytes)
+    
+    return(imaget)
 
+def process_im(img,slant,DIM):
+    if (slant):
+        img=imslant(img)
+    img=embedd_image(img,DIM)
+    return(img)
+
+def embedd_image(img, DIM):
+
+   
+    if (DIM>0 and DIM>max(img.shape)):
+        nimg=np.zeros((DIM,DIM))
+        sx=np.round((DIM-img.shape[0])/2)
+        sy=np.round((DIM-img.shape[1])/2)
+        nimg[sx:sx+img.shape[0],sy:sy+img.shape[1]]=img
+    else:
+        nimg=img
+
+    return(nimg)   
 
 def imslant(img):
     aa=np.transpose(img)
@@ -74,7 +93,7 @@ def imslant(img):
     imout=a*b*timg[xx1+dimx,yy1+dimy]+a*(1.-b)*timg[xx1+dimx,y+dimy]+(1.-a)*b*timg[x+dimx,yy1+dimy]+(1.-a)*(1.-b)*timg[x+dimx,y+dimy]
     #imout=timg[x+dimxh,y+dimyh]
     
-    return(np.transpose(imout))
+    return(np.ubyte(np.transpose(imout)))
 
 def load_image(filename, index, asbytes=False):
     """

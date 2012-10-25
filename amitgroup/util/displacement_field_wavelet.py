@@ -96,7 +96,9 @@ class DisplacementFieldWavelet(DisplacementField):
         self.u = new_u
 
     @classmethod
-    def make_lambdas(cls, shape, levels, eta=1.0, rho=1.0):
+    def make_lambdas(cls, shape, levels=None, eta=1.0, rho=1.0):
+        if levels is None:
+            levels = int(np.log2(max(shape)))
         N = 1 << levels
         lambdas = np.zeros((N, N))
         for level in xrange(levels, -1, -1):
