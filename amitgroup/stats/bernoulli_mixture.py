@@ -245,7 +245,7 @@ class BernoulliMixture:
         return np.dot(self.data_mat, self.log_templates.T) + \
                np.dot(self.not_data_mat, self.log_invtemplates.T)
 
-    def remix(data):
+    def remix(self, data):
         """
         Gives the mixture model an alternative set of input, and computes the mixture components on it.
 
@@ -260,8 +260,8 @@ class BernoulliMixture:
         -------
         remixed : ndarray
             The `data` averaged according to the mixture components. Will have the shape ``(num_mix, A', B', ...)``.
-       """
-        return np.asarray([np.average(data, axis=0, weights=all_affinities[:,m]) for m in xrange(self.num_mix)])
+        """
+        return np.asarray([np.average(data, axis=0, weights=self.affinities[:,m]) for m in xrange(self.num_mix)])
       
     def set_template_vec_likelihoods(self):
         pass
