@@ -73,3 +73,13 @@ def bedges(images, k=6, inflate='box', radius=1, lastaxis=False):
 
     return features
 
+def bedges_from_image(im, k=6, inflate='box', radius=1, lastaxis=False):
+    if isinstance(im, str):
+        import matplotlib.pylab as plt
+        im = plt.imread(im).astype(np.float64)
+
+    # Run bedges on each channel, and then OR it. 
+    
+    edges = [bedges(im[...,i], k, inflate, radius, lastaxis) for i in xrange(3)]
+    print edges[0].shape
+    return edges[0] | edges[1] | edges[2]
