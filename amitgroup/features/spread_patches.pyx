@@ -21,24 +21,26 @@ def spread_patches(np.ndarray[ndim=2,dtype=np.int64_t] X,
 
     Parameters
     ----------
-    X: np.ndarray[ndim=2,dtype=int]
+    X : ndarray[ndim=2,dtype=int]
         Best feature fit for the different locations on the 
         data.  A feature of value zero means that there were
         insufficient edges in that region
         a feature value in [1 ... num_parts] means that 
         a feature was a best fit there.
-    spread_0_dim: int
+    spread_0_dim : int
         Radius of this size indicates the spread region along
         the 0th axis.  0 corresponds to no spread. 1 Corresponds
         to spreading over 1 cell in both directions (boundaries
         are handled by assuming zeros in all other coordinates)
-    spread_1_dim: int
+    spread_1_dim : int
         Radius of the spread along dimension 1
+    num_parts : int
+        Number of parts.
 
     Returns
     -------
-    bin_out_map: np.ndarray[ndim=3,dtype=np.uint8]
-        Performs spreading 
+    bin_out_map : np.ndarray[ndim=3,dtype=np.uint8]
+        Performs spreading and returns TODO.
 
     References
     ----------
