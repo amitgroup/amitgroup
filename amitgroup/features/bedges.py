@@ -22,7 +22,7 @@ def _along_kernel(direction, radius):
             
     return kern
 
-def bedges(images, k=6, inflate='box', radius=1, lastaxis=False):
+def bedges(images, k=6, inflate='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, lastaxis=False):
     """
     Extracts binary edge features for each pixel according to [1].
 
@@ -39,6 +39,10 @@ def bedges(images, k=6, inflate='box', radius=1, lastaxis=False):
         If `'perpendicular'`, then the features will be extended by `radius` perpendicular to the direction of the edge feature (i.e. along the edge).
     radius : int
         Controls the extent of the inflation, see above.
+    minimum_contrast : double
+        Requires the gradient to have an absolute value greater than this, for an edge to be detected. Set to a non-zero value to reduce edges firing in low contrast areas.
+    contrast_insensitive : bool
+        If this is set to True, then the direction of the gradient does not matter and only 4 edge features will be returned.
     lastaxis: bool
         If True, the images will be returned with the features on the last axis as ``(rows, cols, 8)`` instead of ``(8, rows, cols)``. 
     
@@ -53,9 +57,9 @@ def bedges(images, k=6, inflate='box', radius=1, lastaxis=False):
     """
     single = len(images.shape) == 2
     if single:
-        features = array_bedges(np.array([images]), k)
+        features = array_bedges(np.array([images]), k, minimum_contrast, contrast_insensitive)
     else:
-        features = array_bedges(images, k) 
+        features = array_bedges(images, k, minimum_contrast, contrast_insensitive) 
 
     if inflate is True or inflate == 'box':
         features = ag.util.inflate2d(features, np.ones((1+radius*2, 1+radius*2)))
@@ -73,7 +77,7 @@ def bedges(images, k=6, inflate='box', radius=1, lastaxis=False):
 
     return features
 
-def bedges_from_image(im, k=6, inflate='box', radius=1, lastaxis=False, return_original=False):
+def bedges_from_image(im, k=6, inflate='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, lastaxis=False, return_original=False):
     """
     This wrapper for :func:`bedges`, will take an image file, load it and compute binary edges for each color channel separately, and then finally OR the result.
 
@@ -101,7 +105,7 @@ def bedges_from_image(im, k=6, inflate='box', radius=1, lastaxis=False, return_o
     dimensions = im.shape[-1]
     
     # This will use all color channels, including alpha, if there is one
-    edges = [bedges(im[...,i], k, inflate, radius, lastaxis) for i in xrange(dimensions)]
+    edges = [bedges(im[...,i], k, inflate, radius, minimum_contrast, lastaxis) for i in xrange(dimensions)]
 
     final = reduce(np.bitwise_or, edges)
 
