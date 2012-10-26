@@ -93,15 +93,17 @@ def bedges_from_image(im, k=6, inflate='box', radius=1, lastaxis=False, return_o
 
     The rest of the argument are the same as :func:`bedges`.
     """
-    if isinstance(im, str):
+    if isinstance(im, str) or isinstance(im, file):
         import matplotlib.pylab as plt
         im = plt.imread(im).astype(np.float64)
 
     # Run bedges on each channel, and then OR it. 
+    dimensions = im.shape[-1]
     
-    edges = [bedges(im[...,i], k, inflate, radius, lastaxis) for i in xrange(3)]
+    # This will use all color channels, including alpha, if there is one
+    edges = [bedges(im[...,i], k, inflate, radius, lastaxis) for i in xrange(dimensions)]
 
-    final = edges[0] | edges[1] | edges[2]
+    final = reduce(np.bitwise_or, edges)
 
     if return_original:
         return final, im

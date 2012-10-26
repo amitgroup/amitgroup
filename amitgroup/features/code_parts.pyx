@@ -6,9 +6,9 @@ import cython
 import numpy as np
 cimport numpy as np
 #from cython.parallel import prange
-DTYPE = np.float32
+DTYPE = np.float64
 UINT = np.uint8
-ctypedef np.float32_t DTYPE_t
+ctypedef np.float64_t DTYPE_t
 
 ctypedef np.uint8_t UINT_t
 
@@ -101,6 +101,8 @@ def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
             j_end = j_start + part_y_dim
             count = _count_edges(X,i_start,i_end,j_start,j_end,X_z_dim)
             if count >= threshold:
+                out_map[i_start,j_start] = 1.0
+                out_map[i_start,j_start,0] = -np.inf
                 for i in range(part_x_dim):
                     for j in range(part_y_dim):
                         for z in range(X_z_dim):
@@ -111,7 +113,7 @@ def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
                                 for k in range(num_parts):
                                     out_map[i_start,j_start,k+1] += log_invparts[k,i,j,z]
             else:
-                out_map[i_start,j_start,0] = 0.
+                out_map[i_start,j_start,0] = 0.0
                 
     return out_map
 
