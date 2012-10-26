@@ -141,6 +141,17 @@ class BernoulliMixture:
 
         self.set_templates()
         
+    def cluster_underlying_data(self,underlying_data):
+        """
+        U
+        """
+        # check that the number of data points matches the number
+        # of data estimated
+        assert underlying_data.shape[0] == self.num_data
+        underlying_shape = underlying_data.shape[1:]
+        underlying_clusters = np.dot(self.affinities.T,
+                            underlying_data.reshape(self.num_data,np.prod(underlying_shape)))
+        return underlying_clusters.reshape( (self.num_data,) + underlying_shape)
 
     def _plot(self, plw):
         if not plw.tick():
