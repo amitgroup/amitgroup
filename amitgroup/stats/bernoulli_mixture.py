@@ -15,12 +15,12 @@ class BernoulliMixture:
     num_mix : int
         Number of mixture components. 
     data_mat : ndarray
-        Binary data array. Can be of any shape, as long as the first axis separates data entries.
-        Values in the data must be either 0 or 1 for the algorithm to work.
+        Binary data array. Can be of any shape, as long as the first axis separates samples.
+        Values in the data must be either 0 or 1 for the algorithm to work. We will refer to the size of this array as ``(N, A, B, ...)``, where `N` is the number of samples, and ``(A, B, ...)`` the shape of a data sample.
     init_type : string
         Specifies the algorithm initialization.
          * `unif_rand` : Unified random. 
-         * `specific` : TODO: Added explanation of this.
+         * `specific` : TODO: Add explanation of this.
     
     Attributes 
     ----------
@@ -33,7 +33,7 @@ class BernoulliMixture:
     iterations : int
         Number of iterations from the EM. Will be set after calling :py:func:`run_EM`.      
     templates : ndarray 
-        Mixture components templates. Array of shape ``(num_mix, A, B, ...)``, where ``A, B, ...`` is the shape of a data entry.
+        Mixture components templates. Array of shape ``(num_mix, A, B, ...)``, where ``(A, B, ...)`` is the shape of a single data entry.
     work_templates : ndarray
         Flattened mixture components templates. Array of shape ``(num_mix, data_length)``.
     weights : ndarray
@@ -141,6 +141,17 @@ class BernoulliMixture:
 
         self.set_templates()
         
+    def cluster_underlying_data(self,underlying_data):
+        """
+        U
+        """
+        # check that the number of data points matches the number
+        # of data estimated
+        assert underlying_data.shape[0] == self.num_data
+        underlying_shape = underlying_data.shape[1:]
+        underlying_clusters = np.dot(self.affinities.T,
+                            underlying_data.reshape(self.num_data,np.prod(underlying_shape)))
+        return underlying_clusters.reshape( (self.num_data,) + underlying_shape)
 
     def _plot(self, plw):
         if not plw.tick():
@@ -244,6 +255,24 @@ class BernoulliMixture:
         """
         return np.dot(self.data_mat, self.log_templates.T) + \
                np.dot(self.not_data_mat, self.log_invtemplates.T)
+
+    def remix(self, data):
+        """
+        Gives the mixture model an alternative set of input, and computes the mixture components on it.
+
+        This is appropriate to do with for instance original images, if the mixture component originally was calculated using features of the originals.
+    
+        Parameters
+        ----------
+        data : ndarray
+            The data that should be combined with the affinities (mixture weights) of the mixture model. Takes an array of any number of any shape ``(N, A', B', ...)``, where `N` is the number of samples. Notice that we have marked the other dimensions with a dash, since the size of this array does not have to equal the size of the data array used to train the model in the first place. 
+
+        Returns
+        -------
+        remixed : ndarray
+            The `data` averaged according to the mixture components. Will have the shape ``(num_mix, A', B', ...)``.
+        """
+        return np.asarray([np.average(data, axis=0, weights=self.affinities[:,m]) for m in xrange(self.num_mix)])
       
     def set_template_vec_likelihoods(self):
         pass

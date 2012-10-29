@@ -3,7 +3,6 @@ from __future__ import division
 
 import amitgroup as ag
 import numpy as np
-import pywt
 from copy import deepcopy
 from .displacement_field import DisplacementField
 from .interp2d import interp2d
@@ -22,8 +21,8 @@ class DisplacementFieldWavelet(DisplacementField):
     ----------
     shape : tuple
         Size of the displacement field.
-    wavelet : string / pywt.Wavelet
-        Specify wavelet type. Read more at PyWavelets_.
+    wavelet : string
+        Specify wavelet type, ``'db1'`` (D2) to ``'db20'`` (D40).
     penalty : float
         Coefficient signifying the size of the prior. Higher means less deformation.
         This is only needed if the derivative is needed.
@@ -42,7 +41,7 @@ class DisplacementFieldWavelet(DisplacementField):
         self.prepare_shape()
         self.rho = rho 
         self.penalty = penalty
-        biggest = self.scriptNs[-1]        
+        #biggest = self.scriptNs[-1]        
         self.u = None
         self.full_size_means = means
         self.full_size_variances = variances
@@ -97,7 +96,9 @@ class DisplacementFieldWavelet(DisplacementField):
         self.u = new_u
 
     @classmethod
-    def make_lambdas(cls, shape, levels, eta=1.0, rho=1.0):
+    def make_lambdas(cls, shape, levels=None, eta=1.0, rho=1.0):
+        if levels is None:
+            levels = int(np.log2(max(shape)))
         N = 1 << levels
         lambdas = np.zeros((N, N))
         for level in xrange(levels, -1, -1):
@@ -134,7 +135,7 @@ class DisplacementFieldWavelet(DisplacementField):
         side = max(self.shape)
         self.levels = int(np.log2(side))
         self.levelshape = tuple(map(int, map(np.log2, self.shape)))
-        self.scriptNs = map(len, pywt.wavedec(np.zeros(side), self.wavelet, level=self.levels, mode=self.mode))
+        #self.scriptNs = map(len, pywt.wavedec(np.zeros(side), self.wavelet, level=self.levels, mode=self.mode))
 
     def deform_x(self, x0, x1, last_level=np.inf):
         last_level = min(last_level, self.level_capacity)
