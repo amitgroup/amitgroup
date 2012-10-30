@@ -107,7 +107,7 @@ def read_data_b(s,expi,numclass,DIM=0):
 
     print 'Hello'
     sstr=s+'/mnist_train'
-    sste=s+'/mnist_train'
+    sste=s+'/mnist_test'
     expi.ddtr=[]
     expi.ddte=[]
     for i in range(numclass):
@@ -137,7 +137,7 @@ def read_data_b(s,expi,numclass,DIM=0):
                     expi.ddtr[tr].append(tim)
                 i+=1
 
-    for i in range(10000,20000):
+    for i in range(10000):
         tim=ag.io.load_imagep(sste,i,True)
         tim.img=ag.io.process_im(tim.img, expi.slant, DIM)
         feat=ag.features.bedges(np.double(tim.img),5,'box',2)
