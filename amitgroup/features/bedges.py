@@ -105,7 +105,7 @@ def bedges_from_image(im, k=6, inflate='box', radius=1, minimum_contrast=0.0, co
     dimensions = im.shape[-1]
     
     # This will use all color channels, including alpha, if there is one
-    edges = [bedges(im[...,i], k, inflate, radius, minimum_contrast, lastaxis) for i in xrange(dimensions)]
+    edges = [bedges(im[...,i], k=k, inflate=inflate, radius=radius, minimum_contrast=minimum_contrast, contrast_insensitive=contrast_insensitive, lastaxis=lastaxis) for i in xrange(dimensions)]
 
     final = reduce(np.bitwise_or, edges)
 

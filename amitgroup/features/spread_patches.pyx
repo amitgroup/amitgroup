@@ -63,6 +63,4 @@ def spread_patches(np.ndarray[ndim=2,dtype=np.int64_t] X,
                 for x1 in range(lo_spread_1_idx,hi_spread_1_idx):
                     if X[x0,x1] > 0:
                         bin_out_map[i,j,X[x0,x1]-1] = 1
-                    else:
-                        pass
     return bin_out_map

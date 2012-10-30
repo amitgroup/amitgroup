@@ -260,7 +260,7 @@ class BernoulliMixture:
         """
         Gives the mixture model an alternative set of input, and computes the mixture components on it.
 
-        This is appropriate to do with for instance original images, if the mixture component originally was calculated using features of the originals.
+        It is for instance appropriate to give the originals images to this function, if the mixture component originally was calculated using features of the originals.
     
         Parameters
         ----------
@@ -273,6 +273,30 @@ class BernoulliMixture:
             The `data` averaged according to the mixture components. Will have the shape ``(num_mix, A', B', ...)``.
         """
         return np.asarray([np.average(data, axis=0, weights=self.affinities[:,m]) for m in xrange(self.num_mix)])
+
+    def mixture_components(self):
+        """
+        Returns a list of which mixture component each data entry is associate with the most. 
+
+        Returns
+        -------
+        components: list 
+            A list of length `num_data`  where `components[i]` indicates which mixture index the `i`-th data entry belongs the most to (results should be degenerate).
+        """
+        return np.argmax(self.affinities, axis=1)
+
+    def indices_lists(self):
+        """
+        Returns a list of index arrays for each mixture model.
+
+        Returns
+        -------
+        lists : list
+            Returns a python list of length `self.num_mix` of ndarrays. The ndarray `lists[i]` contains the indices of the data entries that are associated with the mixture component `i`.
+        """
+        # Probably an easier and faster way to do this
+        indices = self.mixture_components()
+        return [np.where(indices == i)[0] for i in xrange(self.num_mix)]
       
     def set_template_vec_likelihoods(self):
         pass

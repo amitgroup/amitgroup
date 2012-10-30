@@ -27,7 +27,7 @@ def images(data, zero_to_one=True, show=True, subplots=None):
         settings['vmin'] = 0.0
         settings['vmax'] = 1.0
 
-    if isinstance(data, np.ndarray) and len(data.shape) == 2:
+    if isinstance(data, np.ndarray) and data.ndim == 2:
         fig = plt.figure()
         plt.subplot(111).set_axis_off()
         plt.imshow(data, **settings)
