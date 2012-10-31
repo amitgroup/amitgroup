@@ -4,6 +4,10 @@ from __future__ import print_function
 _is_verbose = False
 _is_silent = False
 
+import warnings
+import numpy as np
+warnings.simplefilter("ignore", np.ComplexWarning)
+
 def set_verbose(is_verbose):
     """
     Choose whether or not to display output from calls to ``amitgroup.info``. 

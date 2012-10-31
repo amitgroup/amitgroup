@@ -109,7 +109,7 @@ def read_data_b(expi,numclass):
     print 'Hello'
     s=os.environ['HOME']+'/Desktop/Dropbox/'
     sstr=s+'/mnist_train'
-    sste=s+'/mnist_train'
+    sste=s+'/mnist_test'
     expi.ddtr=[]
     expi.ddte=[]
     for i in range(numclass):
