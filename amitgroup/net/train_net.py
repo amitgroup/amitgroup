@@ -2,9 +2,10 @@ import numpy as np
 import sys
 import copy
 import time
+import os
 import amitgroup as ag
-import scipy.sparse
-from scipy.sparse import lil_matrix
+import pickle
+
 
 
 
@@ -23,9 +24,9 @@ def top_train(expi):
     The input is an `experiment' class that has the training
     and test data as submembers (.ddtr, .ddte) a list of lists.
     len(ddtr) is number of classes. For each class len(ddtr[c]) is
-    number of training points. If exp.numtrain_per_class>0 then
+    number of training points. If exp.pp.numtrain_per_class>0 then
     exactly that number of training points per class are used.
-    exp.slant=1 - deslant the digits.
+    exp.pp.slant=1 - deslant the digits.
     exp.out = output file for some printouts.
     exp.pp = parameter class for network training, stochastic svm training, part training. (TODO break pp into sub parameter classes)
 
@@ -38,7 +39,7 @@ def top_train(expi):
 
     """
     expi.NO=[]
-    if expi.type==0:
+    if expi.pp.type==0:
         expi.NO.append(train_net(expi))
     else:
         expi.NO.append(all_at_one_top(expi))
@@ -81,17 +82,17 @@ def extract_feature_matrix(ddt,s,num=0):
        MM[i,:]=ddt[i].features[s].flatten()
     return MM
 
-def read_data_b(s,expi,numclass,DIM=0):
+def read_data_b(expi,numclass):
 
     """
 
     Read training and test images  from path 's' and process them for features
     put result in expi.ddtr, expi.ddte.
 
-    if expi.numtrain_per_class>0 extract exactly that number of training
-    examples for each class. Otherwise just take first exp.numtrain exaples
+    if expi.pp.numtrain_per_class>0 extract exactly that number of training
+    examples for each class. Otherwise just take first exp.pp.numtrain exaples
     from training et.
-    if expi.slant=1 deslant the images.
+    if expi.pp.slant=1 deslant the images.
 
     Parameters
     ----------
@@ -106,6 +107,7 @@ def read_data_b(s,expi,numclass,DIM=0):
     """
 
     print 'Hello'
+    s=os.environ['HOME']+'/Desktop/Dropbox/'
     sstr=s+'/mnist_train'
     sste=s+'/mnist_train'
     expi.ddtr=[]
@@ -116,31 +118,31 @@ def read_data_b(s,expi,numclass,DIM=0):
         cc=[]
         expi.ddte.append(cc)
 
-    if (expi.numtrain_per_class==0):
-        for i in range(expi.numtrain):
+    if (expi.pp.numtrain_per_class==0):
+        for i in range(expi.pp.numtrain):
             tim=ag.io.load_imagep(sstr,i,True)
-            tim.img=ag.io.process_im(tim.img, expi.slant, DIM)
-            feat=ag.features.bedges(np.double(tim.img),5,'box',2)
+            tim.img=ag.io.process_im(tim.img, expi.pp.slant, expi.pp.DIM)
+            feat=ag.features.bedges(np.double(tim.img),5,'box',expi.pp.spread)
             tim.features={'V1': feat}
             tr=tim.truth
             expi.ddtr[tr].append(tim)
     else:
         for c in range(numclass):
             i=0
-            while len(expi.ddtr[c])<expi.numtrain_per_class:
+            while len(expi.ddtr[c])<expi.pp.numtrain_per_class:
                 if (ag.io.get_tr(sstr,i)==c):
                     tim=ag.io.load_imagep(sstr,i,True)
-                    tim.img=ag.io.process_im(tim.img, expi.slant, DIM)
-                    feat=ag.features.bedges(np.double(tim.img),5,'box',2)
+                    tim.img=ag.io.process_im(tim.img, expi.pp.slant, expi.pp.DIM)
+                    feat=ag.features.bedges(np.double(tim.img),5,'box',expi.pp.spread)
                     tim.features={'V1': feat}
                     tr=tim.truth
                     expi.ddtr[tr].append(tim)
                 i+=1
 
-    for i in range(10000,20000):
+    for i in range(10000):
         tim=ag.io.load_imagep(sste,i,True)
-        tim.img=ag.io.process_im(tim.img, expi.slant, DIM)
-        feat=ag.features.bedges(np.double(tim.img),5,'box',2)
+        tim.img=ag.io.process_im(tim.img, expi.pp.slant, expi.pp.DIM)
+        feat=ag.features.bedges(np.double(tim.img),5,'box',expi.pp.spread)
         tim.features={'V1': feat}
         tr=tim.truth
         expi.ddte[tr].append(tim)
@@ -230,7 +232,7 @@ def test_averages(expi, numtest=0):
 
     numclass=len(expi.NO);
     Jmid=np.ceil(expi.pp.Jmax/2)
-    [JJ,JJfb]=nets_to_mat(expi.NO[0],Jmid,expi.numperc);
+    [JJ,JJfb]=nets_to_mat(expi.NO[0],Jmid,expi.pp.numperc);
     WW=np.mean(JJ,1);
     [CC, e]=test_by_weights(expi.ddte,WW,numtest)
     return CC, e
@@ -286,7 +288,7 @@ def test_net(expi, tr=False, numtest=0):
     Parameters
     ----------
 
-    expi - experiment class. expi.numperc - number of perceptrons to use if non-zero
+    expi - experiment class. expi.pp.numperc - number of perceptrons to use if non-zero
     numtest=0 - if not zero number of test examples per class to run.
 
     Returns
@@ -300,7 +302,7 @@ def test_net(expi, tr=False, numtest=0):
     Jmid=np.ceil(expi.pp.Jmax/2)
     print Jmid
     numclass=len(expi.ddte);    
-    [JJ, JJfb]=nets_to_mat(expi.NO[0],Jmid,expi.numperc);
+    [JJ, JJfb]=nets_to_mat(expi.NO[0],Jmid,expi.pp.numperc);
     print JJ[:,:,0].shape
     CONF=np.zeros((numclass,numclass))
     Ntot=0
@@ -346,16 +348,34 @@ def train_net(expi):
     Returns list of perceptrons (numperc) 
 
     """
-    f = open(expi.out,'w')
+    f = open(expi.pp.out,'w')
     numclass=len(expi.ddtr)
     CI=range(numclass)
     #np.random.shuffle(CI)
     NO=[None]*numclass
     for c in CI:
         f.write(str(CI[c])+'\n')
-        NO[CI[c]]=ff_mult_top(f,expi.pp,expi.ddtr,CI[c],expi.numperc, expi.numtrain_per_class)
+        NO[CI[c]]=ff_mult_top(f,expi.pp,expi.ddtr,CI[c],expi.pp.numperc, expi.pp.numtrain_per_class)
 
     return NO
+
+def stack_data(expi):
+    numclass=len(expi.ddtr)
+    N=expi.pp.numtrain_per_class
+    if N==0:
+        N=len(expi.ddtr[0])
+    # Get the full data matrix for class 0
+    X=extract_feature_matrix(expi.ddtr[0],'V1',N)
+    Y=np.zeros((N,1), dtype=np.ubyte)
+    # Stack up the data matrices for the other classes.
+    for c in range(1,numclass):
+        N=expi.pp.numtrain_per_class
+        if N==0:
+            N=len(expi.ddtr[c])
+        print 'Loading class ', c, N
+        X=np.vstack((X,extract_feature_matrix(expi.ddtr[c],'V1',N)))
+        Y=np.vstack((Y,c*np.ones((N,1))))
+    return X,Y
 
 def all_at_one_top(expi):
 
@@ -369,8 +389,8 @@ def all_at_one_top(expi):
     ----------
 
     expi - experiment. 
-    expi.numperc - number of perceptrons per class
-    expi.numtrain_per_class>0 - number of training data per class.
+    expi.pp.numperc - number of perceptrons per class
+    expi.pp.numtrain_per_class>0 - number of training data per class.
 
     Returns
     ------
@@ -378,27 +398,12 @@ def all_at_one_top(expi):
     List of lists of perceptrons (one list for each class.)
 
     """
-
-
-    
-    numclass=len(expi.ddtr)
-    N=expi.numtrain_per_class
-    if N==0:
-        N=len(expi.ddtr[0])
-    # Get the full data matrix for class 0
-    X=extract_feature_matrix(expi.ddtr[0],'V1',N)
-    Y=np.zeros((N,1), dtype=np.ubyte)
-    # Stack up the data matrices for the other classes.
-    for c in range(1,numclass):
-
-        N=expi.numtrain_per_class
-        if N==0:
-            N=len(expi.ddtr[c])
-        print 'Loading class ', c, N
-        X=np.vstack((X,extract_feature_matrix(expi.ddtr[c],'V1',N)))
-        Y=np.vstack((Y,c*np.ones((N,1))))
+    # stack data of all classes in one array, with an accompanying label array
+    print 'Going to stack'
+    [X,Y]=stack_data(expi)
     # Call the training routine
-    NN=ff_all_at_one(expi.pp,X,Y,expi.numperc,numclass)
+    numclass=len(expi.ddtr)
+    NN=ff_all_at_one(expi.pp,X,Y,expi.pp.numperc,numclass)
     return NN
     
 def ff_all_at_one(pp,X,Y,numperc,numclass):
@@ -468,7 +473,7 @@ def ff_all_at_one(pp,X,Y,numperc,numclass):
                 if Y[ii]==c:
                     # Update in up direction.
                     up+=potentiate_ff(pp,h,XI,J[c],Jmid)
-                    #Jfb[c]=modify_fb(pp,XI,XIz,Jfb[c],Jmid)
+                    Jfb[c]=modify_fb(pp,XI,XIz,Jfb[c],Jmid)
                 else:
                     down+=depress_ff(pp,h,XI,J[c],Jmid)
         # up+down
@@ -515,7 +520,7 @@ def modify_fb(pp,XI,XIz,Jfb,Jmid):
     g+=np.random.rand(g.size)<pp.pltp
     temp[IJ]=g
     Jfb[XI,:]=temp
-   
+
     # All feedback synapses connected to inactive features can be depressed if greater than 0.
     XIz.shape=XIz.size
     temp=Jfb[XIz,:]
@@ -570,7 +575,7 @@ def potentiate_ff(pp,h,XI,J,Jmid):
     g=Jh[IJ]
     # Modify with stochastic ltp probability.
     RR=(np.random.rand(g.size)<pp.pltp)
-    g=g+RR*pp.pinc
+    g=g+np.double(RR)*pp.pinc
     Jh[IJ]=g
     r=len(np.nonzero(RR)[0])
     J[imat]=Jh
@@ -748,7 +753,15 @@ class pars:
         sh=None
         min_edges=None
         part_size=None
-
+        spread=None
+        slant=None
+        type=None
+        numperc=None
+        numtrain=None
+        numtrain_per_class=None
+        DIM=None
+        out=None
+        
         def __init__(self):
             self.d=7200
             self.N=1000
@@ -767,7 +780,34 @@ class pars:
             self.min_edges=40
             self.part_size=7
             self.pinc=1
+            self.spread=2
+            self.special_class=-1
             self.reduction_factor=.9
+            self.numperc=1
+            self.numtrain=0
+            self.numtrain_per_class=100
+            self.type=1
+            self.slant=1
+            self.DIM=0
+            self.out='out'
+            
+        def write(self,f):
+            pickle.dump(self,f)
+
+        def write(self,s):
+            f=open(s,'w')
+            pickle.dump(self,f)
+            f.close()
+
+        def read(self,f):
+            self=pickle.load(f)
+            return self
+
+        def read(self,s):
+            f=open(s,'r')
+            self=pickle.load(f)
+            f.close()
+            return self
             
 def compress_nets(NN):
 
@@ -775,38 +815,29 @@ def compress_nets(NN):
         for P in Nc:
             P.JJ=np.ubyte(P.JJ)
 
-
-
+    
 class experiment:
     ddtr=[]
     ddte=[]
-    pp=[]
-    numperc=[]
-    numtrain=[]
-    numtrain_per_class=[]
-    slant=[]
-    type=[]
-    out=[]
+    pp=[]    
     NO=[]
-    def __init__(self,type,out,ddtr=[],ddte=[],pp=[],numperc=[],numtrain=0, numtrain_per_class=0):
-        self.ddtr=ddtr
-        self.ddte=ddte
-        self.pp=pp
-        self.numperc=numperc
-        self.numtrain=numtrain
-        self.numtrain_per_class=numtrain_per_class
-        self.type=type
-        self.out=out
-
+    def __init__(self):
+        self.pp=pars()
+        
+       
     def ecopy(self,ine):
         self.ddtr=ine.ddtr
         self.ddte=ine.ddte
         self.pp=copy.copy(ine.pp)
-        self.numperc=ine.numperc
-        self.numtrain=ine.numtrain
-        self.numtrain_per_class=ine.numtrain_per_class
-        self.type=ine.type
-        
+
+    def write_pars(self,s):
+        self.pp.write(s)
+
+    def read_pars(self,s):
+        pr=pars()
+        pr=pr.read(s)
+        self.pp=pr
+    
 class netout:
     JJ=[];
     JJfb=[];
