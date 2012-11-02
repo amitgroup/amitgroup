@@ -99,7 +99,14 @@ def bedges_from_image(im, k=6, inflate='box', radius=1, minimum_contrast=0.0, co
     """
     if isinstance(im, str) or isinstance(im, file):
         import matplotlib.pylab as plt
-        im = plt.imread(im).astype(np.float64)
+        im = plt.imread(im)#.astype(np.float64)
+        # TODO: This needs more work. We should probably make bedges work with any type
+        # and then just leave it at that.
+        if im.dtype == np.uint8:
+            # TODO: Also flip it. Not needed for PNG. Will need to make this more clever. 
+            im = im.astype(np.float64)[::-1]/255.0
+        else:
+            im = im.astype(np.float64)
 
     # Run bedges on each channel, and then OR it. 
     dimensions = im.shape[-1]
