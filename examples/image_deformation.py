@@ -11,7 +11,7 @@ def main():
                                           start_level=1, wavelet='db8', debug_plot=False)
     t2 = time()
     Fdef = imdef.deform(F)
-
+    
     print "Time:", t2-t1
     print "Cost:", info['cost']
 

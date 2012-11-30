@@ -25,11 +25,14 @@ def visualize_hog(hog_features, cell_size, show=True):
         arrows[d] = scipy.stats.norm.pdf(v[0] * x + v[1] * y, scale=0.05)
 
     arrows[:] *= circle
-    
+
+    # We're only visualizing the max in each cell
+    vis_features = hog_features.max(axis=-1)
+
     for x in xrange(hog_features.shape[0]):
         for y in xrange(hog_features.shape[1]):
             for angle in xrange(num_bins):
-                img[x*cell_size[0]:(x+1)*cell_size[0],y*cell_size[1]:(y+1)*cell_size[1]] += arrows[angle] * hog_features[x, y, angle]
+                img[x*cell_size[0]:(x+1)*cell_size[0],y*cell_size[1]:(y+1)*cell_size[1]] += arrows[angle] * vis_features[x, y, angle]
     
     plt.imshow(img, interpolation='nearest', cmap=plt.cm.gray)
     
