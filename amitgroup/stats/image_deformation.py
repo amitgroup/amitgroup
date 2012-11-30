@@ -117,7 +117,6 @@ def image_deformation(F, I, last_level=3, penalty=1.0, rho=2.0, wavelet='db2', t
     >>> ag.plot.deformation(F, I, imdef)
     >>> plt.show()
 
-    Also note ``examples/image_deformation.py``.
     """
     assert rho > 0, "Parameter rho must be strictly positive"
     assert len(F.shape) == 2 and len(I.shape) == 2, "Images must be 2D ndarrays"
