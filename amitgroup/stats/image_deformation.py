@@ -110,7 +110,7 @@ def image_deformation(F, I, last_level=3, penalty=1.0, rho=2.0, wavelet='db2', t
 
     Load two example faces and perform the deformation:
 
-    >>> F, I = ag.io.load_example('faces2')
+    >>> F, I = ag.io.load_example('two-faces')
     >>> imdef, info = ag.stats.image_deformation(F, I)
     >>> Fdef = imdef.deform(F)
 

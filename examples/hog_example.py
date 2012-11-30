@@ -3,7 +3,7 @@ import amitgroup as ag
 import matplotlib.pylab as plt
 import numpy as np
 
-origdata = plt.imread('circle.png')
+origdata = plt.imread('circle.gif')
 data = origdata[...,:3].mean(axis=-1)
 
 

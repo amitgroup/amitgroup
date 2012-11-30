@@ -103,6 +103,10 @@ def deformation(F, I, displacement_field, show_diff=False, show=True):
         plt.colorbar()
     else:
         plt.title("Displacement field")
-        plt.quiver(y, -x, Uy, -Ux, linewidth=2.0)
+        print y.shape, x.shape, Uy.shape, Ux.shape
+        print Ux
+        print Uy
+        #plt.quiver(Ux, Uy)
+        #plt.quiver(y, -x, Uy, -Ux)#, linewidth=2.0)
     if show:
         plt.show()
