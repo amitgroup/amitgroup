@@ -23,5 +23,5 @@ if __name__ == '__main__':
         dt = run_test(img_size, cell_size, block_size)
         print 'image size: {0}, cell-size: {1}, block-size: {2} ... {3} ms'.format(img_size, cell_size, block_size, 1000*dt)
 
-
     test_and_print((128, 128), (6, 6), (2, 2))
+    test_and_print((128, 128), (6, 6), (3, 3))
