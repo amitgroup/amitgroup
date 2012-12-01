@@ -97,27 +97,26 @@ def image_deformation(F, I, last_level=3, penalty=1.0, rho=2.0, wavelet='db2', t
     info : dict
         Dictionary with info:
          * `cost`: The final cost value.
-    """
-    # Speed this up. How?
-    """
+
     Examples
     --------
     Deform an image into a prototype image:
 
     >>> import amitgroup as ag
-    >>> import amitgroup.ml
     >>> import numpy as np
+    >>> import matplotlib.pylab as plt
 
     Load two example faces and perform the deformation:
 
-    >>> F, I = ag.io.load_example('faces2')
-    >>> imdef, info = ag.stats.image_deformation(F, I)
+    >>> F, I = ag.io.load_example('two-faces')
+    >>> imdef, info = ag.stats.image_deformation(F, I, penalty=0.1)
     >>> Fdef = imdef.deform(F)
 
     Output the results:
 
     >>> ag.plot.deformation(F, I, imdef)
-     
+    >>> plt.show()
+
     """
     assert rho > 0, "Parameter rho must be strictly positive"
     assert len(F.shape) == 2 and len(I.shape) == 2, "Images must be 2D ndarrays"

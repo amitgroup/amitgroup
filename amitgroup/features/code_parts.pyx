@@ -12,12 +12,12 @@ ctypedef np.float64_t DTYPE_t
 
 ctypedef np.uint8_t UINT_t
 
-cdef _count_edges(np.ndarray[ndim=3,dtype=UINT_t] X,
+cdef unsigned int _count_edges(UINT_t[:,:,:] X,
                  unsigned int i_start,
                  unsigned int i_end,
                  unsigned int j_start,
                  unsigned int j_end,
-                 unsigned int num_z):
+                 unsigned int num_z) nogil:
     cdef unsigned int count = 0
     cdef unsigned int i,j,z
     for i in range(i_start,i_end):
@@ -52,7 +52,7 @@ cdef _count_edges(np.ndarray[ndim=3,dtype=UINT_t] X,
 def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
                np.ndarray[ndim=4,dtype=DTYPE_t] log_parts,
                np.ndarray[ndim=4,dtype=DTYPE_t] log_invparts,
-               int threshold):
+               int threshold, outer_frame=0):
     """
     At each location of `X`, find the log probabilities for each part and location. Outputs these part assignments in the same data dimensions as `X`. Neighborhoods of `X` with edge counts lower than `threshold` are regarded as background and assigned zero.
 
@@ -66,6 +66,8 @@ def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
         Preprocessed inverse of `log_parts`, i.e. ``log(1-exp(log_parts))``.
     threshold : int
         The least number of edges in a patch to reject the null background hypothesis.
+    outer_frame : int
+        Remove a frame of this thickness when checking the threshold. If the parts are 5 x 5, and this is set to 1, then only the center 3 x 3 is used to count edges when compared to the threshold. 
     
     Returns
     -------
@@ -83,6 +85,8 @@ def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
     cdef unsigned int new_x_dim = X_x_dim - part_x_dim + 1
     cdef unsigned int new_y_dim = X_y_dim - part_y_dim + 1
     cdef unsigned int i_start,j_start,i_end,j_end,count,i,j,z,k
+    cdef unsigned int i_frame = <unsigned int>outer_frame
+    cdef DTYPE_t NINF = -np.inf
     # we have num_parts + 1 because we are also including some regions as being
     # thresholded due to there not being enough edges
     
@@ -90,30 +94,35 @@ def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
     cdef np.ndarray[dtype=DTYPE_t, ndim=3] out_map = -np.inf * np.ones((new_x_dim,
                                                                         new_y_dim,
                                                                         num_parts+1),dtype=DTYPE)
+    cdef UINT_t[:,:,:] X_mv = X
+    cdef DTYPE_t[:,:,:,:] log_parts_mv = log_parts
+    cdef DTYPE_t[:,:,:,:] log_invparts_mv = log_invparts
+    cdef DTYPE_t[:,:,:] out_map_mv = out_map
     # The first cell along the num_parts+1 axis contains a value that is either 0
     # if the area is deemed to have too few edges or min_val if there are sufficiently many
     # edges, min_val is just meant to be less than the value of the other cells
     # so when we pick the most likely part it won't be chosen
 
-    for i_start in range(X_x_dim-part_x_dim+1):
-        i_end = i_start + part_x_dim
-        for j_start in range(X_y_dim-part_y_dim+1):
-            j_end = j_start + part_y_dim
-            count = _count_edges(X,i_start,i_end,j_start,j_end,X_z_dim)
-            if count >= threshold:
-                out_map[i_start,j_start] = 1.0
-                out_map[i_start,j_start,0] = -np.inf
-                for i in range(part_x_dim):
-                    for j in range(part_y_dim):
-                        for z in range(X_z_dim):
-                            if X[i_start+i,j_start+j,z]:
-                                for k in range(num_parts):
-                                    out_map[i_start,j_start,k+1] += log_parts[k,i,j,z]
-                            else:
-                                for k in range(num_parts):
-                                    out_map[i_start,j_start,k+1] += log_invparts[k,i,j,z]
-            else:
-                out_map[i_start,j_start,0] = 0.0
+    with nogil:
+        for i_start in range(X_x_dim-part_x_dim+1):
+            i_end = i_start + part_x_dim
+            for j_start in range(X_y_dim-part_y_dim+1):
+                j_end = j_start + part_y_dim
+                count = _count_edges(X_mv,i_start+i_frame,i_end-i_frame,j_start+i_frame,j_end-i_frame,X_z_dim)
+                if count >= threshold:
+                    out_map_mv[i_start,j_start] = 0.0
+                    out_map_mv[i_start,j_start,0] = NINF 
+                    for i in range(part_x_dim):
+                        for j in range(part_y_dim):
+                            for z in range(X_z_dim):
+                                if X_mv[i_start+i,j_start+j,z]:
+                                    for k in range(num_parts):
+                                        out_map_mv[i_start,j_start,k+1] += log_parts_mv[k,i,j,z]
+                                else:
+                                    for k in range(num_parts):
+                                        out_map_mv[i_start,j_start,k+1] += log_invparts_mv[k,i,j,z]
+                else:
+                    out_map_mv[i_start,j_start,0] = 0.0
                 
     return out_map
 
