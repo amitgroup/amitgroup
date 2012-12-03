@@ -761,7 +761,8 @@ class pars:
         numtrain_per_class=None
         DIM=None
         out=None
-        
+        numparts=None
+
         def __init__(self):
             self.d=7200
             self.N=1000
@@ -790,6 +791,7 @@ class pars:
             self.slant=1
             self.DIM=0
             self.out='out'
+            self.numparts=0
             
         def write(self,f):
             pickle.dump(self,f)
