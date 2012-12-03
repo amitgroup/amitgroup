@@ -70,6 +70,7 @@ def extract_parts(expi, data=[]):
          jj=np.floor(np.random.rand(num_samps)*(imsizey-expi.pp.part_size))+ps2
          for s in range(num_samps):
           Z=aa[t].features['V1'][:,ii[s]-ps2:ii[s]+ps2+md,jj[s]-ps2:jj[s]+ps2+md]
+
           if (np.sum(Z[:,1:expi.pp.part_size-1,1:expi.pp.part_size-1])>expi.pp.min_edges):
              a=ag.io.image(0,aa[t].img[ii[s]-ps2:ii[s]+ps2+md,jj[s]-ps2:jj[s]+ps2+md])
              a.features={'V1' : Z}
@@ -77,12 +78,21 @@ def extract_parts(expi, data=[]):
       else:
          ZZ.append(aa[t])
    #   pptr=np.array(ZZ)
-   
+   print('Number of part training data',len(ZZ))
    return(ZZ)
            
-       
 
+def train_parts_EM(expi, data=[]):
 
+   ZZ=extract_parts(expi,data)
+   dd=stack_features(ZZ)
+   ddi=dd[0].swapaxes(1,2).swapaxes(2,3)
+   print dd[0].shape
+   mixture = ag.stats.BernoulliMixture(expi.pp.numparts, ddi)
+   mixture.run_EM(1e-3)
+   dummy=np.zeros(mixture.num_mix);
+   show_clusters(ZZ,dummy,mixture.mixture_components())
+   return mixture
                 
 def train_parts(expi, data=[]):
 
@@ -191,62 +201,60 @@ def train_parts(expi, data=[]):
     n=1
     pp=len(Parts)
     # Show means of each part.
-    show_clusters(expi,ZZ,Parts)
+    Parray=np.array(Parts)
+    Parray.shape=[len(Parts),numfeat]
+    Parray=Parray-Jmid
+    show_clusters(ZZ,Parray)
     return Parts, ZZ
 
 # I am making this change to get it onto the mac
 def stack_features(ZZ):
    numfeat=ZZ[0].features['V1'].size
-   pptr=np.zeros((len(ZZ),numfeat))
+   pptr=np.zeros(( (len(ZZ),)+ZZ[0].features['V1'].shape ))
    ims=np.zeros((len(ZZ),ZZ[0].img.shape[0],ZZ[0].img.shape[1]))
    for i in range(len(ZZ)):
       ims[i,:,:]=ZZ[i].img
-      pptr[i,:]=ZZ[i].features['V1'].flatten()
+      pptr[i,]=ZZ[i].features['V1']#.flatten()
 
    return pptr, ims
 
-def get_best_part(Parts, data, Jmid):
-   Parray=np.array(Parts)
-   #print Parray
-   numfeat=data[0].features['V1'].size
-   Parray.shape=[len(Parts),numfeat]
-   pptr,ims=stack_features(data)
-   H=np.dot(Parray-Jmid,np.transpose(pptr))
+def get_best_part(Parray, pptr):
+   
+   H=np.dot(Parray,np.transpose(pptr))
    print H.shape
    ip=np.argmax(H,0)
    print ip
    ip=np.sort(ip)
-   return ip, Parray, H
+   return ip, H
 
-def show_clusters(expi,ZZ,Parts):
+def show_clusters(ZZ,Parray, imax=[]):
 
    plt.close('all')
-   nump=len(Parts)
-   numparts=len(Parts)
-   numfeat=ZZ[0].features['V1'].size
+   numparts=Parray.shape[0]
+   if (imax==[]):
+      numfeat=Parray.shape[1]
+      [imax,H]=get_best_part(Parray,pptr)
+   
    pptr,ims=stack_features(ZZ)
-   Jmid=expi.pp.Jmax/2
-   [imax,pp,H]=get_best_part(Parts,ZZ,Jmid)
    print imax.shape
-   MM=np.zeros((numparts,numfeat))
    n=1
    num_images_per_row=20
-   num_rows=2*int(np.ceil(numparts/20.))
+   num_rows=int(np.ceil(numparts/20.))
    num_type=pptr[0,:].size/ims[0,:].size
    for ip in range(numparts):
-      print 'size of cluster ', np.sum(imax==ip)
+      print ip, 'size of cluster ', np.sum(imax==ip)
 
       if (np.sum(imax==ip)>0):
-        
+
          Im=np.mean(ims[imax==ip,:,:],0)      
          plt.subplot(num_rows,num_images_per_row,n)
          plt.imshow(Im,cmap=plt.get_cmap('gray'))
          plt.axis('off')
-         plt.subplot(num_rows,num_images_per_row,n+num_rows*10)
-         pt=Parts[ip]
-         pt.shape=[num_type,Im.shape[0],Im.shape[1]]
-         plt.imshow(pt[0,:,:], cmap=plt.get_cmap('gray'))
-         plt.axis('off')
+         #plt.subplot(num_rows,num_images_per_row,n+num_rows*10)
+         #pt=Parray[ip,:]
+         #pt.shape=[num_type,Im.shape[0],Im.shape[1]]
+         #plt.imshow(pt[0,:,:], cmap=plt.get_cmap('gray'))
+         #plt.axis('off')
          n=n+1
 
         
