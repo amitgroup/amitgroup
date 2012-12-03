@@ -24,6 +24,8 @@ def blur_image(im, n, ny=None, maintain_size=True):
     Blurs the image by convolving with a gaussian kernel of typical
     size `n`. The optional keyword argument `ny` allows for a different
     size in the `y` direction.
+    
+    You can also use scipy.ndimage.filters.gaussian_filter.
 
     Parameters
     ----------

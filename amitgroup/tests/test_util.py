@@ -7,6 +7,13 @@ class TestUtil(unittest.TestCase):
     def setUp(self):
         pass
 
+    def test_border_value_pad(self):
+        x = np.arange(8).reshape((2, 2, 2))
+        output = ag.util.border_value_pad(x, (2, 0, 1))
+        correct = np.array([[[0,0,1,1],[2,2,3,3]]] * 3 + [[[4,4,5,5],[6,6,7,7]]] * 3) 
+        
+        np.testing.assert_array_equal(output, correct)
+
     def test_inflate2d_single(self):
         x = np.array([
             [1,0,0,0,0,0],

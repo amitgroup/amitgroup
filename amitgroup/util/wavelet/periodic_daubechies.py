@@ -177,7 +177,7 @@ def daubechies_factory(shape, wavelet='db2'):
                 N = 1 << l 
                 L = max_level-l
                 coefs[:N,:N] = Ws[L] * coefs[:N,:N] * WsT[L]
-            return coefs
+            return np.asarray(coefs)
         def waverec2(coefs, levels=np.inf):
             #print coefs.shape
             levels = int(np.log2(coefs.shape[0]))
@@ -187,7 +187,7 @@ def daubechies_factory(shape, wavelet='db2'):
                 N = 1 << l 
                 L = max_level-l
                 A[:N,:N] = WsT[L] * A[:N,:N] * Ws[L]
-            return WgsT[levels] * A * Wgs[levels]
+            return np.asarray(WgsT[levels] * A * Wgs[levels])
         return wavedec2, waverec2 
     else:
         raise ValueError("Shape must be either integer or tuple of size two")
