@@ -99,7 +99,7 @@ def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
         i_end = i_start + part_x_dim
         for j_start in range(X_y_dim-part_y_dim+1):
             j_end = j_start + part_y_dim
-            count = _count_edges(X,i_start,i_end,j_start,j_end,X_z_dim)
+            count = _count_edges(X,i_start+1,i_end-1,j_start+1,j_end-1,X_z_dim)
             if count >= threshold:
                 out_map[i_start,j_start] = 1.0
                 out_map[i_start,j_start,0] = -np.inf
