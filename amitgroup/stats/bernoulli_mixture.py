@@ -73,7 +73,7 @@ class BernoulliMixture:
            [  9.97376426e-01,   2.62357439e-03]])
 
     """
-    def __init__(self,num_mix,data_mat,init_type='unif_rand',init_seed=0):
+    def __init__(self,num_mix,data_mat,min_num=0, init_type='unif_rand',init_seed=0):
         # TODO: opt_type='expected'
         self.num_mix = num_mix
         self.num_data = data_mat.shape[0]
@@ -82,6 +82,7 @@ class BernoulliMixture:
         self.data_length = np.prod(data_mat.shape[1:])
         self.data_mat = data_mat.reshape(self.num_data, self.data_length)
         self.iterations = 0
+        self.min_num=min_num
         # set the random seed
         self.seed = init_seed
         np.random.seed(self.seed)
@@ -221,10 +222,19 @@ class BernoulliMixture:
                                    self.data_length))
 
     def set_templates(self):
+        ii=np.where(self.weights*self.num_data>self.min_num)[0]
+        temp_weights=self.weights[ii]/np.sum(self.weights[ii])
+        self.weights=temp_weights
+        self.num_mix=ii.shape[0]
+#       self.templates = self.work_templates.reshape((self.num_mix,)+self.data_shape)
+        self.work_templates=self.work_templates[ii,:]
+        self.log_templates = np.log(self.work_templates)
+        self.log_invtemplates = np.log(1-self.work_templates)
+        self._compute_loglikelihoods()
         self.templates = self.work_templates.reshape((self.num_mix,)+self.data_shape)
         self.log_templates = np.log(self.templates)
         self.log_invtemplates = np.log(1-self.templates)
-                                     
+
 
     def set_weights(self,new_weights):
         np.testing.assert_approx_equal(np.sum(new_weights),1.)
