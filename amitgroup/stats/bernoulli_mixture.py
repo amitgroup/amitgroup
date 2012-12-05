@@ -174,6 +174,9 @@ class BernoulliMixture:
         self.work_templates /= self.num_data 
         self.work_templates /= self.weights.reshape((self.num_mix, 1))
         self.threshold_templates()
+        self._preload_log_templates()
+
+    def _preload_log_templates(self):
         self.log_templates = np.log(self.work_templates)
         self.log_invtemplates = np.log(1-self.work_templates)
 
@@ -212,8 +215,7 @@ class BernoulliMixture:
                 self.work_templates[mix_id] = np.mean(self.data_mat[self.affinities[:,mix_id]==1],axis=0)
                 self.threshold_templates()
 
-        self.log_templates = np.log(self.work_templates)
-        self.log_invtemplates = np.log(1-self.work_templates)
+        self._preload_log_templates()
 
     def init_templates(self):
         self.work_templates = np.zeros((self.num_mix,
@@ -328,12 +330,29 @@ class BernoulliMixture:
             entries['affinities'] = self.affinities
         np.savez(filename, **entries) 
 
+    def save_to_dict(self, save_affinities=False):
+        entries = dict(templates=self.templates, weights=self.weights, num_mix=self.num_mix)
+        if save_affinities:
+            entries['affinities'] = self.affinities
+        return entries
+
+    @classmethod
+    def load_from_dict(cls, d):
+        num_mix = d['num_mix']
+        obj = cls.__class__(num_mix, None) # Has no data
+        obj.templates = d['templates']
+        obj.weights = d['weights']
+        obj.affinities = d.get('affinities')
+        obj._preload_log_templates()
+        return obj
 
 def compute_likelihood(bernoulli_mixture,
                        data_mat,ignore_weights=True):
     """
     Compute the likelihood of the model on the data. Should work with either 
     a named tuple mixture representation or a BernoulliMixture object
+    
+    TODO: ignore_weights never used
     """
     num_data = data_mat.shape[0]
     affinities = np.array([ np.tile(log_template,
