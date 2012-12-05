@@ -78,6 +78,7 @@ class BernoulliMixture:
         self.num_mix = num_mix
         # If we're reconstructing a trained Bernoulli mixture model, then we might
         # intiailize this class without a data matrix
+        self.min_num=min_num
         if data_mat is not None:
             self.num_data = data_mat.shape[0]
             self.data_shape = data_mat.shape[1:]
@@ -89,7 +90,6 @@ class BernoulliMixture:
             self.not_data_mat = 1 - self.data_mat
 
             self.iterations = 0
-            self.min_num=min_num
             # set the random seed
             self.seed = init_seed
             np.random.seed(self.seed)
@@ -228,12 +228,13 @@ class BernoulliMixture:
                                    self.data_length))
 
     def set_templates(self):
-        ii=np.where(self.weights*self.num_data>self.min_num)[0]
-        temp_weights=self.weights[ii]/np.sum(self.weights[ii])
-        self.weights=temp_weights
-        self.num_mix=ii.shape[0]
-#       self.templates = self.work_templates.reshape((self.num_mix,)+self.data_shape)
-        self.work_templates=self.work_templates[ii,:]
+        if self.min_num > 0:
+            ii=np.where(self.weights*self.num_data>self.min_num)[0]
+            temp_weights=self.weights[ii]/np.sum(self.weights[ii])
+            self.weights=temp_weights
+            self.num_mix=ii.shape[0]
+    #       self.templates = self.work_templates.reshape((self.num_mix,)+self.data_shape)
+            self.work_templates=self.work_templates[ii,:]
         self.log_templates = np.log(self.work_templates)
         self.log_invtemplates = np.log(1-self.work_templates)
         self._compute_loglikelihoods()
@@ -335,7 +336,7 @@ class BernoulliMixture:
         np.savez(filename, **entries) 
 
     def save_to_dict(self, save_affinities=False):
-        entries = dict(templates=self.templates, weights=self.weights, num_mix=self.num_mix)
+        entries = dict(templates=self.templates, weights=self.weights, num_mix=self.num_mix, num_data=self.num_data, data_length=self.data_length, data_shape=self.data_shape)
         if save_affinities:
             entries['affinities'] = self.affinities
         return entries
@@ -343,10 +344,15 @@ class BernoulliMixture:
     @classmethod
     def load_from_dict(cls, d):
         num_mix = d['num_mix']
-        obj = cls.__class__(num_mix, None) # Has no data
+        obj = cls(num_mix, None) # Has no data
         obj.templates = d['templates']
         obj.weights = d['weights']
         obj.affinities = d.get('affinities')
+        obj.num_data = d['num_data']
+        obj.data_length = d['data_length']
+        obj.data_shape = d['data_shape']
+        obj.work_templates = obj.templates.reshape((obj.num_mix, obj.data_length))
+        obj.set_templates()
         obj._preload_log_templates()
         return obj
 
