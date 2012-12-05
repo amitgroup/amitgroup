@@ -76,27 +76,31 @@ class BernoulliMixture:
     def __init__(self,num_mix,data_mat,min_num=0, init_type='unif_rand',init_seed=0):
         # TODO: opt_type='expected'
         self.num_mix = num_mix
-        self.num_data = data_mat.shape[0]
-        self.data_shape = data_mat.shape[1:]
-        # flatten data to just be binary vectors
-        self.data_length = np.prod(data_mat.shape[1:])
-        self.data_mat = data_mat.reshape(self.num_data, self.data_length)
-        self.iterations = 0
-        self.min_num=min_num
-        # set the random seed
-        self.seed = init_seed
-        np.random.seed(self.seed)
+        # If we're reconstructing a trained Bernoulli mixture model, then we might
+        # intiailize this class without a data matrix
+        if data_mat is not None:
+            self.num_data = data_mat.shape[0]
+            self.data_shape = data_mat.shape[1:]
+            # flatten data to just be binary vectors
+            self.data_length = np.prod(data_mat.shape[1:])
+            self.data_mat = data_mat.reshape(self.num_data, self.data_length)
+
+            # If we change this to a true bitmask, we should do ~data_mat
+            self.not_data_mat = 1 - self.data_mat
+
+            self.iterations = 0
+            self.min_num=min_num
+            # set the random seed
+            self.seed = init_seed
+            np.random.seed(self.seed)
 
 
-        self.min_probability = 0.05 
-
-        # If we change this to a true bitmask, we should do ~data_mat
-        self.not_data_mat = 1 - self.data_mat
-        
-        # initializing weights
-        self.weights = 1./num_mix * np.ones(num_mix)
-        #self.opt_type=opt_type TODO: Not used yet.
-        self.init_affinities_templates(init_type)
+            self.min_probability = 0.05 
+            
+            # initializing weights
+            self.weights = 1./num_mix * np.ones(num_mix)
+            #self.opt_type=opt_type TODO: Not used yet.
+            self.init_affinities_templates(init_type)
 
         # Data sizes:
         # data_mat : num_data * data_length
