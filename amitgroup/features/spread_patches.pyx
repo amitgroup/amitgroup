@@ -13,9 +13,9 @@ ctypedef np.float32_t DTYPE_t
 ctypedef np.uint8_t UINT_t
 
 def spread_patches(np.ndarray[ndim=2,dtype=np.int64_t] X,
-                          int spread_0_dim,
-                          int spread_1_dim,
-                          int num_parts):
+                   int spread_0_dim,
+                   int spread_1_dim,
+                   int num_parts):
     """
     Performs patch spreading according to Bernstein and Amit [1].
 

@@ -15,7 +15,20 @@ def main():
     print "Time:", t2-t1
     print "Cost:", info['cost']
 
-    PLOT = True 
+    x, y = imdef.meshgrid() 
+    Ux, Uy = imdef.deform_map(x, y)
+    for i in xrange(Ux.shape[0]):
+        for j in xrange(Ux.shape[1]):
+            print Ux[i,j], Uy[i,j]
+
+    print 'mins', Ux.min(), Uy.min()
+    print 'maxs', Ux.max(), Uy.max()
+
+    import matplotlib.pylab as plt
+    plt.quiver(x, y, Ux, Uy)#, Ux, Uy)
+    plt.show()
+
+    PLOT = False 
     if PLOT:
         import matplotlib.pylab as plt
         ag.plot.deformation(F, I, imdef)
