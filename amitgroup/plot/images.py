@@ -38,7 +38,6 @@ def images(data, zero_to_one=True, show=True, subplots=None, caption=None):
     else:
         # TODO: Better find out pleasing aspect ratios
         N = len(data)
-        print N
         if subplots is not None:
             sh = subplots
             assert len(data) <= np.prod(subplots) 
@@ -51,7 +50,6 @@ def images(data, zero_to_one=True, show=True, subplots=None, caption=None):
         else:
             perside = math.ceil(math.sqrt(len(data)))
             sh = (perside,)*2
-        print sh
         fig = plt.figure()
         for i, im in enumerate(data): 
             plt.subplot(sh[0], sh[1], 1+i).set_axis_off()

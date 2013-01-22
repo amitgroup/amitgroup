@@ -2,22 +2,22 @@
 import scipy.signal
 import numpy as np
 import amitgroup as ag
+import math
 
 def _gauss_kern(size, sizey=None):
     """ Returns a normalized 2D gauss kernel array for convolutions. """
-    size = int(size)
+    isize = int(math.ceil(size))
     if not sizey:
         sizey = size
-    else:
-        sizey = int(sizey)
-    x, y = np.mgrid[-size:size+1, -sizey:sizey+1]
+    isizey = int(math.ceil(sizey))
+    x, y = np.mgrid[-isize:isize+1, -isizey:isizey+1]
     g = np.exp(-(x**2/float(size)+y**2/float(sizey)))
     return g / g.sum()
 
 def _blur_and_shrink(im, n, ny=None):
     g = _gauss_kern(n, sizey=ny)
-    improc = scipy.signal.convolve(im,g, mode='valid')
-    return(improc)
+    im = scipy.signal.convolve2d(im, g, mode='valid')
+    return im
 
 def blur_image(im, n, ny=None, maintain_size=True):
     """ 
@@ -30,7 +30,7 @@ def blur_image(im, n, ny=None, maintain_size=True):
     Parameters
     ----------
     im : ndarray
-        2D array with an image.
+        2D or 3D array with an image. If the array has 3 dimensions, then the last channel is assumed to be a color channel, and the blurring is done separately for each channel.
     n : int
         Kernel size.
     ny : int
@@ -50,11 +50,21 @@ def blur_image(im, n, ny=None, maintain_size=True):
     >>> ag.plot.images([face, face2]) 
     >>> plt.show()
     """
-    if maintain_size:
-        if ny is None:
-            ny = n 
-        x, y = np.mgrid[-n:im.shape[0]+n, -ny:im.shape[1]+ny].astype(float)
-        bigger = ag.util.interp2d(x, y, im.astype(float), startx=(0, 0), dx=(1, 1))
-        return _blur_and_shrink(bigger, n, ny) 
+
+    if im.ndim == 3:
+        assert maintain_size, "Not implemented yet"
+        for ch in xrange(im.shape[2]):
+            im[...,ch] = blur_image(im[...,ch], n, ny)
+        return im
+
     else:
-        return _blur_and_shrink(im, n, ny)
+        if maintain_size:
+            if ny is None:
+                ny = n 
+            i_n = int(math.ceil(n))
+            i_ny = int(math.ceil(ny))
+            x, y = np.mgrid[-i_n:im.shape[0]+i_n, -i_ny:im.shape[1]+i_ny].astype(float)
+            bigger = ag.util.interp2d(x, y, im.astype(float), startx=(0, 0), dx=(1, 1))
+            return _blur_and_shrink(bigger, n, ny) 
+        else:
+            return _blur_and_shrink(im, n, ny)
