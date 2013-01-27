@@ -2,6 +2,7 @@ import amitgroup as ag
 import numpy as np
 
 #ag.set_verbose(True)
+np.random.seed(0)
 
 # generate synthetic data
 num_templates = 3

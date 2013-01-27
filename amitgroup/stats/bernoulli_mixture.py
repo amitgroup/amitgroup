@@ -253,10 +253,11 @@ class BernoulliMixture(object):
 
         loglikelihoods = template_logscores + np.log(self.weights).reshape((1,self.num_mix))
         max_vals = np.amax(loglikelihoods,axis=1)
+
         # adjust the marginals by a value to avoid numerical
         # problems
         logmarginals_adj = np.sum(np.exp(loglikelihoods - max_vals.reshape((self.num_data, 1))),axis=1)
-        loglikelihood = np.log(np.sum(logmarginals_adj)) + np.sum(max_vals)
+        loglikelihood = np.sum(np.exp(logmarginals_adj)) + np.sum(max_vals)
         self.affinities = np.exp(loglikelihoods-(logmarginals_adj+max_vals).reshape((self.num_data, 1)))
         self.affinities /= np.sum(self.affinities,axis=1).reshape((self.num_data, 1))
         return loglikelihood
