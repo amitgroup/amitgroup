@@ -1,6 +1,8 @@
 import amitgroup as ag
 import numpy as np
 
+#ag.set_verbose(True)
+
 # generate synthetic data
 num_templates = 3
 template_size = (20,20)
@@ -27,5 +29,6 @@ for X in XS:
 
 
 bm = ag.stats.BernoulliMixture(3,XS)
-bm.run_EM(.0001, debug_plot=True)
+bm.run_EM(1e-8, debug_plot=False)
 
+ag.plot.images(bm.templates)

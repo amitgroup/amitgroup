@@ -6,7 +6,7 @@ import random, collections
 BernoulliMixtureSimple = collections.namedtuple('BernoulliMixtureSimple',
                                                 'log_templates log_invtemplates weights')
 
-class BernoulliMixture:
+class BernoulliMixture(object):
     """
     Bernoulli Mixture model with an EM solver.
 
@@ -255,11 +255,10 @@ class BernoulliMixture:
         max_vals = np.amax(loglikelihoods,axis=1)
         # adjust the marginals by a value to avoid numerical
         # problems
-        logmarginals_adj = np.sum(np.exp(loglikelihoods - np.tile(max_vals,(self.num_mix,1)).transpose()),axis=1)
+        logmarginals_adj = np.sum(np.exp(loglikelihoods - max_vals.reshape((self.num_data, 1))),axis=1)
         loglikelihood = np.sum(np.log(logmarginals_adj)) + np.sum(max_vals)
-        self.affinities = np.exp(loglikelihoods-np.tile(logmarginals_adj+max_vals,
-                                           (self.num_mix,1)).transpose())
-        self.affinities/=np.tile(np.sum(self.affinities,axis=1),(self.num_mix,1)).transpose()
+        self.affinities = np.exp(loglikelihoods-(logmarginals_adj+max_vals).reshape((self.num_data, 1)))
+        self.affinities /= np.sum(self.affinities,axis=1).reshape((self.num_data, 1))
         return loglikelihood
 
     def compute_loglikelihood(self,datamat):
@@ -315,9 +314,6 @@ class BernoulliMixture:
         indices = self.mixture_components()
         return [np.where(indices == i)[0] for i in xrange(self.num_mix)]
       
-    def set_template_vec_likelihoods(self):
-        pass
-    
     def save(self, filename, save_affinities=False):
         """
         Save mixture components to a numpy npz file.
