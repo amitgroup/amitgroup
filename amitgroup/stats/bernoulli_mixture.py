@@ -73,9 +73,10 @@ class BernoulliMixture:
            [  9.97376426e-01,   2.62357439e-03]])
 
     """
-    def __init__(self,num_mix,data_mat,min_num=0, init_type='unif_rand',init_seed=0):
+    def __init__(self,num_mix,data_mat,min_num=0, init_type='unif_rand',init_seed=0, float_type=np.float64):
         # TODO: opt_type='expected'
         self.num_mix = num_mix
+        self.float_type = float_type
         # If we're reconstructing a trained Bernoulli mixture model, then we might
         # intiailize this class without a data matrix
         self.min_num=min_num
@@ -84,7 +85,7 @@ class BernoulliMixture:
             self.data_shape = data_mat.shape[1:]
             # flatten data to just be binary vectors
             self.data_length = np.prod(data_mat.shape[1:])
-            self.data_mat = data_mat.reshape(self.num_data, self.data_length)
+            self.data_mat = data_mat.reshape(self.num_data, self.data_length).astype(np.uint8)
 
             # If we change this to a true bitmask, we should do ~data_mat
             self.not_data_mat = 1 - self.data_mat
@@ -98,7 +99,7 @@ class BernoulliMixture:
             self.min_probability = 0.05 
             
             # initializing weights
-            self.weights = 1./num_mix * np.ones(num_mix)
+            self.weights = 1./num_mix * np.ones(num_mix, dtype=self.float_type)
             #self.opt_type=opt_type TODO: Not used yet.
             self.init_affinities_templates(init_type)
 
@@ -199,9 +200,9 @@ class BernoulliMixture:
             idx = range(self.num_data)
             random.shuffle(idx)
             self.affinities = np.zeros((self.num_data,
-                                        self.num_mix))
+                                        self.num_mix), dtype=self.float_type)
             self.work_templates = np.zeros((self.num_mix,
-                                       self.data_length))
+                                       self.data_length), dtype=self.float_type)
             for mix_id in xrange(self.num_mix):
                 self.affinities[self.num_mix*np.arange(self.num_data/self.num_mix)+mix_id,mix_id] = 1.
                 self.work_templates[mix_id] = np.mean(self.data_mat[self.affinities[:,mix_id]==1],axis=0)
@@ -252,6 +253,7 @@ class BernoulliMixture:
         template_logscores = self.get_template_loglikelihoods()
 
         loglikelihoods = template_logscores + np.tile(np.log(self.weights),(self.num_data,1))
+        del template_logscores
         max_vals = np.amax(loglikelihoods,axis=1)
         # adjust the marginals by a value to avoid numerical
         # problems
@@ -270,8 +272,9 @@ class BernoulliMixture:
     def get_template_loglikelihoods(self):
         """ Assumed to be called whenever
         """
-        return np.dot(self.data_mat, self.log_templates.T) + \
-               np.dot(self.not_data_mat, self.log_invtemplates.T)
+        a = np.dot(self.data_mat, self.log_templates.T)# + \
+        a += np.dot(self.not_data_mat, self.log_invtemplates.T)
+        return a
 
     def remix(self, data):
         """
