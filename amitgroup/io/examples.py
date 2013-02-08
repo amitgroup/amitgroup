@@ -40,7 +40,7 @@ def load_example(name):
 
     """
     if name == 'faces':
-        return ag.io.load_all_images(datapath('Images_0'))
+        return map(lambda x: x.img, ag.io.load_all_images(datapath('Images_0')))
     if name == 'two-faces':
         data = np.load(datapath('twoface.npz'))
         return np.array([data['im1'], data['im2']])
