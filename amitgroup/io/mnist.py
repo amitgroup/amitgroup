@@ -6,6 +6,10 @@ def load_mnist(dataset="training", digits=None, path=None, asbytes=False, select
     """
     Loads MNIST files into a 3D numpy array.
 
+    You have to download the data separately from http://yann.lecun.com/exdb/mnist/. It is recommended to set the environment variable ``MNIST`` to point to the folder where you put the data, so that you don't have to select path. On a Linux+bash setup, this is done by adding the following to your ``.bashrc``::
+
+        export MNIST=/path/to/mnist
+
     Parameters
     ----------
     dataset : str 
