@@ -43,4 +43,4 @@ class EdgeDescriptor(BinaryDescriptor):
         return cls(d)
 
 
-EdgeDescriptor = BinaryDescritor.register('edges')(EdgeDescriptor)
+EdgeDescriptor = BinaryDescriptor.register('edges')(EdgeDescriptor)
