@@ -25,7 +25,7 @@ class EdgeDescriptor(BinaryDescriptor):
     def __init__(self, polarity_sensitive=True, k=5, radius=1, min_contrast=0.1):
         self.settings = {}
         # Change this 
-        self.settings['contrast_insensitive'] = polarity_sensitive 
+        self.settings['contrast_insensitive'] = not polarity_sensitive 
         self.settings['k'] = k 
         self.settings['radius'] = radius 
         self.settings['min_contrast'] = min_contrast 
