@@ -3,7 +3,7 @@ import amitgroup as ag
 import numpy as np
 import math
 
-def images(data, zero_to_one=True, show=True, subplots=None):
+def images(data, zero_to_one=True, show=True, subplots=None, caption=None):
     """
     Display images that range a grid. Especially designed for probability images, ranging from 0 to 1.
 
@@ -15,6 +15,10 @@ def images(data, zero_to_one=True, show=True, subplots=None):
         If True, then 0.0 and below will be pitch black, and 1.0 and above will be chalk white.    
     show : bool
         Call `pylab.show()` inside the function.
+    subplots : tuple or None
+        Specify the shape of the subplots manually.
+    caption : lambda(index, element)
+        A function that takes the index and the element (``data[index]``) and should return a string.
     """
     import matplotlib.pylab as plt
 
@@ -34,7 +38,6 @@ def images(data, zero_to_one=True, show=True, subplots=None):
     else:
         # TODO: Better find out pleasing aspect ratios
         N = len(data)
-        print N
         if subplots is not None:
             sh = subplots
             assert len(data) <= np.prod(subplots) 
@@ -47,12 +50,13 @@ def images(data, zero_to_one=True, show=True, subplots=None):
         else:
             perside = math.ceil(math.sqrt(len(data)))
             sh = (perside,)*2
-        print sh
         fig = plt.figure()
         for i, im in enumerate(data): 
             plt.subplot(sh[0], sh[1], 1+i).set_axis_off()
             plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
             plt.imshow(im, **settings)
+            if caption is not None:
+                plt.title(caption(i, im))
 
     if show:
         plt.show()

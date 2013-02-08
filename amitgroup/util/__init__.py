@@ -11,7 +11,7 @@ except ImportError:
     print("Warning: No Cython! Please compile amitgroup.")
 
 from .blur import blur_image
-from .misc import zeropad, border_value_pad
+from .misc import zeropad, zeropad_to_shape, border_value_pad
 from .convolve2d import convolve2d, inflate2d
 
 #__all__ = ['interp2d', 'blur_image']
