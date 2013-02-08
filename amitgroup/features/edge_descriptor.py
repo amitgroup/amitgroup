@@ -1,20 +1,19 @@
 
-from binary_descriptor import BinaryDescriptor
 import amitgroup as ag
 import amitgroup.features
+from binary_descriptor import BinaryDescriptor
 
-# TODO: This is temporarily moved
-#@BinaryDescriptor.register('edges')
+@BinaryDescriptor.register('edges')
 class EdgeDescriptor(BinaryDescriptor):
     """
-    Binary descriptor based on edges.
+    Binary descriptor for simple oriented edges.
 
     The parameters are similar to :func:`amitgroup.features.bedges`.
     
     Parameters
     ----------
     polarity_sensitive : bool
-        If True, the polarity of the edges will matter. If False, then the direction of edges will not matter. 
+        If True, the polarity of the edges will matter. Otherwise, edges of opposite direction will be collapsed into one feature.
     k : int
         See :func:`amitgroup.features.bedges`.
     radius : int
@@ -28,8 +27,7 @@ class EdgeDescriptor(BinaryDescriptor):
         self.settings['contrast_insensitive'] = not polarity_sensitive 
         self.settings['k'] = k 
         self.settings['radius'] = radius 
-        self.settings['min_contrast'] = min_contrast 
-        self.settings.update(settings)
+        self.settings['minimum_contrast'] = min_contrast 
 
     def extract_features(self, img):
         #return ag.features.bedges_from_image(img, **self.settings)
@@ -41,6 +39,3 @@ class EdgeDescriptor(BinaryDescriptor):
     @classmethod
     def load_from_dict(cls, d):
         return cls(d)
-
-
-EdgeDescriptor = BinaryDescriptor.register('edges')(EdgeDescriptor)

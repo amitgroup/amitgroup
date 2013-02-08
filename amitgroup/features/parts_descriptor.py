@@ -1,5 +1,4 @@
 import random
-import copy
 import amitgroup as ag
 import numpy as np
 from binary_descriptor import BinaryDescriptor
@@ -10,8 +9,7 @@ def load_image(path):
     im = np.array(Image.open(path))
     return im.astype(np.float64)/255.0
 
-# TODO: This is moved to after the class, since sphinx is having problems with it
-#@BinaryDescriptor.register('parts')
+@BinaryDescriptor.register('parts')
 class PartsDescriptor(BinaryDescriptor):
     """
     Parts descriptor based on a mixture model of image patches.
@@ -133,7 +131,7 @@ class PartsDescriptor(BinaryDescriptor):
             Image in the form of an numpy array. Both grayscale and colors is fine.
         settings : dict
             Additional settings that do not need retraining:
-            * `"spread_radii": A tuple that specifies the radius of parts spreading in both axes.
+                * `"spread_radii"`: A tuple that specifies the radius of parts spreading in both axes.
         """
         if 1:
             edges = ag.features.bedges(image, **self._bedges_settings())
@@ -269,5 +267,3 @@ class PartsDescriptor(BinaryDescriptor):
 
     def save_to_dict(self):
         return dict(num_parts=self.num_parts, patch_size=self.patch_size, parts=self.parts, visparts=self.visparts, settings=self.settings)
-
-PartsDescritpor = BinaryDescriptor.register('parts')(PartsDescriptor)
