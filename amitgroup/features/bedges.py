@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import numpy as np
 import scipy.signal
 import amitgroup as ag
-from amitgroup.features.features import array_bedges
+from amitgroup.features.features import array_bedges, array_bedges2
 
 # Builds a kernel along the edge direction
 def _along_kernel(direction, radius):
@@ -22,7 +22,7 @@ def _along_kernel(direction, radius):
             
     return kern
 
-def bedges(images, k=6, inflate='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False):
+def bedges(images, k=6, inflate='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, max_edges=None):
     """
     Extracts binary edge features for each pixel according to [1].
 
@@ -45,6 +45,8 @@ def bedges(images, k=6, inflate='box', radius=1, minimum_contrast=0.0, contrast_
         If this is set to True, then the direction of the gradient does not matter and only 4 edge features will be returned.
     first_axis: bool
          If True, the images will be returned with the features on the first axis as ``(A, rows, cols)`` instead of ``(rows, cols, A)``, where `A` is either 4 or 8. If mutliple input entries, then the output will be ``(N, A, rows, cols)``.
+    max_edges : int or None
+        Maximum number of edges that can assigned at a single pixel. The ones assigned will be the ones with the higest contrast.
     
     Returns
     -------
@@ -57,7 +59,10 @@ def bedges(images, k=6, inflate='box', radius=1, minimum_contrast=0.0, contrast_
     """
     single = len(images.shape) == 2
     if single:
-        features = array_bedges(np.array([images]), k, minimum_contrast, contrast_insensitive)
+        images = np.array([images])
+
+    if max_edges is not None:
+        features = array_bedges2(images, k, minimum_contrast, contrast_insensitive, max_edges)
     else:
         features = array_bedges(images, k, minimum_contrast, contrast_insensitive) 
 
