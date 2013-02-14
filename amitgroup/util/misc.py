@@ -1,7 +1,7 @@
 
 import numpy as np
 
-def zeropad(data, padwidth):
+def pad(data, padwidth, value):
     data = np.asarray(data)
     shape = data.shape
     if isinstance(padwidth, int):
@@ -9,8 +9,24 @@ def zeropad(data, padwidth):
         
     padded_shape = map(lambda ix: ix[1]+padwidth[ix[0]]*2, enumerate(shape))
     new_data = np.zeros(padded_shape, dtype=data.dtype)
+    new_data.fill(value)
     new_data[ [slice(w, -w) if w > 0 else slice(None) for w in padwidth] ] = data 
     return new_data
+
+def multipad(data, padwidth, values):
+    data = np.asarray(data)
+    shape = data.shape
+    if isinstance(padwidth, int):
+        padwidth = (padwidth,)*len(shape) 
+        
+    padded_shape = map(lambda ix: ix[1]+padwidth[ix[0]]*2, enumerate(shape))
+    new_data = np.zeros(padded_shape, dtype=data.dtype)
+    new_data[...,:] = values
+    new_data[ [slice(w, -w) if w > 0 else slice(None) for w in padwidth] ] = data 
+    return new_data
+
+def zeropad(data, padwidth):
+    return pad(data, padwidth, 0.0) 
 
 def zeropad_to_shape(data, shape):
     """Zero-pads an array to a certain shape"""

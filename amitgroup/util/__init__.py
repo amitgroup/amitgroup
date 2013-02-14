@@ -11,8 +11,9 @@ except ImportError:
     print("Warning: No Cython! Please compile amitgroup.")
 
 from .blur import blur_image
-from .misc import zeropad, zeropad_to_shape, border_value_pad
+from .misc import zeropad, zeropad_to_shape, pad, multipad, border_value_pad
 from .convolve2d import convolve2d, inflate2d
+from .saveable import Saveable
 
 #__all__ = ['interp2d', 'blur_image']
 #__all__ += ['DisplacementField', 'DisplacementFieldWavelet']

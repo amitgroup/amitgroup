@@ -82,7 +82,11 @@ class DisplacementField(object):
 
         Examples
         --------
-        >>> x, y = DisplacementField.meshgrid_for_shape((4, 4))
+        >>> import amitgroup as ag
+
+        Generate a mesh grid of appropriate size:
+
+        >>> x, y = ag.util.DisplacementField.meshgrid_for_shape((4, 4))
         >>> x
         array([[ 0.  ,  0.  ,  0.  ,  0.  ],
                [ 0.25,  0.25,  0.25,  0.25],
