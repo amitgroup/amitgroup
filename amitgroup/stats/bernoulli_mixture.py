@@ -205,7 +205,9 @@ class BernoulliMixture(object):
                                        self.data_length), dtype=self.float_type)
             for mix_id in xrange(self.num_mix):
                 self.affinities[self.num_mix*np.arange(self.num_data/self.num_mix)+mix_id,mix_id] = 1.
-                self.work_templates[mix_id] = np.mean(self.data_mat[self.affinities[:,mix_id]==1],axis=0)
+                #self.work_templates[mix_id] = np.mean(self.data_mat[self.affinities[:,mix_id]==1],axis=0)
+                aff = self.affinities[:,mix_id]
+                self.work_templates[mix_id] = np.dot(self.data_mat.T, aff) / aff.sum() 
                 self.threshold_templates()
         elif init_type == 'specific':
             random.seed(self.seed)
