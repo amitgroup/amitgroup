@@ -18,6 +18,9 @@ class BinaryDescriptor(Saveable):
 
     @property
     def name(self):
+        """
+        String name of this descriptor.
+        """
         # Automatically overloaded by 'register'
         return "noname" 
 
@@ -33,6 +36,7 @@ class BinaryDescriptor(Saveable):
             assert issubclass(reg_cls, cls), "Must be subclass of BinaryDescriptor"
             global _DESCIPTORS
             _DESCRIPTORS[name] = reg_cls
+            return reg_cls
         return register_decorator
 
     @classmethod

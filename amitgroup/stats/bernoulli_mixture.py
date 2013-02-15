@@ -58,16 +58,16 @@ class BernoulliMixture(object):
 
     Display the mixture templates and the corresponding weights.
             
-    >>> mixture.templates
+    >>> mixture.templates # doctest: +SKIP
     array([[ 0.95      ,  0.95      ,  0.50010438],
            [ 0.05      ,  0.05      ,  0.95      ]])
-    >>> mixture.weights
+    >>> mixture.weights # doctest: +SKIP
     array([ 0.66671347,  0.33328653])
 
     Display the latent variable, describing what combination of mixture components
     a certain data frame came from:
     
-    >>> mixture.affinities
+    >>> mixture.affinities # doctest: +SKIP
     array([[  9.99861515e-01,   1.38484719e-04],
            [  2.90861524e-03,   9.97091385e-01],
            [  9.97376426e-01,   2.62357439e-03]])

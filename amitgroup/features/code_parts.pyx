@@ -8,9 +8,10 @@ cimport numpy as np
 #from cython.parallel import prange
 DTYPE = np.float64
 UINT = np.uint8
+UINT32 = np.uint32
 ctypedef np.float64_t DTYPE_t
-
 ctypedef np.uint8_t UINT_t
+ctypedef np.uint32_t UINT32_t
 
 cdef unsigned int _count_edges(UINT_t[:,:,:] X,
                  unsigned int i_start,
@@ -101,7 +102,7 @@ def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
     cdef unsigned int X_z_dim = X.shape[2]
     cdef unsigned int new_x_dim = X_x_dim - part_x_dim + 1
     cdef unsigned int new_y_dim = X_y_dim - part_y_dim + 1
-    cdef unsigned int i_start,j_start,i_end,j_end,count,i,j,z,k
+    cdef unsigned int i_start,j_start,i_end,j_end,count,i,j,z,k, cx0, cx1, cy0, cy1 
     cdef unsigned int i_frame = <unsigned int>outer_frame
     cdef DTYPE_t NINF = -np.inf
     # we have num_parts + 1 because we are also including some regions as being
@@ -115,17 +116,50 @@ def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
     cdef DTYPE_t[:,:,:,:] log_parts_mv = log_parts
     cdef DTYPE_t[:,:,:,:] log_invparts_mv = log_invparts
     cdef DTYPE_t[:,:,:] out_map_mv = out_map
+
+    cdef np.ndarray[dtype=UINT32_t, ndim=2] _integral_counts = np.zeros((X_x_dim+1, X_y_dim+1), dtype=UINT32)
+    cdef UINT32_t[:,:] integral_counts = _integral_counts
+
+    #cdef UINT_t[:,:]
     # The first cell along the num_parts+1 axis contains a value that is either 0
     # if the area is deemed to have too few edges or min_val if there are sufficiently many
     # edges, min_val is just meant to be less than the value of the other cells
     # so when we pick the most likely part it won't be chosen
 
     with nogil:
+        # Build integral image of edge counts
+        # First, fill it with edge counts and accmulate across
+        # one axis.
+        for i in range(X_x_dim):
+            for j in range(X_y_dim):
+                count = 0
+                for z in range(X_z_dim):
+                    count += X_mv[i,j,z]
+                integral_counts[1+i,1+j] = integral_counts[1+i,j] + count
+        # Now accumulate the other axis
+        for j in range(X_y_dim):
+            for i in range(X_x_dim):
+                integral_counts[1+i,1+j] += integral_counts[i,1+j]
+
+
+
+        # Code parts
         for i_start in range(X_x_dim-part_x_dim+1):
             i_end = i_start + part_x_dim
             for j_start in range(X_y_dim-part_y_dim+1):
                 j_end = j_start + part_y_dim
-                count = _count_edges(X_mv,i_start+i_frame,i_end-i_frame,j_start+i_frame,j_end-i_frame,X_z_dim)
+                #count = _count_edges(X_mv,i_start+i_frame,i_end-i_frame,j_start+i_frame,j_end-i_frame,X_z_dim)
+
+                # Note, integral_counts is 1-based, to allow for a zero row/column at the zero:th index.
+                cx0 = i_start+i_frame
+                cx1 = 1+i_end-i_frame
+                cy0 = j_start+i_frame
+                cy1 = 1+j_end-i_frame
+                count = integral_counts[cx1, cy1] - \
+                        integral_counts[cx0, cy1] - \
+                        integral_counts[cx1, cy0] + \
+                        integral_counts[cx0, cy0]
+            
                 if count >= threshold:
                     out_map_mv[i_start,j_start] = 0.0
                     out_map_mv[i_start,j_start,0] = NINF 

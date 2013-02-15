@@ -24,7 +24,7 @@ class PlottingWindow(object):
     
     Plot an evolving 2D function.
 
-    >>> plw = ag.plot.PlottingWindow()
+    >>> plw = ag.plot.PlottingWindow() # doctest: +SKIP
     >>> x, y = np.mgrid[0:1:100j, 0:1:100j]
     >>> t = 0.0
     >>> while plw.tick():

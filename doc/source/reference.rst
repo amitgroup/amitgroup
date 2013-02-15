@@ -15,6 +15,7 @@ Feature extraction (:mod:`amitgroup.features`)
    :toctree: generated/
 
    BinaryDescriptor
+   EdgeDescriptor
    PartsDescriptor
    bedges
    spread_patches

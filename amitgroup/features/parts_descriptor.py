@@ -1,5 +1,4 @@
 import random
-import copy
 import amitgroup as ag
 import numpy as np
 from binary_descriptor import BinaryDescriptor
@@ -10,8 +9,7 @@ def load_image(path):
     im = np.array(Image.open(path))
     return im.astype(np.float64)/255.0
 
-# TODO: This is moved to after the class, since sphinx is having problems with it
-#@BinaryDescriptor.register('parts')
+@BinaryDescriptor.register('parts')
 class PartsDescriptor(BinaryDescriptor):
     """
     Parts descriptor based on a mixture model of image patches.
@@ -125,12 +123,15 @@ class PartsDescriptor(BinaryDescriptor):
 
     def extract_features(self, image, settings={}):
         """
-        Extracts and returns features.
+        Extracts and returns features as a binary array.
         
         Parameters
         ----------
         image : ndarray
             Image in the form of an numpy array. Both grayscale and colors is fine.
+        settings : dict
+            Additional settings that do not need retraining:
+                * `"spread_radii"`: A tuple that specifies the radius of parts spreading in both axes.
         """
         if 1:
             edges = ag.features.bedges(image, **self._bedges_settings())
@@ -238,30 +239,20 @@ class PartsDescriptor(BinaryDescriptor):
         self._log_invparts = np.log(1-self.parts)
     
     def _extract_parts(self, edges, settings={}):
+
         partprobs = ag.features.code_parts(edges, self._log_parts, self._log_invparts, 
                                            self.settings['threshold'], self.settings['patch_frame'])
         parts = partprobs.argmax(axis=-1)
 
-        # Pad with background (TODO: maybe incorporate as an option to code_parts?)
-        # This just makes things a lot easier, and we don't have to match for instance the
-        # support which will be bigger if we don't do this.
-        # TODO: If we're not using a support, this could be extremely detrimental!
+        # Zero-pad it to give back the same size. 
+        # TODO: This might not be ideal in some situations, so we might want to reconsider this.
         parts = ag.util.zeropad(parts, (self._log_parts.shape[1]//2, self._log_parts.shape[2]//2))
         
-        sett = self.settings.copy()
-        sett.update(settings)
-
         # Do spreading
-        radii = self.settings['spread_radii']
-        #radii = (0, 0)
-        #if max(radii) > 0:
+        radii = settings['spread_radii']
+
         spread_parts = ag.features.spread_patches(parts, radii[0], radii[1], self.num_parts)
         return spread_parts 
-        #else:
-            # TODO: Maybe not this way.
-            #spread_parts = ag.features.spread_parts(parts, 0, 0, self.num_parts)
-            #return spread_parts 
-            #return parts
 
     @classmethod
     def load_from_dict(cls, d):
@@ -276,5 +267,3 @@ class PartsDescriptor(BinaryDescriptor):
 
     def save_to_dict(self):
         return dict(num_parts=self.num_parts, patch_size=self.patch_size, parts=self.parts, visparts=self.visparts, settings=self.settings)
-
-PartsDescritpor = BinaryDescriptor.register('parts')(PartsDescriptor)
