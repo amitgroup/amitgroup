@@ -1,8 +1,9 @@
+from __future__ import print_function
 import numpy as np
 import sys
 import copy
 import time
-import train_net as tn
+from . import train_net as tn
 
 def train_sv_all(expi):
      expi.pp.deltaD=expi.pp.deltaP
@@ -45,7 +46,7 @@ def one_against_rest_all(expi,X,Y):
     locltp=pp.pltp
     if pp.stoch<0:
         locltp=min(pp.pltp,abs(1./pp.stoch)-eps)
-    print 'Time Step', pp.pltp, locltp
+    print('Time Step', pp.pltp, locltp)
     up=0
     dup=0
     # Iterations.
@@ -75,13 +76,13 @@ def one_against_rest_all(expi,X,Y):
                     if tempy==c:
                         tempw=W[:,c]<=pp.Jmax-fac2
                         if np.sum(tempw)<len(tempw):
-                            print 'hit upper bound'
+                            print('hit upper bound')
                         tempw.shape=pi.shape
                         pi=np.logical_and(pi, tempw)
                     else:
                         tempw=W[:,c]>=-pp.Jmax+fac2
                         if np.sum(tempw)<len(tempw):
-                                print 'hit lower bound'
+                                print('hit lower bound')
                         tempw.shape=pi.shape
                         pi=np.logical_and(pi,tempw)
                 # Update weights on class
@@ -107,7 +108,7 @@ def one_against_rest_all(expi,X,Y):
                 DD+=np.sum(np.maximum(np.zeros(Ntot),pp.deltaP-np.dot(X,W[:,c])*Yc));
             PP=-.5*pp.stoch*np.sum(W*W)
             EE=DD+PP
-            print 'td ', td, 'it ', it, 'Number of syn changes ', up, ' at ', dup, ' Data term ', DD, 'Prior term ', PP, 'Total ', EE
+            print('td ', td, 'it ', it, 'Number of syn changes ', up, ' at ', dup, ' Data term ', DD, 'Prior term ', PP, 'Total ', EE)
         # Nothing is changing - stop the algorithm.
         if up==0:
             break
@@ -117,7 +118,7 @@ def one_against_rest_all(expi,X,Y):
         DD+=np.sum(np.maximum(np.zeros(Ntot),pp.deltaP-np.dot(X,W[:,c])*(2*(Y.T==c)-1)));
     PP=-.5*pp.stoch*np.sum(W*W)
     EE=DD+PP
-    print 'td ', td, 'it ', it, 'Number of syn changes ', up, ' at ', dup, ' Data term ', DD, 'Prior term ', PP, 'Total ', EE    
+    print('td ', td, 'it ', it, 'Number of syn changes ', up, ' at ', dup, ' Data term ', DD, 'Prior term ', PP, 'Total ', EE)
     return W
 
 
@@ -125,22 +126,22 @@ def train_sv(expi, flag=0):
     expi.pp.deltaD=expi.pp.deltaP
     numclass=len(expi.ddtr)
     numfeat=expi.ddtr[0][0].features['V1'].size
-    print numfeat
+    print(numfeat)
     expi.NO=np.zeros((numfeat,numclass))
     for c in range(numclass):
         W=one_against_rest(expi.pp,expi.ddtr,c,expi.pp.numtrain_per_class, flag)
         expi.NO[:,c]=W
     CC, e=tn.test_by_weights(expi.ddte,expi.NO)
-    print 'result ', e
+    print('result ', e)
     f=open(expi.pp.out,"a")
     f.write('stoch: '+str(expi.pp.stoch) + ' Del: ' + str(expi.pp.deltaP) + ' Rate: ' + str(e) + '\n')
 
 def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
-    print 'numtrain', numtrain, 'class ', c
+    print('numtrain', numtrain, 'class ', c)
     if numtrain==0:
         numtrain=len(ddtr[c])
     # Rearrange data for this class with class at top of array and all the rest after.
-    print numtrain
+    print(numtrain)
     XY=tn.rearrange(ddtr,c, numtrain)
     XY[1].shape=[XY[1].size]
     # just for fun make output 1/-1
@@ -156,7 +157,7 @@ def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
     locltp=pp.pltp
     if pp.stoch<0:
         locltp=min(pp.pltp,abs(1./pp.stoch)-eps)
-    print 'Time Step', pp.pltp, locltp
+    print('Time Step', pp.pltp, locltp)
     up=0
     dup=0
     for it in range(pp.numit):
@@ -182,13 +183,13 @@ def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
                 if tempy==1:
                     tempw=W<=pp.Jmax-fac2
                     if np.sum(tempw)<len(tempw):
-                        print 'hit upper bound'
+                        print('hit upper bound')
                     tempw.shape=pi.shape
                     pi=np.logical_and(pi, tempw)
                 else:
                     tempw=W>=-pp.Jmax+fac2
                     if np.sum(tempw)<len(tempw):
-                        print 'hit lower bound'
+                        print('hit lower bound')
                     tempw.shape=pi.shape
                     pi=np.logical_and(pi,tempw)
             if (tempy==1 and h<=pp.deltaP):
@@ -205,7 +206,7 @@ def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
             DD=np.sum(np.maximum(np.zeros(Ntot),pp.deltaP-np.dot(XY[0],W)*XY[1]));
             PP=-.5*pp.stoch*np.sum(W*W)
             EE=DD+PP
-            print 'td ', td, 'it ', it, 'Number of syn changes ', up, ' at ', dup, ' Data term ', DD, 'Prior term ', PP, 'Total ', EE
+            print('td ', td, 'it ', it, 'Number of syn changes ', up, ' at ', dup, ' Data term ', DD, 'Prior term ', PP, 'Total ', EE)
         if up==0:
             #time.sleep(20)
             break
@@ -213,7 +214,7 @@ def one_against_rest(pp,ddtr,c,numtrain=0, flag=0):
     DD=np.sum(np.maximum(np.zeros(Ntot),pp.deltaP-np.dot(XY[0],W)*XY[1]));
     PP=-.5*pp.stoch*np.sum(W*W)
     EE=DD+PP
-    print 'td ', td, 'it ', it, 'Number of syn changes ', up, ' at ', dup, ' Data term ', DD, 'Prior term ', PP, 'Total ', EE
+    print('td ', td, 'it ', it, 'Number of syn changes ', up, ' at ', dup, ' Data term ', DD, 'Prior term ', PP, 'Total ', EE)
    
     return W
 

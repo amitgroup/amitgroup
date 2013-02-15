@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 import sys
 import copy
@@ -45,8 +46,8 @@ def top_train(expi):
         expi.NO.append(all_at_one_top(expi))
 
     [C,e]=test_averages(expi)
-    print "Test classification rate ", e
-    print "Finished Training"
+    print("Test classification rate ", e)
+    print("Finished Training")
 
 
 
@@ -106,7 +107,7 @@ def read_data_b(expi,numclass):
 
     """
 
-    print 'Hello'
+    print('Hello')
     s=os.environ['HOME']+'/Desktop/Dropbox/'
     sstr=s+'/mnist_train'
     sste=s+'/mnist_test'
@@ -196,7 +197,7 @@ def nets_to_mat(NO,Jmid,numperc=0):
     numclass=len(NO);
     if numperc==0:
         numperc=len(NO[0]);
-    print numperc
+    print(numperc)
     numfeat=NO[0][0].JJ.size;
     JJ=np.zeros((numfeat,numperc,numclass), dtype=np.int8);
     JJfb=np.zeros((numfeat,numperc,numclass), dtype=np.int8);
@@ -275,7 +276,7 @@ def test_by_weights(ddte,WW,numtest=0):
             CONF[c,d]=np.double(np.sum(i==d))
         
     e=np.sum(np.diag(CONF))/Ntot
-    print e
+    print(e)
     return [CONF, e]
 
         
@@ -300,10 +301,10 @@ def test_net(expi, tr=False, numtest=0):
 
 
     Jmid=np.ceil(expi.pp.Jmax/2)
-    print Jmid
+    print(Jmid)
     numclass=len(expi.ddte);    
     [JJ, JJfb]=nets_to_mat(expi.NO[0],Jmid,expi.pp.numperc);
-    print JJ[:,:,0].shape
+    print(JJ[:,:,0].shape)
     CONF=np.zeros((numclass,numclass))
     Ntot=0
     ddt=expi.ddte
@@ -324,7 +325,7 @@ def test_net(expi, tr=False, numtest=0):
         for d in range(numclass):
             CONF[c,d]=np.double(np.sum(i==d))
 
-    print np.sum(np.diag(CONF))/Ntot
+    print(np.sum(np.diag(CONF))/Ntot)
     return CONF
 
 
@@ -372,7 +373,7 @@ def stack_data(expi):
         N=expi.pp.numtrain_per_class
         if N==0:
             N=len(expi.ddtr[c])
-        print 'Loading class ', c, N
+        print('Loading class ', c, N)
         X=np.vstack((X,extract_feature_matrix(expi.ddtr[c],'V1',N)))
         Y=np.vstack((Y,c*np.ones((N,1))))
     return X,Y
@@ -399,7 +400,7 @@ def all_at_one_top(expi):
 
     """
     # stack data of all classes in one array, with an accompanying label array
-    print 'Going to stack'
+    print('Going to stack')
     [X,Y]=stack_data(expi)
     # Call the training routine
     numclass=len(expi.ddtr)
@@ -435,7 +436,7 @@ def ff_all_at_one(pp,X,Y,numperc,numclass):
     #sys.stdout = open('out','w')
     Ntot=X.shape[0]
     numfeat=X.shape[1]
-    print Ntot, numfeat
+    print(Ntot, numfeat)
 
     # Synapses are positive and Jmid is the `middle'. Instead of being symmetric around 0.
     Jmid=np.ceil(pp.Jmax/2)
@@ -452,7 +453,7 @@ def ff_all_at_one(pp,X,Y,numperc,numclass):
     rnumclass=range(numclass)
     rNtot=range(Ntot)
     for it in range(pp.numit):
-        print 'iteration ', it
+        print('iteration ', it)
         # Random arrangement of examples. Stochastic gradient.
         np.random.shuffle(II)
         # Variables to keep track of changes
