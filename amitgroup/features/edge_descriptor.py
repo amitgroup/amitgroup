@@ -1,7 +1,7 @@
 
 import amitgroup as ag
 import amitgroup.features
-from binary_descriptor import BinaryDescriptor
+from .binary_descriptor import BinaryDescriptor
 
 @BinaryDescriptor.register('edges')
 class EdgeDescriptor(BinaryDescriptor):

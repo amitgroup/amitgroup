@@ -1,7 +1,7 @@
 import random
 import amitgroup as ag
 import numpy as np
-from binary_descriptor import BinaryDescriptor
+from .binary_descriptor import BinaryDescriptor
 
 # TODO: Move this to util (now, it already has a load_image)
 def load_image(path):
