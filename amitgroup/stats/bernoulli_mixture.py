@@ -1,6 +1,7 @@
 import amitgroup as ag
 import numpy as np
 import random, collections
+import scipy.sparse
 
 
 BernoulliMixtureSimple = collections.namedtuple('BernoulliMixtureSimple',
@@ -85,10 +86,22 @@ class BernoulliMixture(object):
             self.data_shape = data_mat.shape[1:]
             # flatten data to just be binary vectors
             self.data_length = np.prod(data_mat.shape[1:])
-            self.data_mat = data_mat.reshape(self.num_data, self.data_length).astype(np.uint8)
+    
+            if isinstance(data_mat, np.matrix):
+                pass# Let it be
+                self.data_mat = data_mat
+                self.not_data_mat = 1 - self.data_mat
+                self.sparse = False
+            if scipy.sparse.issparse(data_mat):
+                pass# Let it be
+                self.data_mat = data_mat
+                self.sparse = True
+            else:
+                self.data_mat = np.matrix(data_mat.reshape(self.num_data, self.data_length).astype(np.uint8))
+                self.not_data_mat = 1 - self.data_mat
+                self.sparse = False
 
             # If we change this to a true bitmask, we should do ~data_mat
-            self.not_data_mat = 1 - self.data_mat
 
             self.iterations = 0
             # set the random seed
@@ -175,7 +188,7 @@ class BernoulliMixture(object):
  
     def M_step(self):
         self.weights = np.mean(self.affinities,axis=0)
-        self.work_templates = np.dot(self.affinities.T, self.data_mat)
+        self.work_templates = np.asarray(self.affinities.T * self.data_mat)
         self.work_templates /= self.num_data 
         self.work_templates /= self.weights.reshape((self.num_mix, 1))
         self.threshold_templates()
@@ -184,6 +197,9 @@ class BernoulliMixture(object):
     def _preload_log_templates(self):
         self.log_templates = np.log(self.work_templates)
         self.log_invtemplates = np.log(1-self.work_templates)
+        if self.sparse:
+            a = self.log_invtemplates.T.sum(axis=0)
+            self.log_invfill = np.tile(a, (self.num_data, 1))
 
     def get_bernoulli_mixture_named_tuple():
         return BernoulliMixtureSimple(log_templates=self.log_templates,
@@ -205,9 +221,8 @@ class BernoulliMixture(object):
                                        self.data_length), dtype=self.float_type)
             for mix_id in xrange(self.num_mix):
                 self.affinities[self.num_mix*np.arange(self.num_data/self.num_mix)+mix_id,mix_id] = 1.
-                #self.work_templates[mix_id] = np.mean(self.data_mat[self.affinities[:,mix_id]==1],axis=0)
                 aff = self.affinities[:,mix_id]
-                self.work_templates[mix_id] = np.dot(self.data_mat.T, aff) / aff.sum() 
+                self.work_templates[mix_id] = np.squeeze(np.asarray(self.data_mat.T * aff.reshape((-1, 1)))) / aff.sum() 
                 self.threshold_templates()
         elif init_type == 'specific':
             random.seed(self.seed)
@@ -272,8 +287,15 @@ class BernoulliMixture(object):
     def get_template_loglikelihoods(self):
         """ Assumed to be called whenever
         """
-        a = np.dot(self.data_mat, self.log_templates.T)# + \
-        a += np.dot(self.not_data_mat, self.log_invtemplates.T)
+        a = self.data_mat * self.log_templates.T
+        if self.sparse:
+            a += self.log_invfill
+            a -= self.data_mat * self.log_invtemplates.T
+        else:
+            a += self.not_data_mat * self.log_invtemplates.T
+
+        #a = np.dot(self.data_mat, self.log_templates.T)# + \
+        #a += np.dot(self.not_data_mat, self.log_invtemplates.T)
         return a
 
     def remix(self, data):
@@ -292,7 +314,8 @@ class BernoulliMixture(object):
         remixed : ndarray
             The `data` averaged according to the mixture components. Will have the shape ``(num_mix, A', B', ...)``.
         """
-        return np.asarray([np.average(data, axis=0, weights=self.affinities[:,m]) for m in xrange(self.num_mix)])
+        aff = np.asarray(self.affinities)
+        return np.asarray([np.average(data, axis=0, weights=aff[:,m]) for m in xrange(self.num_mix)])
 
     def mixture_components(self):
         """
@@ -336,7 +359,7 @@ class BernoulliMixture(object):
         np.savez(filename, **entries) 
 
     def save_to_dict(self, save_affinities=False):
-        entries = dict(templates=self.templates, weights=self.weights, num_mix=self.num_mix, num_data=self.num_data, data_length=self.data_length, data_shape=self.data_shape)
+        entries = dict(templates=self.templates, weights=self.weights, num_mix=self.num_mix, num_data=self.num_data, data_length=self.data_length, data_shape=self.data_shape, sparse=self.sparse)
         if save_affinities:
             entries['affinities'] = self.affinities
         return entries
@@ -351,6 +374,7 @@ class BernoulliMixture(object):
         obj.num_data = d['num_data']
         obj.data_length = d['data_length']
         obj.data_shape = d['data_shape']
+        obj.sparse = d['sparse']
         obj.work_templates = obj.templates.reshape((obj.num_mix, obj.data_length))
 
         obj.log_templates = np.log(obj.templates)
@@ -361,6 +385,7 @@ class BernoulliMixture(object):
 
         #obj.set_templates()
         #obj._preload_log_templates()
+        obj._preload_log_templates()
         return obj
 
 def compute_likelihood(bernoulli_mixture,
