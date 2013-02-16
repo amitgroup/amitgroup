@@ -375,17 +375,18 @@ class BernoulliMixture(object):
         obj.data_length = d['data_length']
         obj.data_shape = d['data_shape']
         obj.sparse = d['sparse']
-        obj.work_templates = obj.templates.reshape((obj.num_mix, obj.data_length))
+        if obj.templates.size > 0:
+            obj.work_templates = obj.templates.reshape((obj.num_mix, obj.data_length))
+            obj._preload_log_templates()
 
-        obj.log_templates = np.log(obj.templates)
-        obj.log_invtemplates = np.log(1-obj.templates)
+        #obj.log_templates = np.log(obj.templates)
+        #obj.log_invtemplates = np.log(1-obj.templates)
         #self.templates = self.work_templates.reshape((self.num_mix,)+self.data_shape)
         #self.log_templates = np.log(self.templates)
         #self.log_invtemplates = np.log(1-self.templates)
 
         #obj.set_templates()
         #obj._preload_log_templates()
-        obj._preload_log_templates()
         return obj
 
 def compute_likelihood(bernoulli_mixture,
