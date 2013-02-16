@@ -187,7 +187,7 @@ class BernoulliMixture(object):
         return True
  
     def M_step(self):
-        self.weights = np.mean(self.affinities,axis=0)
+        self.weights = np.asarray(np.mean(self.affinities,axis=0))
         self.work_templates = np.asarray(self.affinities.T * self.data_mat)
         self.work_templates /= self.num_data 
         self.work_templates /= self.weights.reshape((self.num_mix, 1))
@@ -316,6 +316,36 @@ class BernoulliMixture(object):
         """
         aff = np.asarray(self.affinities)
         return np.asarray([np.average(data, axis=0, weights=aff[:,m]) for m in xrange(self.num_mix)])
+
+    def remix_iterable(self, iterable):
+        """
+        Similar to :func:`remix`, except takes any iterable object. This is useful if your remixing data is bigger than what your memory can hold at once, in which case
+        you can create a generator object that yields each sample. 
+    
+        Parameters
+        ----------
+        iterable : iterable 
+            Any iterable data structure, for instance a generator. 
+
+        Returns
+        -------
+        remixed : ndarray
+            The `iterable` averaged according to the mixture components.
+        """
+        output = None
+        N = 0
+        for i, edges in enumerate(iterable): 
+            if output is None:
+                output = np.zeros((self.num_mix,) + edges.shape) 
+
+            for k in xrange(self.num_mix):
+                output[k] += edges * self.affinities[i,k]
+            N += 1
+
+        output /= N * self.weights.reshape((-1,) + (1,)*(output.ndim-1))
+        return output
+        
+
 
     def mixture_components(self):
         """
