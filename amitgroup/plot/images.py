@@ -48,7 +48,7 @@ def images(data, zero_to_one=True, show=True, subplots=None, caption=None):
         elif N == 12:
             sh = (3, 4)
         else:
-            perside = math.ceil(math.sqrt(len(data)))
+            perside = int(math.ceil(math.sqrt(len(data))))
             sh = (perside,)*2
         fig = plt.figure()
         for i, im in enumerate(data): 
