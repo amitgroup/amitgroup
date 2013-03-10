@@ -9,20 +9,20 @@ from amitgroup.features.features import array_bedges, array_bedges2
 def _along_kernel(direction, radius):
     d = direction%4
     kern = None
-    if d == 0: # S/N
+    if d == 2: # S/N
         kern = np.zeros((radius*2+1,)*2, dtype=np.uint8)
         kern[radius,:] = 1
-    elif d == 2: # E/W
+    elif d == 0: # E/W
         kern = np.zeros((radius*2+1,)*2, dtype=np.uint8)
         kern[:,radius] = 1
-    elif d == 1: # SE/NW
+    elif d == 3: # SE/NW
         kern = np.eye(radius*2+1, dtype=np.uint8)[::-1]
-    elif d == 3: # NE/SW
+    elif d == 1: # NE/SW
         kern = np.eye(radius*2+1, dtype=np.uint8)
             
     return kern
 
-def bedges(images, k=6, inflate='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, max_edges=None):
+def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, max_edges=None):
     """
     Extracts binary edge features for each pixel according to [1].
 
@@ -34,9 +34,9 @@ def bedges(images, k=6, inflate='box', radius=1, minimum_contrast=0.0, contrast_
         Input an image of shape ``(rows, cols)`` or a list of images as an array of shape ``(N, rows, cols)``, where ``N`` is the number of images, and ``rows`` and ``cols`` the size of each image.
     k : int
         There are 6 contrast differences that are checked. The value `k` specifies how many of them must be fulfilled for an edge to be present. The default is all of them (`k` = 6) and gives more conservative edges.
-    inflate : 'box', 'perpendicular', None 
+    spread: 'box', 'orthogonal', None 
         If set to `'box'` and `radius` is set to 1, then an edge will appear if any of the 8 neighboring pixels detected an edge. This is equivalent to inflating the edges area with 1 pixel. The size of the box is dictated by `radius`. 
-        If `'perpendicular'`, then the features will be extended by `radius` perpendicular to the direction of the edge feature (i.e. along the edge).
+        If `'orthogonal'`, then the features will be extended by `radius` perpendicular to the direction of the edge feature (i.e. along the gradient).
     radius : int
         Controls the extent of the inflation, see above.
     minimum_contrast : double
@@ -66,11 +66,11 @@ def bedges(images, k=6, inflate='box', radius=1, minimum_contrast=0.0, contrast_
     else:
         features = array_bedges(images, k, minimum_contrast, contrast_insensitive) 
 
-    if inflate is True or inflate == 'box':
+    if spread is True or spread == 'box':
         features = ag.util.inflate2d(features, np.ones((1+radius*2, 1+radius*2)))
-    elif inflate == 'along':
+    elif spread == 'orthogonal':
         # Propagate the feature along the edge 
-        for j in xrange(8):
+        for j in xrange(features.shape[1]):
             kernel = _along_kernel(j, radius)
             features[:,j] = ag.util.inflate2d(features[:,j], kernel)
 
@@ -82,7 +82,7 @@ def bedges(images, k=6, inflate='box', radius=1, minimum_contrast=0.0, contrast_
 
     return features
 
-def bedges_from_image(im, k=6, inflate='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, return_original=False):
+def bedges_from_image(im, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, return_original=False):
     """
     This wrapper for :func:`bedges`, will take an image file, load it and compute binary edges for each color channel separately, and then finally OR the result.
 
@@ -114,7 +114,7 @@ def bedges_from_image(im, k=6, inflate='box', radius=1, minimum_contrast=0.0, co
     dimensions = im.shape[-1]
     
     # This will use all color channels, including alpha, if there is one
-    edges = [bedges(im[...,i], k=k, inflate=inflate, radius=radius, minimum_contrast=minimum_contrast, contrast_insensitive=contrast_insensitive, first_axis=first_axis) for i in xrange(dimensions)]
+    edges = [bedges(im[...,i], k=k, spread=spread, radius=radius, minimum_contrast=minimum_contrast, contrast_insensitive=contrast_insensitive, first_axis=first_axis) for i in xrange(dimensions)]
 
     final = reduce(np.bitwise_or, edges)
 

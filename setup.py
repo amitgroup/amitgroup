@@ -44,5 +44,6 @@ setup(name='amitgroup',
         cython_extension("amitgroup.features.spread_patches"),
         cython_extension("amitgroup.features.code_parts"),
         cython_extension("amitgroup.util.interp2d"),
+        cython_extension("amitgroup.util.nn2d"),
     ]
 )
