@@ -7,3 +7,7 @@ from .hog import hog
 from .binary_descriptor import BinaryDescriptor
 from .edge_descriptor import EdgeDescriptor
 from .parts_descriptor import PartsDescriptor
+
+
+# TODO: Experimental
+from .code_parts import code_parts_support_mask

@@ -22,7 +22,7 @@ def _along_kernel(direction, radius):
             
     return kern
 
-def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, max_edges=None):
+def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, max_edges=None, preserve_size=True):
     """
     Extracts binary edge features for each pixel according to [1].
 
@@ -73,6 +73,10 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
         for j in xrange(features.shape[1]):
             kernel = _along_kernel(j, radius)
             features[:,j] = ag.util.inflate2d(features[:,j], kernel)
+
+    # Skip the 2-pixel border that is not valid
+    if not preserve_size:
+        features = features[:,:,2:-2,2:-2] 
 
     if not first_axis:
         features = np.rollaxis(features, axis=1, start=features.ndim)
