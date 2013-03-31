@@ -126,54 +126,54 @@ def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
     # edges, min_val is just meant to be less than the value of the other cells
     # so when we pick the most likely part it won't be chosen
 
-    #with nogil:
-    # Build integral image of edge counts
-    # First, fill it with edge counts and accmulate across
-    # one axis.
-    for i in range(X_x_dim):
-        for j in range(X_y_dim):
-            count = 0
-            for z in range(X_z_dim):
-                count += X_mv[i,j,z]
-            integral_counts[1+i,1+j] = integral_counts[1+i,j] + count
-    # Now accumulate the other axis
-    for j in range(X_y_dim):
+    with nogil:
+        # Build integral image of edge counts
+        # First, fill it with edge counts and accmulate across
+        # one axis.
         for i in range(X_x_dim):
-            integral_counts[1+i,1+j] += integral_counts[i,1+j]
+            for j in range(X_y_dim):
+                count = 0
+                for z in range(X_z_dim):
+                    count += X_mv[i,j,z]
+                integral_counts[1+i,1+j] = integral_counts[1+i,j] + count
+        # Now accumulate the other axis
+        for j in range(X_y_dim):
+            for i in range(X_x_dim):
+                integral_counts[1+i,1+j] += integral_counts[i,1+j]
 
 
 
-    # Code parts
-    for i_start in range(X_x_dim-part_x_dim+1):
-        i_end = i_start + part_x_dim
-        for j_start in range(X_y_dim-part_y_dim+1):
-            j_end = j_start + part_y_dim
-            #count = _count_edges(X_mv,i_start+i_frame,i_end-i_frame,j_start+i_frame,j_end-i_frame,X_z_dim)
+        # Code parts
+        for i_start in range(X_x_dim-part_x_dim+1):
+            i_end = i_start + part_x_dim
+            for j_start in range(X_y_dim-part_y_dim+1):
+                j_end = j_start + part_y_dim
+                #count = _count_edges(X_mv,i_start+i_frame,i_end-i_frame,j_start+i_frame,j_end-i_frame,X_z_dim)
 
-            # Note, integral_counts is 1-based, to allow for a zero row/column at the zero:th index.
-            cx0 = i_start+i_frame
-            cx1 = i_end-i_frame
-            cy0 = j_start+i_frame
-            cy1 = j_end-i_frame
-            count = integral_counts[cx1, cy1] - \
-                    integral_counts[cx0, cy1] - \
-                    integral_counts[cx1, cy0] + \
-                    integral_counts[cx0, cy0]
+                # Note, integral_counts is 1-based, to allow for a zero row/column at the zero:th index.
+                cx0 = i_start+i_frame
+                cx1 = i_end-i_frame
+                cy0 = j_start+i_frame
+                cy1 = j_end-i_frame
+                count = integral_counts[cx1, cy1] - \
+                        integral_counts[cx0, cy1] - \
+                        integral_counts[cx1, cy0] + \
+                        integral_counts[cx0, cy0]
 
-            if count >= threshold:
-                out_map_mv[i_start,j_start] = 0.0
-                out_map_mv[i_start,j_start,0] = NINF 
-                for i in range(part_x_dim):
-                    for j in range(part_y_dim):
-                        for z in range(X_z_dim):
-                            if X_mv[i_start+i,j_start+j,z]:
-                                for k in range(num_parts):
-                                    out_map_mv[i_start,j_start,k+1] += log_parts_mv[k,i,j,z]
-                            else:
-                                for k in range(num_parts):
-                                    out_map_mv[i_start,j_start,k+1] += log_invparts_mv[k,i,j,z]
-            else:
-                out_map_mv[i_start,j_start,0] = 0.0
+                if count >= threshold:
+                    out_map_mv[i_start,j_start] = 0.0
+                    out_map_mv[i_start,j_start,0] = NINF 
+                    for i in range(part_x_dim):
+                        for j in range(part_y_dim):
+                            for z in range(X_z_dim):
+                                if X_mv[i_start+i,j_start+j,z]:
+                                    for k in range(num_parts):
+                                        out_map_mv[i_start,j_start,k+1] += log_parts_mv[k,i,j,z]
+                                else:
+                                    for k in range(num_parts):
+                                        out_map_mv[i_start,j_start,k+1] += log_invparts_mv[k,i,j,z]
+                else:
+                    out_map_mv[i_start,j_start,0] = 0.0
                 
     return out_map
 
