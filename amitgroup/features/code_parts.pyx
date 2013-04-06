@@ -108,7 +108,6 @@ def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
     # we have num_parts + 1 because we are also including some regions as being
     # thresholded due to there not being enough edges
     
-
     cdef np.ndarray[dtype=DTYPE_t, ndim=3] out_map = -np.inf * np.ones((new_x_dim,
                                                                         new_y_dim,
                                                                         num_parts+1),dtype=DTYPE)

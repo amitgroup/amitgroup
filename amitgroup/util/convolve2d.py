@@ -49,3 +49,6 @@ def inflate2d(signal, kernel):
         2D array of kernel.
     """  
     return np.clip(convolve2d(signal, kernel, mode='same'), 0, 1)
+
+# New name
+dilate2d = inflate2d

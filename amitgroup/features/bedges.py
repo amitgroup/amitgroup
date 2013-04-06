@@ -22,6 +22,48 @@ def _along_kernel(direction, radius):
             
     return kern
 
+def bspread(X, spread='box', radius=1, first_axis=False):
+    """
+    Spread binary edges.
+
+    Parameters
+    ----------
+    X : ndarray  (3D or 4D)
+        Binary edges to spread. Shape should be ``(rows, cols, A)`` or ``(N, rows, cols, A)``, where `A` is the number of edge features.
+    first_axis: bool
+         If True, the images will be assumed to be ``(A, rows, cols)`` or ``(N, A, rows, cols)``. 
+    spread : 'box', 'orthogonal', None 
+        If set to `'box'` and `radius` is set to 1, then an edge will appear if any of the 8 neighboring pixels detected an edge. This is equivalent to inflating the edges area with 1 pixel. The size of the box is dictated by `radius`. 
+        If `'orthogonal'`, then the features will be extended by `radius` perpendicular to the direction of the edge feature (i.e. along the gradient).
+    radius : int
+        Controls the extent of the inflation, see above.
+    """
+    single = X.ndim == 3
+    if single:
+        X = X.reshape((1,) + X.shape) 
+    if not first_axis:
+        X = np.rollaxis(X, 3, start=1)
+
+    Xnew = X.copy()
+
+    if spread is True or spread == 'box':
+        Xnew[:] = ag.util.inflate2d(X, np.ones((1+radius*2, 1+radius*2)))
+    elif spread == 'orthogonal':
+        # Propagate the feature along the edge 
+        for j in xrange(X.shape[1]):
+            kernel = _along_kernel(j, radius)
+            Xnew[:,j] = ag.util.inflate2d(X[:,j], kernel)
+    else:
+        raise ValueError("Unrecognized spreading method: {0}".format(spread))
+
+    if not first_axis:
+        Xnew = np.rollaxis(Xnew, 1, start=4)
+
+    if single:
+        Xnew = Xnew.reshape(Xnew.shape[1:]) 
+
+    return Xnew
+
 def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, max_edges=None, preserve_size=True):
     """
     Extracts binary edge features for each pixel according to [1].
@@ -34,7 +76,7 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
         Input an image of shape ``(rows, cols)`` or a list of images as an array of shape ``(N, rows, cols)``, where ``N`` is the number of images, and ``rows`` and ``cols`` the size of each image.
     k : int
         There are 6 contrast differences that are checked. The value `k` specifies how many of them must be fulfilled for an edge to be present. The default is all of them (`k` = 6) and gives more conservative edges.
-    spread: 'box', 'orthogonal', None 
+    spread : 'box', 'orthogonal', None 
         If set to `'box'` and `radius` is set to 1, then an edge will appear if any of the 8 neighboring pixels detected an edge. This is equivalent to inflating the edges area with 1 pixel. The size of the box is dictated by `radius`. 
         If `'orthogonal'`, then the features will be extended by `radius` perpendicular to the direction of the edge feature (i.e. along the gradient).
     radius : int
@@ -47,11 +89,13 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
          If True, the images will be returned with the features on the first axis as ``(A, rows, cols)`` instead of ``(rows, cols, A)``, where `A` is either 4 or 8. If mutliple input entries, then the output will be ``(N, A, rows, cols)``.
     max_edges : int or None
         Maximum number of edges that can assigned at a single pixel. The ones assigned will be the ones with the higest contrast.
+    preserve_size : bool
+        If True, the returned feature vector has the same size as the input vector, but it will have an empty border of size 2 around it.
     
     Returns
     -------
     edges : ndarray
-        An array of shape ``(rows, cols, A)`` if entered as a single image, or ``(N, rows, cols, A)`` of multiple. Each pixel in the original image becomes a binary vector of size 8, one bit for each cardinal and diagonal direction. 
+        An array of shape ``(rows, cols, A)`` if entered as a single image, or ``(N, rows, cols, A)`` of multiple. Each pixel in the original image becomes a binary vector of size 8, one bit for each cardinal and diagonal direction. Note that if `first_axis` is True, this shape will change.
 
     References
     ----------

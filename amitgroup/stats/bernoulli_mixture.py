@@ -8,7 +8,7 @@ BernoulliMixtureSimple = collections.namedtuple('BernoulliMixtureSimple',
                                                 'log_templates log_invtemplates weights')
 
 
-class BernoulliMixture(object):
+class BernoulliMixture(ag.util.Saveable):
     """
     Bernoulli Mixture model with an EM solver.
 
@@ -378,22 +378,23 @@ class BernoulliMixture(object):
         indices = self.mixture_components()
         return [np.where(indices == i)[0] for i in xrange(self.num_mix)]
       
-    def save(self, filename, save_affinities=False):
-        """
-        Save mixture components to a numpy npz file.
-        
-        Parameters
-        ----------
-        filename : str
-            Path to filename
-        save_affinities : bool
-            Save ``affinities`` or not. This is an option since this will proportional to input data size, which
-            can be much larger than simply the mixture templates. 
-        """
-        entries = dict(templates=self.templates, weights=self.weights)
-        if save_affinities:
-            entries['affinities'] = self.affinities
-        np.savez(filename, **entries) 
+    if 0:
+        def save(self, filename, save_affinities=False):
+            """
+            Save mixture components to a numpy npz file.
+            
+            Parameters
+            ----------
+            filename : str
+                Path to filename
+            save_affinities : bool
+                Save ``affinities`` or not. This is an option since this will proportional to input data size, which
+                can be much larger than simply the mixture templates. 
+            """
+            entries = dict(templates=self.templates, weights=self.weights)
+            if save_affinities:
+                entries['affinities'] = self.affinities
+            np.savez(filename, **entries) 
 
     def save_to_dict(self, save_affinities=False):
         entries = dict(templates=self.templates, weights=self.weights, num_mix=self.num_mix, num_data=self.num_data, data_length=self.data_length, data_shape=self.data_shape, sparse=self.sparse)
