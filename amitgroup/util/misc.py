@@ -31,7 +31,6 @@ def zeropad(data, padwidth):
 def zeropad_to_shape(data, shape):
     """Zero-pads an array to a certain shape"""
     new_data = np.zeros(shape)
-    print [slice(shape[i] - data.shape[i]//2, shape[i] - data.shape[i]//2 + data.shape[i]) for i in xrange(len(shape))]
     new_data[ [slice(shape[i]//2 - data.shape[i]//2, shape[i]//2 - data.shape[i]//2 + data.shape[i]) for i in xrange(len(shape))] ] = data
     return new_data
 

@@ -1,8 +1,10 @@
+from __future__ import print_function
+from __future__ import absolute_import 
 import numpy as np
 import sys
 import copy
 import time
-import train_net as tn
+from . import train_net as tn
 import pylab as plt
 import pdb
 import amitgroup as ag
@@ -50,7 +52,7 @@ def extract_parts(expi, data=[]):
           aa[i].features={'V1' :feat}
        
    nt=len(aa)
-   print 'NT', nt
+   print('NT', nt)
    num_samps=50
    lps=expi.pp.part_size
    if (lps<0):
@@ -59,7 +61,7 @@ def extract_parts(expi, data=[]):
       
    ps2=np.floor(lps/2)
    md=np.mod(lps,2)
-   print md
+   print(md)
    imsizex=aa[0].img.shape[0]
    imsizey=aa[0].img.shape[1]
    ZZ=[]
@@ -87,7 +89,7 @@ def train_parts_EM(expi, data=[]):
    ZZ=extract_parts(expi,data)
    dd=stack_features(ZZ)
    ddi=dd[0].swapaxes(1,2).swapaxes(2,3)
-   print dd[0].shape
+   print(dd[0].shape)
    mixture = ag.stats.BernoulliMixture(expi.pp.numparts, ddi)
    mixture.run_EM(1e-3)
    dummy=np.zeros(mixture.num_mix);
@@ -98,7 +100,7 @@ def train_parts(expi, data=[]):
 
     # Extract random windows from a number of training images
     ZZ=extract_parts(expi,data)
-    print 'No of windows ', len(ZZ)
+    print('No of windows ', len(ZZ))
     raw_input()
     Jmid=expi.pp.Jmax/2
     # Initial value under 1 of each synapse. Is this necessary?
@@ -112,7 +114,7 @@ def train_parts(expi, data=[]):
     totpot=0
     totdep=0
     for it in range(expi.pp.numit):
-        print 'iteration ', it, len(Parts)
+        print('iteration ', it, len(Parts))
         #raw_input()
         np.random.shuffle(TT)
         inp=[]
@@ -132,34 +134,34 @@ def train_parts(expi, data=[]):
                # Multiple part array by features of this image.
                H=np.dot(Parray,ZZ[t].features['V1'].flatten())
                if (expi.pp.showing==1):
-                  print 'Fields', H
+                  print('Fields', H)
                #raw_input()
                # Find best fit part.
                hi=np.argmax(H,0)
                # This list will be depressed.
                di=np.where(np.logical_and(H<expi.pp.theta,H>expi.pp.theta-expi.pp.deltaD))[0]
                if (expi.pp.showing==1):
-                  print di
+                  print(di)
                # If best fit above threshold potentiate
                if (H[hi]>expi.pp.theta):
                   hits=1
                   s=tn.potentiate_ff(expi.pp,H[hi],XI,Parts[hi],Jmid)
                   totpot+=s
                   if (expi.pp.showing==1):
-                     print 'pot ', s
+                     print('pot ', s)
                # Depress all other models?
                s=0
                for dii in range(di.size):
                   s+=tn.depress_ff(expi.pp,H[di[dii]],XI,Parts[di[dii]],Jmid)
                   totdep+=s
                if (expi.pp.showing==1):
-                  print 'dep ', s
+                  print('dep ', s)
             # No part model fit this data point - start new part model with potentiation
             if (hits==0):
                J=np.ones(numfeat)*Jqtr
                h=np.dot(ZZ[t].features['V1'].flatten(),J-Jmid)
                if (expi.pp.showing==1):
-                  print 'h before ', h
+                  print('h before ', h)
                # Learn until field is positive.
                w=0
                while (h<=expi.pp.theta):
@@ -167,15 +169,15 @@ def train_parts(expi, data=[]):
                   tn.potentiate_ff(expi.pp,h,XI,J,Jmid)
                   h=np.dot(ZZ[t].features['V1'].flatten(),J-Jmid)
                if (expi.pp.showing==1):
-                  print 'h after ', w, 'iterations ', np.dot(ZZ[t].features['V1'].flatten(),J-Jmid)
+                  print('h after ', w, 'iterations ', np.dot(ZZ[t].features['V1'].flatten(),J-Jmid))
                Parts.append(J)
 
             if (expi.pp.showing==1):
-               print tc, t, len(Parts)
+               print(tc, t, len(Parts))
                [ip,Parray,H]=get_best_part(Parts,ZZ,Jmid)
-               print H
-               print 'Parray'
-               print Parray
+               print(H)
+               print('Parray')
+               print(Parray)
                raw_input()
             tc+=1
         # Let's get rid of parts that have no takers
@@ -183,8 +185,8 @@ def train_parts(expi, data=[]):
         bef_len=len(Parts)
         lip=np.unique(ip,True)
         if (expi.pp.showing==1):
-           print 'list of parts ', lip[0]
-           print 'list of indices ', lip[1]
+           print('list of parts ', lip[0])
+           print('list of indices ', lip[1])
            #raw_input()
         lipa=np.zeros(lip[1].size+1)
         lipa[0:lip[1].size]=lip[1]
@@ -192,12 +194,12 @@ def train_parts(expi, data=[]):
         dlip=np.where(lipa[1:lipa.size]-lipa[0:lipa.size-1]>1)
         iip=lip[0][dlip]
         if (expi.pp.showing==1):
-           print 'list of surviving parts that had more than one element', iip
+           print('list of surviving parts that had more than one element', iip)
         #  iip=np.unique(ip)
         Parts=[]
         Parts=list(Parray[iip,:])
-        print 'Before pruning ', bef_len, 'After pruning num parts ',len(Parts), 'Pot ', totpot, 'Dep ', totdep
-    print 'Final number of parts ', len(Parts)
+        print('Before pruning ', bef_len, 'After pruning num parts ',len(Parts), 'Pot ', totpot, 'Dep ', totdep)
+    print('Final number of parts ', len(Parts))
     n=1
     pp=len(Parts)
     # Show means of each part.
@@ -221,9 +223,9 @@ def stack_features(ZZ):
 def get_best_part(Parray, pptr):
    
    H=np.dot(Parray,np.transpose(pptr))
-   print H.shape
+   print(H.shape)
    ip=np.argmax(H,0)
-   print ip
+   print(ip)
    ip=np.sort(ip)
    return ip, H
 
@@ -236,13 +238,13 @@ def show_clusters(ZZ,Parray, imax=[]):
       [imax,H]=get_best_part(Parray,pptr)
    
    pptr,ims=stack_features(ZZ)
-   print imax.shape
+   print(imax.shape)
    n=1
    num_images_per_row=20
    num_rows=int(np.ceil(numparts/20.))
    num_type=pptr[0,:].size/ims[0,:].size
    for ip in range(numparts):
-      print ip, 'size of cluster ', np.sum(imax==ip)
+      print(ip, 'size of cluster ', np.sum(imax==ip))
 
       if (np.sum(imax==ip)>0):
 
