@@ -3,8 +3,9 @@ from __future__ import division
 import numpy as np
 import scipy.stats
 import math
+import amitgroup as ag
 
-def visualize_hog(hog_features, cell_size, show=True):
+def visualize_hog(hog_features, cell_size, show=True, polarity_sensitive=True):
     import matplotlib.pylab as plt
 
     # We'll construct an image and then show it
@@ -13,18 +14,25 @@ def visualize_hog(hog_features, cell_size, show=True):
     num_bins = hog_features.shape[2] 
 
     x, y = np.mgrid[-0.5:0.5:cell_size[0]*1j, -0.5:0.5:cell_size[1]*1j]
-    circle = (x**2 + y**2) <= 0.28
+    #circle = (x**2 + y**2) <= 0.28
+    box = ag.util.zeropad(np.ones((cell_size[0]-2, cell_size[1]-2)), 1)
 
     arrows = np.empty((num_bins,) + cell_size)
     
     # Generate the lines that will indicate directions
     for d in xrange(num_bins):
         # v is perpendicular to the gradient (thus visualizing an edge)
-        v = np.array([math.cos(math.pi/2 + d*2*math.pi/num_bins), -math.sin(math.pi/2 + d*2*math.pi/num_bins)])
+        if polarity_sensitive:
+            eff_num_bins = num_bins
+        else:
+            eff_num_bins = num_bins*2
+    
+        v = np.array([math.cos(math.pi/2 + d*2*math.pi/eff_num_bins), -math.sin(math.pi/2 + d*2*math.pi/eff_num_bins)])
         # project our location onto this line and run that through a guassian (basically, drawing a nice line)
         arrows[d] = scipy.stats.norm.pdf(v[0] * x + v[1] * y, scale=0.05)
 
-    arrows[:] *= circle
+    #arrows[:] *= circle
+    arrows *= box
 
     # We're only visualizing the max in each cell
     vis_features = hog_features.max(axis=-1)
