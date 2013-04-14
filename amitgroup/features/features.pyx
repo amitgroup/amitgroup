@@ -1,14 +1,17 @@
 #!python
-# cython: boundscheck=False
-# cython: wraparound=False
 # cython: embedsignature=True
+# cython: cdivision=True
 import cython
 import numpy as np
 cimport numpy as np
 #from cython.parallel import prange
 DTYPE = np.float64
+BTYPE = np.uint8
 ctypedef np.float64_t DTYPE_t
 from libc.math cimport fabs
+
+cdef inline int int_max(int a, int b) nogil: return a if a >= b else b
+cdef inline int int_min(int a, int b) nogil: return a if a <= b else b
 
 cdef inline void _checkedge(DTYPE_t[:,:,:] images, np.uint8_t[:,:,:,:] ret, int ii, int vi, int z0, int z1, int v0, int v1, int w0, int w1, int k, double minimum_contrast, int displace) nogil:
     cdef int y0 = z0 + v0
@@ -142,3 +145,65 @@ def array_bedges2(np.ndarray[DTYPE_t, ndim=3] images, k, minimum_contrast, contr
                             
     return ret
 
+
+def array_bspread(np.ndarray[np.uint8_t, ndim=4] X, spread='box', radius=1):
+    cdef:
+        np.uint8_t[:,:,:,:] X_mv = X
+        int N = X.shape[0]
+        int E = X.shape[1]
+        int dim0 = X.shape[2]
+        int dim1 = X.shape[3]
+        int n, e, i, j, x, y, loop, rounds, offset
+        int i_radius = <int>radius
+        np.uint8_t v
+
+        np.ndarray[np.uint8_t, ndim=4] ret = np.zeros_like(X)
+        np.uint8_t[:,:,:,:] ret_mv = ret
+
+    if spread == 'box' or spread is True:
+        with nogil:
+            for n in range(N):
+                for e in range(E):
+                    for i in range(dim0):
+                        for j in range(dim1):   
+                            v = X_mv[n,e,i,j]
+                            if v:
+                                for x in range(int_max(0, i-i_radius), int_min(dim0, i+i_radius+1)):
+                                    for y in range(int_max(0, j-i_radius), int_min(dim1, j+i_radius+1)):
+                                        ret_mv[n,e,x,y] = 1 
+    elif spread == 'orthogonal':
+        with nogil:
+            rounds = E/4
+            for n in range(N):
+                for loop in range(rounds):
+                    offset = 4 * loop
+
+                    for i in range(dim0):
+                        for j in range(dim1):   
+                            # N/S
+                            v = X_mv[n,offset,i,j]
+                            if v:
+                                for x in range(int_max(0, i-i_radius), int_min(dim0, i+i_radius+1)):
+                                    ret_mv[n,offset,x,j] = 1 
+
+                            # E/W
+                            v = X_mv[n,offset+2,i,j]
+                            if v:
+                                for y in range(int_max(0, j-i_radius), int_min(dim1, j+i_radius+1)):
+                                    ret_mv[n,offset+2,i,y] = 1 
+
+                            # Diagonal (along matrix diagonal)
+                            v = X_mv[n,offset+1,i,j]
+                            if v:
+                                for x in range(-int_min(int_min(i, j), i_radius), int_min(int_min(dim0-i, dim1-j), i_radius+1)):
+                                    ret_mv[n,offset+1,i+x,j+x] = 1
+
+                            # Diagonal (along matrix anti-diagonal)
+                            v = X_mv[n,offset+3,i,j]
+                            if v:
+                                for x in range(-int_min(int_min(i, dim1-j-1), i_radius), int_min(int_min(dim0-i, j+1), i_radius+1)):
+                                    ret_mv[n,offset+3,i+x,j-x] = 1
+    else:
+        raise ValueError("Unrecognized spreading method: {0}".format(spread))
+
+    return ret

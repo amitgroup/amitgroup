@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import numpy as np
 import scipy.signal
 import amitgroup as ag
-from amitgroup.features.features import array_bedges, array_bedges2
+from amitgroup.features.features import array_bedges, array_bedges2, array_bspread
 
 # Builds a kernel along the edge direction
 def _along_kernel(direction, radius):
@@ -44,17 +44,18 @@ def bspread(X, spread='box', radius=1, first_axis=False):
     if not first_axis:
         X = np.rollaxis(X, 3, start=1)
 
-    Xnew = X.copy()
+    Xnew = array_bspread(X, spread, radius)
 
-    if spread is True or spread == 'box':
-        Xnew[:] = ag.util.inflate2d(X, np.ones((1+radius*2, 1+radius*2)))
-    elif spread == 'orthogonal':
-        # Propagate the feature along the edge 
-        for j in xrange(X.shape[1]):
-            kernel = _along_kernel(j, radius)
-            Xnew[:,j] = ag.util.inflate2d(X[:,j], kernel)
-    else:
-        raise ValueError("Unrecognized spreading method: {0}".format(spread))
+    #Xnew = X.copy()
+    #if spread is True or spread == 'box':
+    #    Xnew[:] = ag.util.inflate2d(X, np.ones((1+radius*2, 1+radius*2)))
+    #elif spread == 'orthogonal':
+    #    # Propagate the feature along the edge 
+    #    for j in xrange(X.shape[1]):
+    #        kernel = _along_kernel(j, radius)
+    #        Xnew[:,j] = ag.util.inflate2d(X[:,j], kernel)
+    #else:
+    #    raise ValueError("Unrecognized spreading method: {0}".format(spread))
 
     if not first_axis:
         Xnew = np.rollaxis(Xnew, 1, start=4)
