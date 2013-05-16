@@ -2,6 +2,7 @@
 
 from distutils.core import setup
 from distutils.extension import Extension
+import numpy as np
 import os.path
 
 cython_req = (0, 16)
@@ -37,6 +38,8 @@ setup(name='amitgroup',
         'amitgroup.io',
         'amitgroup.stats',
         'amitgroup.util',
+        'amitgroup.util.wavelet',
+        'amitgroup.net',
         'amitgroup.plot',
     ],
     ext_modules = [
@@ -45,5 +48,6 @@ setup(name='amitgroup',
         cython_extension("amitgroup.features.code_parts"),
         cython_extension("amitgroup.util.interp2d"),
         cython_extension("amitgroup.util.nn2d"),
-    ]
+    ], 
+    include_dirs = [np.get_include()], 
 )
