@@ -140,6 +140,22 @@ class PartsDescriptor(BinaryDescriptor):
             edges = ag.features.bedges_from_image(image, **self._bedges_settings()) 
         return self._extract_parts(edges, settings=settings)
 
+    def extract_features_many(self, images, settings={}):
+        """
+        Extract features from several images at once.
+    
+        This could be optimized by running this outer loop
+        in Cython functions. The bedges function handles this, but
+        not the code_parts.
+        """
+        ret = None
+        for i, image in enumerate(images):
+            parts = self.extract_features(image, settings=settings)
+            if ret is None:
+                ret = np.empty((len(images),) + parts.shape)
+            ret[i] = parts
+        return ret 
+
     #
     # Private functions
     #
