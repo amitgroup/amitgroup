@@ -363,7 +363,7 @@ class BernoulliMixture(ag.util.Saveable):
         components: list 
             A list of length `num_data`  where `components[i]` indicates which mixture index the `i`-th data entry belongs the most to (results should be degenerate).
         """
-        return np.argmax(self.affinities, axis=1)
+        return np.argmax(np.asarray(self.affinities), axis=1)
 
     def indices_lists(self):
         """
