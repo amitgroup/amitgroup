@@ -46,17 +46,6 @@ def bspread(X, spread='box', radius=1, first_axis=False):
 
     Xnew = array_bspread(X, spread, radius)
 
-    #Xnew = X.copy()
-    #if spread is True or spread == 'box':
-    #    Xnew[:] = ag.util.inflate2d(X, np.ones((1+radius*2, 1+radius*2)))
-    #elif spread == 'orthogonal':
-    #    # Propagate the feature along the edge 
-    #    for j in xrange(X.shape[1]):
-    #        kernel = _along_kernel(j, radius)
-    #        Xnew[:,j] = ag.util.inflate2d(X[:,j], kernel)
-    #else:
-    #    raise ValueError("Unrecognized spreading method: {0}".format(spread))
-
     if not first_axis:
         Xnew = np.rollaxis(Xnew, 1, start=4)
 
@@ -111,13 +100,8 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
     else:
         features = array_bedges(images, k, minimum_contrast, contrast_insensitive) 
 
-    if spread is True or spread == 'box':
-        features = ag.util.inflate2d(features, np.ones((1+radius*2, 1+radius*2)))
-    elif spread == 'orthogonal':
-        # Propagate the feature along the edge 
-        for j in xrange(features.shape[1]):
-            kernel = _along_kernel(j, radius)
-            features[:,j] = ag.util.inflate2d(features[:,j], kernel)
+    # Spread the feature
+    features = bspread(features, radius=radius, spread=spread, first_axis=True)
 
     # Skip the 2-pixel border that is not valid
     if not preserve_size:

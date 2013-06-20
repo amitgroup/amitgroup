@@ -1,6 +1,7 @@
 #!python
 # cython: embedsignature=True
 # cython: cdivision=True
+# cython: boundscheck=False
 import cython
 import numpy as np
 cimport numpy as np
@@ -154,22 +155,52 @@ def array_bspread(np.ndarray[np.uint8_t, ndim=4] X, spread='box', radius=1):
         int dim0 = X.shape[2]
         int dim1 = X.shape[3]
         int n, e, i, j, x, y, loop, rounds, offset
+        int lo_spread_0_idx,hi_spread_0_idx,lo_spread_1_idx,hi_spread_1_idx
         int i_radius = <int>radius
         np.uint8_t v
 
         np.ndarray[np.uint8_t, ndim=4] ret = np.zeros_like(X)
         np.uint8_t[:,:,:,:] ret_mv = ret
 
+        #np.ndarray[np.uint8_t, ndim=4] intermediate_ret = np.zeros_like(X)
+        #np.uint8_t[:,:,:,:] intermediate_ret_mv = intermediate_ret
+
     if spread == 'box' or spread is True:
+        # Since box spreading is separable, we will first spread the first dimension
+        # and then the second
+        with nogil:
+            if 0:
+                for n in range(N):
+                    for e in range(E):
+                        for i in range(dim0):
+                            for j in range(dim1):   
+                                v = X_mv[n,e,i,j]
+                                if v == 1:
+                                    for x in range(int_max(0, i-i_radius), int_min(dim0, i+i_radius+1)):
+                                        intermediate_ret_mv[n,e,x,j] = 1
+
+                for n in range(N):
+                    for e in range(E):
+                        for i in range(dim0):
+                            for j in range(dim1):   
+                                v = intermediate_ret_mv[n,e,i,j]
+                                if v == 1:
+                                    for y in range(int_max(0, j-i_radius), int_min(dim1, j+i_radius+1)):
+                                        ret_mv[n,e,i,y] = 1
+
         with nogil:
             for n in range(N):
                 for e in range(E):
                     for i in range(dim0):
+                        lo_spread_0_idx = max(i-i_radius,0)
+                        hi_spread_0_idx = min(i+i_radius+1,dim0)
                         for j in range(dim1):   
+                            lo_spread_1_idx = max(j-i_radius,0)
+                            hi_spread_1_idx = min(j+i_radius+1,dim1)
                             v = X_mv[n,e,i,j]
-                            if v:
-                                for x in range(int_max(0, i-i_radius), int_min(dim0, i+i_radius+1)):
-                                    for y in range(int_max(0, j-i_radius), int_min(dim1, j+i_radius+1)):
+                            if v == 1:
+                                for x in range(lo_spread_0_idx, hi_spread_0_idx):
+                                    for y in range(lo_spread_1_idx, hi_spread_1_idx):
                                         ret_mv[n,e,x,y] = 1 
     elif spread == 'orthogonal':
         with nogil:
@@ -206,4 +237,59 @@ def array_bspread(np.ndarray[np.uint8_t, ndim=4] X, spread='box', radius=1):
     else:
         raise ValueError("Unrecognized spreading method: {0}".format(spread))
 
+    return ret
+
+def array_bspread_new(np.ndarray[np.uint8_t, ndim=3] X, spread='box', radius=1):
+    cdef:
+        np.uint8_t[:,:,:] X_mv = X
+        int E = X.shape[2]
+        int dim0 = X.shape[0]
+        int dim1 = X.shape[1]
+        int n, e, i, j, x, y, loop, rounds, offset
+        int lo_spread_0_idx,hi_spread_0_idx,lo_spread_1_idx,hi_spread_1_idx
+        int i_radius = <int>radius
+        np.uint8_t v
+
+        np.ndarray[np.uint8_t, ndim=3] ret = np.zeros_like(X)
+        np.uint8_t[:,:,:] ret_mv = ret
+
+        #np.ndarray[np.uint8_t, ndim=4] intermediate_ret = np.zeros_like(X)
+        #np.uint8_t[:,:,:,:] intermediate_ret_mv = intermediate_ret
+
+    if spread == 'box' or spread is True:
+        # Since box spreading is separable, we will first spread the first dimension
+        # and then the second
+        with nogil:
+            if 0:
+                for n in range(N):
+                    for e in range(E):
+                        for i in range(dim0):
+                            for j in range(dim1):   
+                                v = X_mv[n,e,i,j]
+                                if v == 1:
+                                    for x in range(int_max(0, i-i_radius), int_min(dim0, i+i_radius+1)):
+                                        intermediate_ret_mv[n,e,x,j] = 1
+
+                for n in range(N):
+                    for e in range(E):
+                        for i in range(dim0):
+                            for j in range(dim1):   
+                                v = intermediate_ret_mv[n,e,i,j]
+                                if v == 1:
+                                    for y in range(int_max(0, j-i_radius), int_min(dim1, j+i_radius+1)):
+                                        ret_mv[n,e,i,y] = 1
+
+        with nogil:
+            for i in range(dim0):
+                lo_spread_0_idx = max(i-i_radius,0)
+                hi_spread_0_idx = min(i+i_radius+1,dim0)
+                for j in range(dim1):   
+                    lo_spread_1_idx = max(j-i_radius,0)
+                    hi_spread_1_idx = min(j+i_radius+1,dim1)
+                    for e in range(E):
+                        v = X_mv[i,j,e]
+                        if v == 1:
+                            for x in range(lo_spread_0_idx, hi_spread_0_idx):
+                                for y in range(lo_spread_1_idx, hi_spread_1_idx):
+                                    ret_mv[x,y,e] = 1 
     return ret

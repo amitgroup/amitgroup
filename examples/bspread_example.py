@@ -15,6 +15,6 @@ for i in xrange(1000):
     Xs = ag.features.bspread(X, spread='orthogonal', radius=3)
 
 print "Before"
-#print X
+print X
 print "After"
-#print Xs
+print Xs

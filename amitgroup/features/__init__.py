@@ -1,7 +1,7 @@
 
 from .bedges import bedges, bedges_from_image, bspread
 from .spread_patches import spread_patches, spread_patches_new
-from .code_parts import code_parts, code_parts_many
+from .code_parts import code_parts, code_parts_many, convert_partprobs_to_feature_vector, code_parts_as_features
 from .hog import hog
 
 from .binary_descriptor import BinaryDescriptor

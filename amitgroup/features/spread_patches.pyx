@@ -2,6 +2,7 @@
 # cython: boundscheck=False
 # cython: wraparound=False
 # cython: embedsignature=True
+# cython: cdivision=True
 import cython
 import numpy as np
 cimport numpy as np
@@ -74,6 +75,7 @@ def spread_patches_new(np.ndarray[ndim=3,dtype=DTYPE_t] llh,
 
     TODO: Needs docs
     """
+    cdef DTYPE_t NINF = DTYPE(-np.inf)
     cdef np.uint16_t X_dim_0 = llh.shape[0]
     cdef np.uint16_t X_dim_1 = llh.shape[1]
     cdef int num_parts = llh.shape[2]-1
@@ -81,23 +83,34 @@ def spread_patches_new(np.ndarray[ndim=3,dtype=DTYPE_t] llh,
                                                                     X_dim_1,
                                                                     num_parts),
                                                                    dtype=np.uint8)
-    cdef int i,j,f,lo_spread_0_idx,hi_spread_0_idx,lo_spread_1_idx,hi_spread_1_idx,x0,x1
-    cdef DTYPE_t m, d 
-    for i in range(X_dim_0):
-        lo_spread_0_idx = max(i-spread_0_dim,0)
-        hi_spread_0_idx = min(i+spread_0_dim+1,X_dim_0)
-        for j in range(X_dim_1):
-            lo_spread_1_idx = max(j-spread_1_dim,0)
-            hi_spread_1_idx = min(j+spread_1_dim+1,X_dim_1)
-            # Find the maximum
-            m = llh[i,j].argmax()#llh[x0,x1,0]
-            if m != 0:
-                d = llh[i,j,m] - tau
-                for f in range(num_parts):
-                    if llh[i,j,1+f] >= d:
-                        for x0 in range(lo_spread_0_idx,hi_spread_0_idx):
-                            for x1 in range(lo_spread_1_idx,hi_spread_1_idx):
-                                bin_out_map[x0,x1,f] = 1 
+    cdef int i,j,k,m,f,lo_spread_0_idx,hi_spread_0_idx,lo_spread_1_idx,hi_spread_1_idx,x0,x1
+    cdef DTYPE_t d, mx
+    cdef UINT_t[:,:,:] bin_out_map_mv = bin_out_map
+    cdef DTYPE_t[:,:,:] llh_mv = llh
+    cdef DTYPE_t ttau = tau
+
+    with nogil:
+        for i in range(X_dim_0):
+            lo_spread_0_idx = max(i-spread_0_dim,0)
+            hi_spread_0_idx = min(i+spread_0_dim+1,X_dim_0)
+            for j in range(X_dim_1):
+                lo_spread_1_idx = max(j-spread_1_dim,0)
+                hi_spread_1_idx = min(j+spread_1_dim+1,X_dim_1)
+                # Find the maximum
+                mx = NINF
+                m = 0
+                for f in range(1, num_parts+1):
+                    if llh[i,j,f] > mx: 
+                        m = f
+                        mx = llh[i,j,f]
+                #m = llh[i,j].argmax()#llh[x0,x1,0]
+                if m != 0:
+                    d = llh_mv[i,j,m] - ttau
+                    for f in range(num_parts):
+                        if llh_mv[i,j,1+f] >= d:
+                            for x0 in range(lo_spread_0_idx,hi_spread_0_idx):
+                                for x1 in range(lo_spread_1_idx,hi_spread_1_idx):
+                                    bin_out_map_mv[x0,x1,f] = 1 
                 
                 #bin_out_map[i,j,llh[i,j,1:] >= llh[i,j,m] - tau] = 1
             #for x0 in range(lo_spread_0_idx,hi_spread_0_idx):

@@ -2,14 +2,15 @@
 # cython: boundscheck=False
 # cython: wraparound=False
 # cython: embedsignature=True
+# cython: cdivision=True
 import cython
 import numpy as np
 cimport numpy as np
 #from cython.parallel import prange
-DTYPE = np.float64
+DTYPE = np.float32
 UINT = np.uint8
 UINT32 = np.uint32
-ctypedef np.float64_t DTYPE_t
+ctypedef np.float32_t DTYPE_t
 ctypedef np.uint8_t UINT_t
 ctypedef np.uint32_t UINT32_t
 
@@ -68,9 +69,9 @@ cdef unsigned int _count_edges_mask(np.ndarray[ndim=3,dtype=UINT_t] X,
 
 
 def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
-               np.ndarray[ndim=4,dtype=DTYPE_t] log_parts,
-               np.ndarray[ndim=4,dtype=DTYPE_t] log_invparts,
-               int threshold, outer_frame=0):
+               np.ndarray[ndim=4,dtype=np.float64_t] log_parts,
+               np.ndarray[ndim=4,dtype=np.float64_t] log_invparts,
+               int threshold, outer_frame=0, strides=1):
     """
     At each location of `X`, find the log probabilities for each part and location. Outputs these part assignments in the same data dimensions as `X`. Neighborhoods of `X` with edge counts lower than `threshold` are regarded as background and assigned zero.
 
@@ -86,6 +87,8 @@ def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
         The least number of edges in a patch to reject the null background hypothesis.
     outer_frame : int
         Remove a frame of this thickness when checking the threshold. If the parts are 5 x 5, and this is set to 1, then only the center 3 x 3 is used to count edges when compared to the threshold. 
+    strides : int
+        When checking a part, these are the strides in both axes. For instance, if we have 9 x 9 parts and strides is set to 3, then it will only check 3 x 3 locations.
     
     Returns
     -------
@@ -104,22 +107,28 @@ def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
     cdef unsigned int new_y_dim = X_y_dim - part_y_dim + 1
     cdef unsigned int i_start,j_start,i_end,j_end,count,i,j,z,k, cx0, cx1, cy0, cy1 
     cdef unsigned int i_frame = <unsigned int>outer_frame
-    cdef DTYPE_t NINF = -np.inf
+    cdef int i_strides = <int>strides 
+    cdef int i_offset = i_strides / 2
+    cdef DTYPE_t NINF = DTYPE(-np.inf)
     # we have num_parts + 1 because we are also including some regions as being
     # thresholded due to there not being enough edges
     
-    cdef np.ndarray[dtype=DTYPE_t, ndim=3] out_map = -np.inf * np.ones((new_x_dim,
-                                                                        new_y_dim,
-                                                                        num_parts+1),dtype=DTYPE)
+    cdef np.ndarray[dtype=DTYPE_t, ndim=3] out_map = np.ones((new_x_dim,
+                                                              new_y_dim,
+                                                              num_parts+1),dtype=DTYPE) * DTYPE(-np.inf)
     cdef UINT_t[:,:,:] X_mv = X
-    cdef DTYPE_t[:,:,:,:] log_parts_mv = log_parts
-    cdef DTYPE_t[:,:,:,:] log_invparts_mv = log_invparts
+
+    cdef np.ndarray[dtype=DTYPE_t, ndim=4] part_logits = (log_parts - log_invparts).astype(DTYPE)
+
+    cdef np.ndarray[dtype=DTYPE_t, ndim=1] constant_terms = np.apply_over_axes(np.sum, log_invparts[:,i_offset::i_strides,i_offset::i_strides].astype(DTYPE), [1, 2, 3]).ravel()
+    cdef DTYPE_t[:,:,:,:] part_logits_mv = part_logits
+    cdef DTYPE_t[:] constant_terms_mv = constant_terms
+
     cdef DTYPE_t[:,:,:] out_map_mv = out_map
 
     cdef np.ndarray[dtype=UINT32_t, ndim=2] _integral_counts = np.zeros((X_x_dim+1, X_y_dim+1), dtype=UINT32)
     cdef UINT32_t[:,:] integral_counts = _integral_counts
 
-    #cdef UINT_t[:,:]
     # The first cell along the num_parts+1 axis contains a value that is either 0
     # if the area is deemed to have too few edges or min_val if there are sufficiently many
     # edges, min_val is just meant to be less than the value of the other cells
@@ -160,19 +169,27 @@ def code_parts(np.ndarray[ndim=3,dtype=UINT_t] X,
                         integral_counts[cx0, cy0]
 
                 if count >= threshold:
-                    out_map_mv[i_start,j_start] = 0.0
+                    # Initialize to the constant term for each part and -inf to bkg
                     out_map_mv[i_start,j_start,0] = NINF 
-                    for i in range(part_x_dim):
-                        for j in range(part_y_dim):
+                    for k in range(num_parts):
+                        out_map_mv[i_start,j_start,1+k] = constant_terms_mv[k]
+
+                    #for i in range(i_offset_x, part_x_dim, i_strides):
+                        #for j in range(i_offset_y, part_y_dim, i_strides):
+                    i = i_offset
+                    while i < part_x_dim:
+                        j = i_offset
+                        while j < part_y_dim: 
                             for z in range(X_z_dim):
-                                if X_mv[i_start+i,j_start+j,z]:
+                                if X_mv[i_start+i,j_start+j,z] == 1:
                                     for k in range(num_parts):
-                                        out_map_mv[i_start,j_start,k+1] += log_parts_mv[k,i,j,z]
-                                else:
-                                    for k in range(num_parts):
-                                        out_map_mv[i_start,j_start,k+1] += log_invparts_mv[k,i,j,z]
+                                        out_map_mv[i_start,j_start,k+1] += part_logits_mv[k,i,j,z]
+
+                            j += i_strides
+                        i += i_strides
                 else:
                     out_map_mv[i_start,j_start,0] = 0.0
+                    # Rest is already -inf
                 
     return out_map
 
@@ -480,3 +497,28 @@ def code_parts_support_mask(np.ndarray[ndim=3,dtype=UINT_t] X,
                     out_map_mv[i_start,j_start,0] = 0.0
                 
     return out_map
+
+def convert_partprobs_to_feature_vector(np.ndarray[dtype=UINT32_t,ndim=2] one_indexed_parts, int num_parts):
+    cdef np.uint16_t X_dim_0 = one_indexed_parts.shape[0]
+    cdef np.uint16_t X_dim_1 = one_indexed_parts.shape[1]
+    cdef int i, j, f, v
+    cdef np.ndarray[dtype=UINT_t, ndim=3] feats = np.zeros((X_dim_0, X_dim_1, num_parts), dtype=UINT)
+    cdef UINT_t[:,:,:] feats_mv = feats
+
+    cdef UINT32_t[:,:] parts_mv = one_indexed_parts
+
+    with nogil:
+        for i in range(X_dim_0):
+            for j in range(X_dim_1):
+                v = parts_mv[i,j] 
+                if v != 0:
+                    feats_mv[i,j,v-1] = 1
+    
+    return feats
+
+def code_parts_as_features(np.ndarray[ndim=3,dtype=UINT_t] X,
+                           np.ndarray[ndim=4,dtype=np.float64_t] log_parts,
+                           np.ndarray[ndim=4,dtype=np.float64_t] log_invparts,
+                           int threshold, outer_frame=0, strides=1):
+    partprobs = code_parts(X, log_parts, log_invparts, threshold, outer_frame=outer_frame, strides=strides)
+    return convert_partprobs_to_feature_vector(partprobs.argmax(axis=-1).astype(UINT32), partprobs.shape[-1]-1)
