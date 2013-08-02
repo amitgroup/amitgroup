@@ -96,7 +96,7 @@ def bedges_CONCAT(images, k=6, spread='box', radius=1, minimum_contrast=0.0, con
         images = np.array([images])
 
     # TODO: Temporary stuff
-    if pre_blurring is not None:
+    if pre_blurring is not None and pre_blurring != 0.0:
         images = images.copy()
         for i in xrange(images.shape[0]):
             images[i] = ag.util.blur_image(images[i], pre_blurring)
@@ -175,7 +175,7 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
         images = np.array([images])
 
     # TODO: Temporary stuff
-    if pre_blurring is not None:
+    if pre_blurring is not None and pre_blurring != 0.0:
         images = images.copy()
         for i in xrange(images.shape[0]):
             images[i] = ag.util.blur_image(images[i], pre_blurring)
