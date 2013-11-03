@@ -75,10 +75,11 @@ class BernoulliMixture(ag.util.Saveable):
            [  9.97376426e-01,   2.62357439e-03]])
 
     """
-    def __init__(self,num_mix,data_mat,min_num=0, init_type='unif_rand',init_seed=0, float_type=np.float64):
+    def __init__(self,num_mix,data_mat,min_num=0, init_type='unif_rand',init_seed=0, float_type=np.float64, max_iter=50):
         # TODO: opt_type='expected'
         self.num_mix = num_mix
         self.float_type = float_type
+        self.max_iter = max_iter
         # If we're reconstructing a trained Bernoulli mixture model, then we might
         # intiailize this class without a data matrix
         self.min_num=min_num
@@ -150,6 +151,8 @@ class BernoulliMixture(ag.util.Saveable):
 
         self.iterations = 0
         while np.isinf(loglikelihood) or np.fabs((new_loglikelihood - loglikelihood)/loglikelihood) > tol:
+            if self.iterations >= self.max_iter:
+                break
             ag.info("Iteration {0}: loglikelihood {1}".format(self.iterations, loglikelihood))
             loglikelihood = new_loglikelihood
             # M-step
@@ -162,6 +165,7 @@ class BernoulliMixture(ag.util.Saveable):
             if debug_plot and not self._plot(plw):
                 raise ag.AbortException 
 
+        self.loglikelihood = loglikelihood
         self.set_templates()
         
     def cluster_underlying_data(self,underlying_data):

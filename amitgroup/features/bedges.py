@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import numpy as np
 import scipy.signal
 import amitgroup as ag
-from amitgroup.features.features import array_bedges, array_bedges2, array_bspread
+from amitgroup.features.features import array_bedges, array_bedges2, array_bspread, array_intensities # TODO: Experimental
 
 # Builds a kernel along the edge direction
 def _along_kernel(direction, radius):
@@ -180,10 +180,109 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
         for i in xrange(images.shape[0]):
             images[i] = ag.util.blur_image(images[i], pre_blurring)
 
-    if max_edges is not None:
-        features = array_bedges2(images, k, minimum_contrast, contrast_insensitive, max_edges)
-    else:
-        features = array_bedges(images, k, minimum_contrast, contrast_insensitive) 
+    if 0:
+        if max_edges is not None:
+            features = array_bedges2(images, k, minimum_contrast, contrast_insensitive, max_edges)
+        else:
+            features = array_bedges(images, k, minimum_contrast, contrast_insensitive) 
+
+    # TODO: Experimental stuff
+    if 1:
+        k = 5
+        intensities = array_intensities(images, k, 0.0, contrast_insensitive)
+        #features = (intensities > minimum_contrast).astype(np.uint8)
+        features = np.zeros(intensities.shape, dtype=np.uint8)
+
+        box = 20 
+        import itertools as itr
+        import scipy.stats
+
+        #print intensities.shape
+        #density = intensities.max(axis=1)
+        density = intensities.mean(axis=1) * 2
+        ths = []
+        for i, j in itr.product(xrange((intensities.shape[2]-1)//box + 1), xrange((intensities.shape[3]-1)//box + 1)):
+            selection = [slice(None), slice(None), slice(i*box, min(intensities.shape[2], (i+1)*box)), slice(j*box, min(intensities.shape[3], (j+1)*box))]
+            selection2 = [slice(None)] + selection[2:] 
+
+            #print selection
+            #print selection
+            patch = intensities[selection]
+            #print 'patch', patch.shape
+
+            vals = density[selection2].ravel()
+            vals = vals[vals > 0]
+            if vals.size > 0:
+                th = scipy.stats.scoreatpercentile(vals[vals > 0], 50) 
+            else:
+                th = 0
+            #print th
+            #print 'th', th
+            ths.append(th)
+            th = max(th, minimum_contrast)
+
+            #for x, y in itr.product(xrange(patch.shape[2]), xrange(patch.shape[3])):
+                #pass 
+
+            features[selection] = (patch > th)
+
+        if 0:
+            for n in xrange(features.shape[0]):
+                for e in xrange(8):
+                    if e % 4 == 0:
+                        kern = np.array([[0, 0, 0],
+                                         [1, 1, 1],
+                                         [0, 0, 0]])
+                    elif e % 4 == 1:
+                        kern = np.array([[0, 0, 1],
+                                         [0, 1, 0],
+                                         [1, 0, 0]])
+                    elif e % 4 == 2:
+                        kern = np.array([[0, 1, 0],
+                                         [0, 1, 0],
+                                         [0, 1, 0]])
+                    else: #if e % 4 == 3:
+                        kern = np.array([[1, 0, 0],
+                                         [0, 1, 0],
+                                         [0, 0, 1]])
+
+                    import scipy.signal
+                    features[n,e] = scipy.signal.convolve(features[n,e], kern, mode='same') // 3
+                 
+
+
+        ths = np.asarray(ths)
+        #print (ths < minimum_contrast).mean()
+
+        #import pdb; pdb.set_trace()
+        #from scipy.stats import mstats
+        #print 'average threshold:', mstats.mquantiles(ths, np.linspace(0, 10)[1:-1])
+        #print 'average threshold:', np.mean(ths), np.median(ths), np.min(ths), np.max(ths) 
+        if 0:
+            #features3 = array_bedges2(images, k, minimum_contrast * 4, contrast_insensitive, max_edges)
+
+            edge_density = features.mean(axis=-1)
+        
+            halfrad = 10 
+            wholerad = halfrad*2 
+            xx = ag.util.zeropad(features, (0, 0, halfrad, halfrad)).sum(axis=1)[:,np.newaxis].astype(int)
+            yy = np.apply_over_axes(np.cumsum, xx, [2, 3])
+
+            density = yy[:,:,wholerad:,wholerad:] - yy[:,:,:-wholerad,wholerad:] - yy[:,:,wholerad:,:-wholerad] + yy[:,:,:-wholerad,:-wholerad]
+
+            threshold = int(0.2 * wholerad**2)
+            threshold2 = int(0.4 * wholerad**2)
+            
+            high = (density >= threshold2)
+            low = (density >= threshold) & ~high
+            lowest = (density < threshold)
+
+            print high.mean(), low.mean(), lowest.mean()
+
+            # Now, update features
+            #features = high * features2 + ~high * features
+            features = lowest * features + low * features2 + high * features3
+
 
     # Spread the feature
     features = bspread(features, radius=radius, spread=spread, first_axis=True)
