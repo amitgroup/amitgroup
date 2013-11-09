@@ -190,98 +190,72 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
     if 1:
         k = 5
         intensities = array_intensities(images, k, 0.0, contrast_insensitive)
-        #features = (intensities > minimum_contrast).astype(np.uint8)
         features = np.zeros(intensities.shape, dtype=np.uint8)
-
-        box = 20 
-        import itertools as itr
-        import scipy.stats
 
         #print intensities.shape
         #density = intensities.max(axis=1)
         density = intensities.mean(axis=1) * 2
-        ths = []
-        for i, j in itr.product(xrange((intensities.shape[2]-1)//box + 1), xrange((intensities.shape[3]-1)//box + 1)):
-            selection = [slice(None), slice(None), slice(i*box, min(intensities.shape[2], (i+1)*box)), slice(j*box, min(intensities.shape[3], (j+1)*box))]
-            selection2 = [slice(None)] + selection[2:] 
 
-            #print selection
-            #print selection
-            patch = intensities[selection]
-            #print 'patch', patch.shape
+        for n in xrange(images.shape[0]):
+            #features = (intensities > minimum_contrast).astype(np.uint8)
 
-            vals = density[selection2].ravel()
-            vals = vals[vals > 0]
-            if vals.size > 0:
-                th = scipy.stats.scoreatpercentile(vals[vals > 0], 50) 
-            else:
-                th = 0
-            #print th
-            #print 'th', th
-            ths.append(th)
-            th = max(th, minimum_contrast)
+            box = 30 
+            import itertools as itr
+            import scipy.stats
+            ths = []
 
-            #for x, y in itr.product(xrange(patch.shape[2]), xrange(patch.shape[3])):
-                #pass 
+            dims = ((intensities.shape[2]-1)//box,  (intensities.shape[3]-1)//box)
 
-            features[selection] = (patch > th)
+            densities = np.zeros(dims)
 
-        if 0:
-            for n in xrange(features.shape[0]):
-                for e in xrange(8):
-                    if e % 4 == 0:
-                        kern = np.array([[0, 0, 0],
-                                         [1, 1, 1],
-                                         [0, 0, 0]])
-                    elif e % 4 == 1:
-                        kern = np.array([[0, 0, 1],
-                                         [0, 1, 0],
-                                         [1, 0, 0]])
-                    elif e % 4 == 2:
-                        kern = np.array([[0, 1, 0],
-                                         [0, 1, 0],
-                                         [0, 1, 0]])
-                    else: #if e % 4 == 3:
-                        kern = np.array([[1, 0, 0],
-                                         [0, 1, 0],
-                                         [0, 0, 1]])
+            for i, j in itr.product(xrange(dims[0]), xrange(dims[1])):
+                selection = [n, slice(None), slice(i*box, min(intensities.shape[2], (i+1)*box)), slice(j*box, min(intensities.shape[3], (j+1)*box))]
+                selection2 = [n] + selection[2:] 
 
-                    import scipy.signal
-                    features[n,e] = scipy.signal.convolve(features[n,e], kern, mode='same') // 3
-                 
+                patch = intensities[selection]
 
+                vals = density[selection2].ravel()
+                vals = vals[vals > 0]
+                if vals.size > 0:
+                    th = scipy.stats.scoreatpercentile(vals, 70)
+                else:
+                    th = 0
 
-        ths = np.asarray(ths)
-        #print (ths < minimum_contrast).mean()
+                th = max(th, minimum_contrast)
 
-        #import pdb; pdb.set_trace()
-        #from scipy.stats import mstats
-        #print 'average threshold:', mstats.mquantiles(ths, np.linspace(0, 10)[1:-1])
-        #print 'average threshold:', np.mean(ths), np.median(ths), np.min(ths), np.max(ths) 
-        if 0:
-            #features3 = array_bedges2(images, k, minimum_contrast * 4, contrast_insensitive, max_edges)
+                densities[i,j] = th
 
-            edge_density = features.mean(axis=-1)
-        
-            halfrad = 10 
-            wholerad = halfrad*2 
-            xx = ag.util.zeropad(features, (0, 0, halfrad, halfrad)).sum(axis=1)[:,np.newaxis].astype(int)
-            yy = np.apply_over_axes(np.cumsum, xx, [2, 3])
+                #for x, y in itr.product(xrange(patch.shape[2]), xrange(patch.shape[3])):
+                    #pass 
 
-            density = yy[:,:,wholerad:,wholerad:] - yy[:,:,:-wholerad,wholerad:] - yy[:,:,wholerad:,:-wholerad] + yy[:,:,:-wholerad,:-wholerad]
+                #features[selection] = (patch > th)
 
-            threshold = int(0.2 * wholerad**2)
-            threshold2 = int(0.4 * wholerad**2)
+            # Now interpolate the threshold
+            import scipy.ndimage
+            interpolated_densities = scipy.ndimage.zoom(densities, (box, box), order=2)
+            #print interpolated_densities.shape, intensities.shape[2:]
+            thresholds = ag.util.border_value_pad_upper(interpolated_densities, intensities.shape[2:])
+
+            if 0:
+                import pylab as plt
+                plt.figure()
+                plt.imshow(thresholds, interpolation='nearest')
+                plt.colorbar()
+                plt.savefig('edges/flum{}.png'.format(np.random.randint(1000)))
+                plt.close()
+
+                from scipy.stats.mstats import mquantiles
+                print 'thresholds', mquantiles(thresholds)
             
-            high = (density >= threshold2)
-            low = (density >= threshold) & ~high
-            lowest = (density < threshold)
+            features[n,:] = (intensities > thresholds)
 
-            print high.mean(), low.mean(), lowest.mean()
+            #ths = np.asarray(ths)
+            #print (ths < minimum_contrast).mean()
 
-            # Now, update features
-            #features = high * features2 + ~high * features
-            features = lowest * features + low * features2 + high * features3
+            #import pdb; pdb.set_trace()
+            #from scipy.stats import mstats
+            #print 'average threshold:', mstats.mquantiles(ths, np.linspace(0, 10)[1:-1])
+            #print 'average threshold:', np.mean(ths), np.median(ths), np.min(ths), np.max(ths) 
 
 
     # Spread the feature
