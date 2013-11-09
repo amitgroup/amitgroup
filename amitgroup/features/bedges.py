@@ -204,7 +204,7 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
             import scipy.stats
             ths = []
 
-            dims = ((intensities.shape[2]-1)//box,  (intensities.shape[3]-1)//box)
+            dims = ((intensities.shape[2]-1)//box + 1,  (intensities.shape[3]-1)//box + 1)
 
             densities = np.zeros(dims)
 
@@ -234,7 +234,8 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
             import scipy.ndimage
             interpolated_densities = scipy.ndimage.zoom(densities, (box, box), order=2)
             #print interpolated_densities.shape, intensities.shape[2:]
-            thresholds = ag.util.border_value_pad_upper(interpolated_densities, intensities.shape[2:])
+            #thresholds = ag.util.border_value_pad_upper(interpolated_densities, intensities.shape[2:])
+            thresholds = interpolated_densities[:intensities.shape[2],:intensities.shape[3]]
 
             if 0:
                 import pylab as plt
