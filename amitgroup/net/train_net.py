@@ -387,13 +387,8 @@ def stack_data(expi):
         N=expi.pp.numtrain_per_class
         if N==0:
             N=len(expi.ddtr[c])
-<<<<<<< Updated upstream
-        print('Loading class ', c, N)
-        X=np.vstack((X,extract_feature_matrix(expi.ddtr[c],'V1',N)))
-=======
         print 'Loading class ', c, N
         X=np.vstack((X,extract_feature_matrix(expi.ddtr[c],expi.pp.feat,N)))
->>>>>>> Stashed changes
         Y=np.vstack((Y,c*np.ones((N,1))))
     return X,Y
 
