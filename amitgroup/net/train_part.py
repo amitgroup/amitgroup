@@ -3,7 +3,7 @@ import numpy as np
 import sys
 import copy
 import time
-from . import train_net as tn
+from amitgroup.net import train_net as tn
 import pylab as plt
 import pdb
 import amitgroup as ag

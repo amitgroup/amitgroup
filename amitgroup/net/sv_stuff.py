@@ -3,7 +3,7 @@ import numpy as np
 import sys
 import copy
 import time
-from . import train_net as tn
+from amitgroup.net import train_net as tn
 
 def train_sv_all(expi):
      expi.pp.deltaD=expi.pp.deltaP
