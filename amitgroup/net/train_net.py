@@ -71,17 +71,26 @@ def extract_feature_matrix(ddt,s,num=0):
     Returns the features array.
 
     """
-
+  
     if (num==0):
         l=len(ddt)
     else:
         l=num
-    numfeat=ddt[0].features[s].size
-    MM=np.zeros((l,numfeat), dtype=np.ubyte)
-    i=0
-    for i in range(l):
-       MM[i,:]=ddt[i].features[s].flatten()
-    return MM
+    if (s!='B'):
+        print(s)
+        numfeat=ddt[0].features[s].size
+        MM=np.zeros((l,numfeat), dtype=np.ubyte)
+        i=0
+        for i in range(l):
+            MM[i,:]=ddt[i].features[s].flatten()
+        return MM
+    else:
+        numfeat=ddt[0].img.size;
+        MM=np.zeros((l,numfeat), dtype=np.ubyte)
+        i=0
+        for i in range(l):
+            MM[i,:]=ddt[i].img.flatten()> 20
+        return MM
 
 def read_data_b(expi,numclass):
 
@@ -235,11 +244,11 @@ def test_averages(expi, numtest=0):
     Jmid=np.ceil(expi.pp.Jmax/2)
     [JJ,JJfb]=nets_to_mat(expi.NO[0],Jmid,expi.pp.numperc);
     WW=np.mean(JJ,1);
-    [CC, e]=test_by_weights(expi.ddte,WW,numtest)
+    [CC, e]=test_by_weights(expi.ddte,expi.pp,WW,numtest)
     return CC, e
 
 
-def test_by_weights(ddte,WW,numtest=0):
+def test_by_weights(ddte,pp,WW,numtest=0):
 
     """
     Simple linear tester. For each class apply weight
@@ -270,7 +279,7 @@ def test_by_weights(ddte,WW,numtest=0):
             N=numtest
         Ntot+=N
         H=np.zeros((N,numclass));
-        H=np.dot(extract_feature_matrix(ddte[c],'V1',N),WW);
+        H=np.dot(extract_feature_matrix(ddte[c],pp.feat,N),WW);
         i=np.argmax(H,1);
         for d in range(numclass):
             CONF[c,d]=np.double(np.sum(i==d))
@@ -317,7 +326,7 @@ def test_net(expi, tr=False, numtest=0):
             N=numtest
         Ntot+=N
         H=np.zeros((N,numclass));
-        FF=extract_feature_matrix(ddt[c],'V1',N)
+        FF=extract_feature_matrix(ddt[c],expi.pp.feat,N)
         for d in range(numclass):
             temp=np.dot(FF,JJ[:,:,d])>expi.pp.theta
             H[:,d]=np.sum(temp,1)
@@ -326,6 +335,11 @@ def test_net(expi, tr=False, numtest=0):
             CONF[c,d]=np.double(np.sum(i==d))
 
     print(np.sum(np.diag(CONF))/Ntot)
+    print('Class rates')
+    for d in range(numclass):
+
+        print(CONF[d,d]/np.sum(CONF[d,:]))
+    
     return CONF
 
 
@@ -366,15 +380,20 @@ def stack_data(expi):
     if N==0:
         N=len(expi.ddtr[0])
     # Get the full data matrix for class 0
-    X=extract_feature_matrix(expi.ddtr[0],'V1',N)
+    X=extract_feature_matrix(expi.ddtr[0],expi.pp.feat,N)
     Y=np.zeros((N,1), dtype=np.ubyte)
     # Stack up the data matrices for the other classes.
     for c in range(1,numclass):
         N=expi.pp.numtrain_per_class
         if N==0:
             N=len(expi.ddtr[c])
+<<<<<<< Updated upstream
         print('Loading class ', c, N)
         X=np.vstack((X,extract_feature_matrix(expi.ddtr[c],'V1',N)))
+=======
+        print 'Loading class ', c, N
+        X=np.vstack((X,extract_feature_matrix(expi.ddtr[c],expi.pp.feat,N)))
+>>>>>>> Stashed changes
         Y=np.vstack((Y,c*np.ones((N,1))))
     return X,Y
 
@@ -477,8 +496,10 @@ def ff_all_at_one(pp,X,Y,numperc,numclass):
                     Jfb[c]=modify_fb(pp,XI,XIz,Jfb[c],Jmid)
                 else:
                     down+=depress_ff(pp,h,XI,J[c],Jmid)
+                    
         # up+down
-        #f.write('updown '+str(np.double(up)+np.double(down))+'\n')
+        
+        #write('updown '+str(np.double(up)+np.double(down))+'\n')
         
     N=[]
     for c in range(numclass):
@@ -625,7 +646,7 @@ def depress_ff(pp,h,XI,J,Jmid):
     J[imat]=Jh
     return r
 
-def rearrange(dd,c,numtrain=0):
+def rearrange(dd,c,s,numtrain=0):
 
     """
 
@@ -653,7 +674,7 @@ def rearrange(dd,c,numtrain=0):
     if numtrain>0:
         n=min(numtrain,len(dd[c]))
 
-    XY.append(extract_feature_matrix(dd[c],'V1',n))
+    XY.append(extract_feature_matrix(dd[c],s,n))
 
 
     N=XY[0].shape[0]
@@ -662,7 +683,7 @@ def rearrange(dd,c,numtrain=0):
         n=len(dd[ii])
         if numtrain>0:
             n=min(numtrain,len(dd[ii]))
-        XY[0]=np.vstack((XY[0],extract_feature_matrix(dd[ii],'V1',n)))
+        XY[0]=np.vstack((XY[0],extract_feature_matrix(dd[ii],s,n)))
 
         
     Ntot=XY[0].shape[0]
@@ -677,7 +698,7 @@ def ff_mult_top(f,pp,ddtr,c,numperc, numtrain=0):
     if numtrain==0:
         numtrain=len(ddtr[c])
     # Rearrange data for this class with class at top of array and all the rest after.
-    XY=rearrange(ddtr,c, numtrain)
+    XY=rearrange(ddtr,c, pp.feat, numtrain)
     # Train class against the rest perceptron/s
     NO=ff_mult(pp,XY, numperc,f)    
     return NO
@@ -791,6 +812,7 @@ class pars:
             self.type=1
             self.slant=1
             self.DIM=0
+            self.feat='V1'
             self.out='out'
             self.numparts=0
             

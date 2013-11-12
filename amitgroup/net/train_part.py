@@ -1,5 +1,4 @@
-from __future__ import print_function
-from __future__ import absolute_import 
+from __future__ import absolute_import, print_function
 import numpy as np
 import sys
 import copy
@@ -131,7 +130,7 @@ def train_parts(expi, data=[]):
                Parray=np.array(Parts)-Jmid
                #print Parray
                Parray.shape=[numparts,numfeat]
-               # Multiple part array by features of this image.
+               # Multiply part array by features of this image.
                H=np.dot(Parray,ZZ[t].features['V1'].flatten())
                if (expi.pp.showing==1):
                   print('Fields', H)
@@ -149,7 +148,7 @@ def train_parts(expi, data=[]):
                   totpot+=s
                   if (expi.pp.showing==1):
                      print('pot ', s)
-               # Depress all other models?
+               # Depress all other models where field is below threshold.
                s=0
                for dii in range(di.size):
                   s+=tn.depress_ff(expi.pp,H[di[dii]],XI,Parts[di[dii]],Jmid)
