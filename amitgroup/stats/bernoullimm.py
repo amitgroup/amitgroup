@@ -440,7 +440,8 @@ class BernoulliMM(BaseEstimator):
 
             if self.n_iter:
                 if log_likelihood[-1] > max_log_prob:
-                    print "updated best params for {0}".format(self.score(X).sum())
+                    if self.verbose:
+                        print "updated best params for {0}".format(self.score(X).sum())
                     max_log_prob = log_likelihood[-1]
                     best_params = {'weights': self.weights_,
                                    'means' : self.means_}
