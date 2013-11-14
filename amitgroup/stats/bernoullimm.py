@@ -376,7 +376,7 @@ class BernoulliMM(BaseEstimator):
         # flatten data to just be binary vectors
         data_length = np.prod(data_shape)
         if len(data_shape) > 1:
-            X = X.reshape(*( (X.shape[0],) + data_length))
+            X = X.reshape(X.shape[0],  data_length)
 
         if X.shape[0] < self.n_components:
             raise ValueError(
