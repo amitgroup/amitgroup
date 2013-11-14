@@ -559,7 +559,7 @@ class BernoulliMM(BaseEstimator):
             responsibilities = self.predict_proba(X)
     
         underlying_clusters = np.dot(responsibilities.T,
-                            underlying_data.reshape(self.num_data,np.prod(underlying_shape)))
+                                     Z.reshape(Z.shape[0],np.prod(Z.shape[1:])))
         return underlying_clusters
 
  
