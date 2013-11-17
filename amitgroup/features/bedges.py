@@ -180,14 +180,14 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
         for i in xrange(images.shape[0]):
             images[i] = ag.util.blur_image(images[i], pre_blurring)
 
-    if 0:
+    if 1:
         if max_edges is not None:
             features = array_bedges2(images, k, minimum_contrast, contrast_insensitive, max_edges)
         else:
             features = array_bedges(images, k, minimum_contrast, contrast_insensitive) 
 
     # TODO: Experimental stuff
-    if 1:
+    if 0:
         k = 5
         intensities = array_intensities(images, k, 0.0, contrast_insensitive)
         features = np.zeros(intensities.shape, dtype=np.uint8)
@@ -199,7 +199,7 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
         for n in xrange(images.shape[0]):
             #features = (intensities > minimum_contrast).astype(np.uint8)
 
-            box = 30 
+            box = 15 
             import itertools as itr
             import scipy.stats
             ths = []
@@ -217,7 +217,7 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
                 vals = density[selection2].ravel()
                 vals = vals[vals > 0]
                 if vals.size > 0:
-                    th = scipy.stats.scoreatpercentile(vals, 70)
+                    th = scipy.stats.scoreatpercentile(vals, 50)
                 else:
                     th = 0
 

@@ -10,4 +10,4 @@ from .parts_descriptor import PartsDescriptor
 
 
 # TODO: Experimental
-from .code_parts import code_parts_support_mask, code_parts_INDICES, code_parts_as_features_INDICES
+from .code_parts import code_parts_new, extract_parts, code_parts_support_mask, code_parts_INDICES, code_parts_as_features_INDICES
