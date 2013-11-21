@@ -1,9 +1,10 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 import numpy as np
 import sys
 import copy
 import time
 import os
+import pdb
 import amitgroup as ag
 import pickle
 
@@ -476,6 +477,7 @@ def ff_all_at_one(pp,X,Y,numperc,numclass):
         # Loop over examples
         for i in rNtot:
             ii=II[i]
+            # Booleanize the data.
             XI=X[ii,:]==1
             XIz=X[ii,:]==0
             # Prepare for matrix multiplication.
@@ -571,7 +573,7 @@ def potentiate_ff(pp,h,XI,J,Jmid):
     Updates J but returns number of modifications.
 
     """
-
+    
     # Perceptrons with field below potentiation threshold.
     hii=h<=pp.theta+pp.deltaP
     if (len(np.nonzero(hii)[0])==0):
@@ -580,10 +582,9 @@ def potentiate_ff(pp,h,XI,J,Jmid):
     # Logical matrix of all synapses that can be potentiated ... below potentiation threshold
     # and the feature is on. (Synapses with off features don't create a change.
     imat=np.outer(XI,hii)
-
     if (len(J.shape)==1):
         imat=imat.flatten()
-    
+        
     # Extract changeable synapses.
     Jh=J[imat]
 
@@ -629,7 +630,7 @@ def depress_ff(pp,h,XI,J,Jmid):
     imat=np.outer(XI,hii)
     if (len(J.shape)==1):
         imat=imat.flatten()
-
+   
     Jh=J[imat];
     # If greater than minimal synaptic value
     IJ=Jh>0
@@ -787,6 +788,8 @@ class pars:
             self.pobj=.5
             self.numit=5
             self.pltp=.01
+            self.zero_prior=.1
+            self.two_prior=.1
             self.pltd=.01
             self.stoch=1
             self.nofield=0
