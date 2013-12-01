@@ -19,7 +19,7 @@ if not cython_ok:
 
 
 def cython_extension(modpath, mp=False):
-    extra_compile_args = []
+    extra_compile_args = ["-O3"]
     extra_link_args = []
     if mp:
         extra_compile_args.append('-fopenmp')

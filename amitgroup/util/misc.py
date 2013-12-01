@@ -62,3 +62,16 @@ def border_value_pad(data, padwidth):
      
     return new_data
     
+def border_value_pad_upper(data, target_size):
+    """
+    Pads an ndarray with the border values on the upper range of each axis.
+    Padding width is specified by setting the target size.
+    """
+    new_data = np.empty(target_size)
+    new_data[[slice(upper) for upper in data.shape]] = data
+    for i in xrange(len(target_size)):
+        selection = [slice(None)]*i + [slice(data.shape[i], None)]
+        selection2 = [slice(None)]*i + [slice(data.shape[i]-1, data.shape[i])]
+        new_data[selection] = new_data[selection2]
+    return new_data
+
