@@ -356,6 +356,15 @@ class BernoulliMM(BaseEstimator):
                     data_type=self.binary_type).T
         return X
 
+    def set_means_weights(self,means,weights):
+        """
+        Set the means and the weights of the model so that one can
+        load a model from being saved.
+        """
+
+        self.means_ = means
+        self.weights_ = weights
+        self.log_odds_, self.log_inv_mean_sums_ = _compute_log_odds_inv_means_sums(self.means_)
 
     def fit(self, X):
         """ 
