@@ -8,7 +8,7 @@ import random, collections
 import scipy.sparse
 
 
-# Author: Gustav Larsson 
+# Author: Gustav Larsson
 #         Mark Stoehr <stoehr.mark@gmail.com>
 #
 
@@ -45,8 +45,8 @@ def sample_bernoulli(mean, n_samples=1,
     n_dim = len(mean)
     rand = rng.rand(n_dim, n_samples)
     if n_samples == 1:
-        rand.shape = (n_dim,)    
-    
+        rand.shape = (n_dim,)
+
     return (rand.T > mean).T.astype(data_type)
 
 
@@ -74,7 +74,7 @@ class BernoulliMM(BaseEstimator):
         Number of EM iterations to perform
 
     n_init : int, optional
-        Number of random initializations to perform with 
+        Number of random initializations to perform with
         the best kept.
 
     params : string, optional
@@ -108,21 +108,21 @@ class BernoulliMM(BaseEstimator):
         Values in the data must be either 0 or 1 for the algorithm to work. We will refer to the size of this array as ``(N, A, B, ...)``, where `N` is the number of samples, and ``(A, B, ...)`` the shape of a data sample.
     init_type : string
         Specifies the algorithm initialization.
-         * `unif_rand` : Unified random. 
+         * `unif_rand` : Unified random.
          * `specific` : TODO: Add explanation of this.
-    
-    Attributes 
+
+    Attributes
     ----------
-    
+
     r
 
     num_data : int
         Number of data entries.
     data_length : int
-        Length of data flattened. 
+        Length of data flattened.
     iterations : int
-        Number of iterations from the EM. Will be set after calling :py:func:`run_EM`.      
-    templates : ndarray 
+        Number of iterations from the EM. Will be set after calling :py:func:`run_EM`.
+    templates : ndarray
         Mixture components templates. Array of shape ``(num_mix, A, B, ...)``, where ``(A, B, ...)`` is the shape of a single data entry.
     work_templates : ndarray
         Flattened mixture components templates. Array of shape ``(num_mix, data_length)``.
@@ -136,18 +136,18 @@ class BernoulliMM(BaseEstimator):
     Examples
     --------
     Create a mixture model with 2 mixture componenents.
-    
+
     >>> import amitgroup as ag
     >>> import numpy as np
-    >>> data = np.array([[1, 1, 0], [0, 0, 1], [1, 1, 1]]) 
+    >>> data = np.array([[1, 1, 0], [0, 0, 1], [1, 1, 1]])
     >>> mixture = ag.stats.BernoulliMixture(2, data)
-    
+
     Run the algorithm until specified tolerance.
-    
+
     >>> mixture.run_EM(1e-3)
 
     Display the mixture templates and the corresponding weights.
-            
+
     >>> mixture.templates # doctest: +SKIP
     array([[ 0.95      ,  0.95      ,  0.50010438],
            [ 0.05      ,  0.05      ,  0.95      ]])
@@ -156,7 +156,7 @@ class BernoulliMM(BaseEstimator):
 
     Display the latent variable, describing what combination of mixture components
     a certain data frame came from:
-    
+
     >>> mixture.affinities # doctest: +SKIP
     array([[  9.99861515e-01,   1.38484719e-04],
            [  2.90861524e-03,   9.97091385e-01],
@@ -165,12 +165,11 @@ class BernoulliMM(BaseEstimator):
     """
     def __init__(self, n_components=1,
                  random_state=None, thresh=1e-6, min_prob=1e-2, min_num=30,
-                 n_iter=100,tol=1e-6, n_init=1, params='wm', init_params='wm',
+                 n_iter=100,tol=1e-6, n_init=1, params='wm', init_params='wm',blocksize=0,
                  float_type=np.float64,
                  binary_type=np.uint8, verbose=False):
         # TODO: opt_type='expected'
         self.n_components = n_components
-        self.float_type = float_type
         self.thresh = thresh
         self.random_state = random_state
         self.n_iter = n_iter
@@ -182,6 +181,8 @@ class BernoulliMM(BaseEstimator):
         self.min_prob = min_prob
         self.min_num = 30
         self.verbose=verbose
+        # blocksize controls whether we do the likelihood computation in blocks to prevent memory blowup
+        self.blocksize = blocksize
         if self.n_init < 1:
             raise ValueError('BernoulliMM estimation requires at least one run')
 
@@ -197,7 +198,7 @@ class BernoulliMM(BaseEstimator):
         #     self.data_shape = data_mat.shape[1:]
         #     # flatten data to just be binary vectors
         #     self.data_length = np.prod(data_mat.shape[1:])
-    
+
         #     if isinstance(data_mat, np.matrix):
         #         pass# Let it be
         #         self.data_mat = data_mat
@@ -220,8 +221,8 @@ class BernoulliMM(BaseEstimator):
         #     np.random.seed(self.seed)
 
 
-        #     self.min_probability = 0.05 
-            
+        #     self.min_probability = 0.05
+
         #     # initializing weights
         #     self.weights = 1./num_mix * np.ones(num_mix, dtype=self.float_type)
         #     #self.opt_type=opt_type TODO: Not used yet.
@@ -265,12 +266,27 @@ class BernoulliMM(BaseEstimator):
         if X.shape[1] != self.means_.shape[1]:
             raise ValueError('the shape of X  is not compatible with self')
 
-        lpr = (log_product_of_bernoullis_mixture_likelihood(X, self.log_odds_, 
+        if self.blocksize > 0:
+            logprob = np.zeros(X.shape[0],dtype=self.float_type)
+            responsibilities = np.zeros((X.shape[0],self.n_components),dtype=self.float_type)
+            block_id = 0
+            if self.verbose:
+                print "Running block multiplication"
+
+            for block_id in xrange(0,X.shape[0],self.blocksize):
+                blockend = min(X.shape[0],block_id+self.blocksize)
+                lpr = (log_product_of_bernoullis_mixture_likelihood(X[block_id:blockend], self.log_odds_,
+                                                            self.log_inv_mean_sums_)
+               + np.log(self.weights_))
+                logprob[block_id:blockend] = logsumexp(lpr, axis=1)
+                responsibilities[block_id:blockend] = np.exp(lpr - (logprob[block_id:blockend])[:, np.newaxis])
+        else:
+            lpr = (log_product_of_bernoullis_mixture_likelihood(X, self.log_odds_,
                                                             self.log_inv_mean_sums_)
                + np.log(self.weights_))
 
-        logprob = logsumexp(lpr, axis=1)
-        responsibilities = np.exp(lpr - logprob[:, np.newaxis])
+            logprob = logsumexp(lpr, axis=1)
+            responsibilities = np.exp(lpr - logprob[:, np.newaxis])
         return logprob, responsibilities
 
     def score(self, X):
@@ -367,9 +383,9 @@ class BernoulliMM(BaseEstimator):
         self.log_odds_, self.log_inv_mean_sums_ = _compute_log_odds_inv_means_sums(self.means_)
 
     def fit(self, X):
-        """ 
+        """
         Run the EM algorithm to specified convergence.
-        
+
         Parameters
         ----------
         X : array_like, shape (n,) + d
@@ -377,7 +393,7 @@ class BernoulliMM(BaseEstimator):
             `np.prod(X.shape[1:])==n_features`
         """
         random_state = check_random_state(self.random_state)
-        X = np.asarray(X, dtype=self.float_type)
+        X = np.asarray(X, dtype=self.binary_type)
         if X.ndim == 1:
             X = X[:, np.newaxis]
 
@@ -402,7 +418,7 @@ class BernoulliMM(BaseEstimator):
             if self.verbose:
                 print "Current parameter initialization: {0}".format(cur_init)
 
-            
+
             if 'm' in self.init_params or not hasattr(self,'means_'):
                 indices = np.arange(X.shape[0])
                 random_state.shuffle(indices)
@@ -444,7 +460,7 @@ class BernoulliMM(BaseEstimator):
                                responsibilities,
                                self.params,
                                self.min_prob)
-            
+
 
 
             if self.n_iter:
@@ -464,7 +480,7 @@ class BernoulliMM(BaseEstimator):
                 "EM algorithm was never able to compute a valid likelihood " +
                 "given initial parameters. Try different init parameters " +
                 "(or increasing n_init) or check for degenerate data.")
-            
+
         if len(data_shape) > 1:
             X = X.reshape(*( (X.shape[0],) + data_shape))
 
@@ -472,15 +488,28 @@ class BernoulliMM(BaseEstimator):
             self.means_ = best_params['means']
             self.log_odds_, self.log_inv_mean_sums_ = _compute_log_odds_inv_means_sums(self.means_)
             self.weights_ = best_params['weights']
-            
+
         return self
 
 
     def _do_mstep(self, X, responsibilities, params, min_prob=1e-7):
-        """ Perform the Mstep of the EM algorithm and return the class weights 
+        """ Perform the Mstep of the EM algorithm and return the class weights
         """
         weights = responsibilities.sum(axis=0)
-        weighted_X_sum = np.dot(responsibilities.T, X)
+
+        if self.blocksize > 0:
+            weighted_X_sum=np.zeros((weights.shape[0],X.shape[1]),dtype=self.float_type)
+
+            if self.verbose:
+                print "Running block multiplication for mstep"
+
+            for blockstart in xrange(0,X.shape[0],self.blocksize):
+                blockend=min(X.shape[0],blockstart+self.blocksize)
+                res = responsibilities[blockstart:blockend].T
+                weighted_X_sum += np.dot(res,X[blockstart:blockend])
+
+        else:
+            weighted_X_sum = np.dot(responsibilities.T, X)
         inverse_weights = 1.0 / (weights[:, np.newaxis] + 10 * EPS)
         if 'w' in params:
             self.weights_ = (weights / (weights.sum() + 10 * EPS) + EPS)
@@ -488,7 +517,7 @@ class BernoulliMM(BaseEstimator):
         if 'm' in params:
             self.means_ = np.clip(weighted_X_sum * inverse_weights,min_prob,1-min_prob)
             self.log_odds_, self.log_inv_mean_sums_ = _compute_log_odds_inv_means_sums(self.means_)
-            
+
 
         return weights
 
@@ -546,7 +575,7 @@ class BernoulliMM(BaseEstimator):
             data, or the responsibilities are a posterior distribution over the classes
             that generated the data.
 
-        
+
         X : array of shape(n_samples, n_dimensions), optional
             List of n_dimensions-dimensional data points.  Each row
             corresponds to a single data point. Should be defined
@@ -557,7 +586,7 @@ class BernoulliMM(BaseEstimator):
             the n_components for each data point.
 
         Returns
-        
+
         """
         # check that the number of data points matches the number
         # of data estimated
@@ -566,12 +595,17 @@ class BernoulliMM(BaseEstimator):
                 raise RuntimeError("no binary data provided")
         else:
             responsibilities = self.predict_proba(X)
-    
-        underlying_clusters = np.dot(responsibilities.T,
-                                     Z.reshape(Z.shape[0],np.prod(Z.shape[1:])))
+
+        responsibilities = responsibilities.T
+
+        underlying_clusters = np.dot(responsibilities,
+                                     Z.reshape(Z.shape[0],np.prod(Z.shape[1:]))) / np.lib.stride_tricks.as_strided(responsibilities.sum(1),
+                                                                                                                   shape=(responsibilities.shape[0],
+                                                                                                                          np.prod(Z.shape[1:])),
+                                                                                                                          strides=(responsibilities.strides[0],0))
         return underlying_clusters
 
- 
+
 
 
 
