@@ -334,7 +334,13 @@ class BernoulliMM(BaseEstimator):
             Returns the probability of the sample for each Gaussian
             (state) in the model.
         """
-        logprob, responsibilities = self.eval(X)
+        data_shape = X.shape[1:]
+        # flatten data to just be binary vectors
+        data_length = np.prod(data_shape)
+        if len(data_shape) > 1:
+            logprob, responsibilities = self.eval(X.reshape(X.shape[0],  data_length))
+        else:
+            logprob, responsibilities = self.eval(X)
         return responsibilities
 
     def sample(self, n_samples=1, random_state=None):
@@ -420,6 +426,8 @@ class BernoulliMM(BaseEstimator):
 
 
             if 'm' in self.init_params or not hasattr(self,'means_'):
+                if self.verbose:
+                    print "Initializing means"
                 indices = np.arange(X.shape[0])
                 random_state.shuffle(indices)
                 self.means_ = np.array(tuple(
@@ -431,6 +439,9 @@ class BernoulliMM(BaseEstimator):
                 self.log_odds_, self.log_inv_mean_sums_ = _compute_log_odds_inv_means_sums(self.means_)
 
             if 'w' in self.init_params or not hasattr(self,'weights_'):
+                if self.verbose:
+                    print "Initializing weights"
+
                 self.weights_ = np.tile(1.0 / self.n_components,
                                         self.n_components)
 
