@@ -316,7 +316,7 @@ def code_parts_mmm(np.ndarray[ndim=3,dtype=UINT_t] X,
                    np.ndarray[ndim=3,dtype=UINT_t] X_unspread,
                    np.ndarray[ndim=4,dtype=np.float64_t] log_parts,
                    np.ndarray[ndim=4,dtype=np.float64_t] log_invparts,
-                   int threshold, outer_frame=0, int collapse=1):
+                   int threshold, outer_frame=0, int collapse=1, int stride=1):
     """
     At each location of `X`, find the log probabilities for each part and location. Outputs these part assignments in the same data dimensions as `X`. Neighborhoods of `X` with edge counts lower than `threshold` are regarded as background and assigned zero.
 
@@ -409,9 +409,9 @@ def code_parts_mmm(np.ndarray[ndim=3,dtype=UINT_t] X,
             integral_counts[1+i,1+j] += integral_counts[i,1+j]
 
     # Code parts
-    for i_start in range(X_x_dim-part_x_dim+1):
+    for i_start in range(0, X_x_dim-part_x_dim+1, stride):
         i_end = i_start + part_x_dim
-        for j_start in range(X_y_dim-part_y_dim+1):
+        for j_start in range(0, X_y_dim-part_y_dim+1, stride):
             j_end = j_start + part_y_dim
 
             # Note, integral_counts is 1-based, to allow for a zero row/column at the zero:th index.
@@ -601,10 +601,10 @@ def code_parts_mmm_adaptive_EXPERIMENTAL(np.ndarray[ndim=3,dtype=UINT_t] X,
 def subsample_offset_shape(shape, size):
     return [int(shape[i]%size[i]/2 + size[i]/2)  for i in xrange(2)]
 
-def extract_parts(edges, unspread_edges, log_parts, log_invparts, int threshold, outer_frame=0, spread_radii=(4, 4), subsample_size=(4, 4), int collapse=1):
+def extract_parts(edges, unspread_edges, log_parts, log_invparts, int threshold, outer_frame=0, spread_radii=(4, 4), subsample_size=(4, 4), int collapse=1, int stride=1):
     cdef:
         int num_feats = log_parts.shape[0]//collapse
-        np.ndarray[np.int32_t,ndim=2] parts = code_parts_mmm(edges, unspread_edges, log_parts, log_invparts, threshold, outer_frame=outer_frame, collapse=collapse)
+        np.ndarray[np.int32_t,ndim=2] parts = code_parts_mmm(edges, unspread_edges, log_parts, log_invparts, threshold, outer_frame=outer_frame, collapse=collapse, stride=stride)
         np.ndarray[np.uint8_t,ndim=3] feats = np.zeros((parts.shape[0]//subsample_size[0],
                                                         parts.shape[1]//subsample_size[1],
                                                         num_feats),
