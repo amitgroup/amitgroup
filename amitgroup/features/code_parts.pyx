@@ -316,7 +316,9 @@ def code_parts_mmm(np.ndarray[ndim=3,dtype=UINT_t] X,
                    np.ndarray[ndim=3,dtype=UINT_t] X_unspread,
                    np.ndarray[ndim=4,dtype=np.float64_t] log_parts,
                    np.ndarray[ndim=4,dtype=np.float64_t] log_invparts,
-                   int threshold, outer_frame=0, int collapse=1, int stride=1):
+                   np.ndarray[ndim=1,dtype=np.int64_t] part_to_feature,
+                   int threshold, outer_frame=0, 
+                   int stride=1):
     """
     At each location of `X`, find the log probabilities for each part and location. Outputs these part assignments in the same data dimensions as `X`. Neighborhoods of `X` with edge counts lower than `threshold` are regarded as background and assigned zero.
 
@@ -358,6 +360,8 @@ def code_parts_mmm(np.ndarray[ndim=3,dtype=UINT_t] X,
                                                                  new_y_dim), dtype=np.int32)
     cdef np.ndarray[dtype=DTYPE_t, ndim=1] vs = np.ones(num_parts, dtype=DTYPE)
     cdef DTYPE_t[:] vs_mv = vs
+
+    cdef np.int64_t[:] part_to_feature_mv = part_to_feature
 
     #cdef np.ndarray[dtype=DTYPE_t, ndim=1] vs_alt = np.ones(num_parts, dtype=DTYPE)
     #cdef DTYPE_t[:] vs_alt_mv = vs_alt
@@ -438,7 +442,7 @@ def code_parts_mmm(np.ndarray[ndim=3,dtype=UINT_t] X,
 
                 max_index = vs.argmax()
                 #if vs_mv[max_index] - vs_alt_mv[max_index] >= accept_threshold:
-                out_map_mv[i_start,j_start] = max_index / collapse
+                out_map_mv[i_start,j_start] = part_to_feature_mv[max_index]
                 
                 #out_map_mv[i_start,j_start] = vs.argmax() / collapse
 
@@ -601,10 +605,14 @@ def code_parts_mmm_adaptive_EXPERIMENTAL(np.ndarray[ndim=3,dtype=UINT_t] X,
 def subsample_offset_shape(shape, size):
     return [int(shape[i]%size[i]/2 + size[i]/2)  for i in xrange(2)]
 
-def extract_parts(edges, unspread_edges, log_parts, log_invparts, int threshold, outer_frame=0, spread_radii=(4, 4), subsample_size=(4, 4), int collapse=1, int stride=1):
+def extract_parts(edges, unspread_edges, log_parts, log_invparts, int threshold, outer_frame=0, spread_radii=(4, 4), subsample_size=(4, 4), part_to_feature=None, int stride=1):
+    if part_to_feature is None:
+        part_to_feature = np.arange(log_parts.shape[0])
+
     cdef:
-        int num_feats = log_parts.shape[0]//collapse
-        np.ndarray[np.int32_t,ndim=2] parts = code_parts_mmm(edges, unspread_edges, log_parts, log_invparts, threshold, outer_frame=outer_frame, collapse=collapse, stride=stride)
+        # One above the top index
+        int num_feats = part_to_feature.max()+1
+        np.ndarray[np.int32_t,ndim=2] parts = code_parts_mmm(edges, unspread_edges, log_parts, log_invparts, part_to_feature, threshold, outer_frame=outer_frame, stride=stride)
         np.ndarray[np.uint8_t,ndim=3] feats = np.zeros((parts.shape[0]//subsample_size[0],
                                                         parts.shape[1]//subsample_size[1],
                                                         num_feats),
