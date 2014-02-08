@@ -605,9 +605,15 @@ def code_parts_mmm_adaptive_EXPERIMENTAL(np.ndarray[ndim=3,dtype=UINT_t] X,
 def subsample_offset_shape(shape, size):
     return [int(shape[i]%size[i]/2 + size[i]/2)  for i in xrange(2)]
 
-def extract_parts(edges, unspread_edges, log_parts, log_invparts, int threshold, outer_frame=0, spread_radii=(4, 4), subsample_size=(4, 4), part_to_feature=None, int stride=1):
+def extract_parts(edges, unspread_edges, log_parts, log_invparts, int threshold, 
+                  outer_frame=0, spread_radii=(4, 4), subsample_size=(4, 4), 
+                  part_to_feature=None, int stride=1,
+                  between_feature_spreading=None):
     if part_to_feature is None:
         part_to_feature = np.arange(log_parts.shape[0])
+
+    if between_feature_spreading is None:
+        between_feature_spreading = np.arange(log_parts.shape[0], dtype=np.int32)[...,np.newaxis]
 
     cdef:
         # One above the top index
@@ -623,6 +629,9 @@ def extract_parts(edges, unspread_edges, log_parts, log_invparts, int threshold,
     cdef:
         np.int32_t[:,:] parts_mv = parts
         np.uint8_t[:,:,:] feats_mv = feats
+        np.int32_t[:,:] between_feature_spreading_mv = between_feature_spreading
+
+        int bfs_mult = between_feature_spreading.shape[1]
   
         int spread_radii0 = spread_radii[0]
         int spread_radii1 = spread_radii[1]
@@ -634,7 +643,7 @@ def extract_parts(edges, unspread_edges, log_parts, log_invparts, int threshold,
         int parts_dim1 = parts.shape[1]
         int offset0 = offset[0]
         int offset1 = offset[1]
-        int p, x, y, i, j, i0, j0
+        int p, x, y, i, j, i0, j0, b
 
     with nogil:
         for i in range(feats_dim0):
@@ -645,7 +654,9 @@ def extract_parts(edges, unspread_edges, log_parts, log_invparts, int threshold,
                     for j0 in range(int_max(y - spread_radii1, 0), int_min(y + spread_radii1+1, parts_dim1)):
                         p = parts_mv[i0,j0]
                         if p != -1:
-                            feats_mv[i,j,p] = 1
+                            #feats_mv[i,j,p] = 1
+                            for b in xrange(bfs_mult):
+                                feats_mv[i,j,between_feature_spreading_mv[p,b]] = 1
 
     return feats 
 
