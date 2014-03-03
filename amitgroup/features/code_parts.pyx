@@ -672,8 +672,8 @@ def extract_parts_adaptive_EXPERIMENTAL(edges, unspread_edges, log_parts, log_in
 
     if TMP_each > 1:
         coded_parts = parts[parts != -1]
-        coded_parts[:] *= TMP_each 
-        coded_parts[:] += np.random.randint(TMP_each, size=coded_parts.size)
+        coded_parts *= TMP_each 
+        coded_parts += np.random.randint(TMP_each, size=coded_parts.size)
         parts[parts != -1] = coded_parts
         num_feats *= TMP_each
 
