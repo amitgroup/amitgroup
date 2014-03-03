@@ -3,7 +3,7 @@ import numpy as np
 import sys
 import copy
 import time
-from . import train_net as tn
+from amitgroup.net import train_net as tn
 
 def train_sv_all(expi):
      expi.pp.deltaD=expi.pp.deltaP
@@ -11,7 +11,8 @@ def train_sv_all(expi):
      [X,Y]=tn.stack_data(expi)
      #expi.NO=np.zeros((numfeat,numclass))
      expi.NO=one_against_rest_all(expi,X,Y)
-     CC, e=tn.test_by_weights(expi.ddte,expi.NO)
+     [CC, e]=tn.test_by_weights(expi.ddte,expi.pp,expi.NO)
+     return CC, e
      
 def one_against_rest_all(expi,X,Y):
 
@@ -131,7 +132,7 @@ def train_sv(expi, flag=0):
     for c in range(numclass):
         W=one_against_rest(expi.pp,expi.ddtr,c,expi.pp.numtrain_per_class, flag)
         expi.NO[:,c]=W
-    CC, e=tn.test_by_weights(expi.ddte,expi.NO)
+    CC, e=tn.test_by_weights(expi.ddte,expi.pp,expi.NO)
     print('result ', e)
     f=open(expi.pp.out,"a")
     f.write('stoch: '+str(expi.pp.stoch) + ' Del: ' + str(expi.pp.deltaP) + ' Rate: ' + str(e) + '\n')
