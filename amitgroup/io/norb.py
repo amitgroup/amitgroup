@@ -20,6 +20,10 @@ def load_small_norb(dataset, norb_path=None):
         The images
     y : ndarray
         The labels
+
+    References
+    ----------
+    [1] : http://www.cs.nyu.edu/~ylclab/data/norb-v1.0-small/
     """
     assert dataset in ('training', 'testing')
 
