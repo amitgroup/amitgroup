@@ -33,6 +33,7 @@ def _unpack_image(buf, index, asbytes):
     img = np.array(python_array('B', buf[4+offset+8:4+offset+8+width*height])).reshape((width, height))
 
     if asbytes:
+        img=np.uint8(img)
         return image(tr,img)
     else:
         return image(tr,img/255.)

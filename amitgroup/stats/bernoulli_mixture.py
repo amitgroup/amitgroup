@@ -446,20 +446,4 @@ class BernoulliMixture(ag.util.Saveable):
         #obj.set_templates()
         #obj._preload_log_templates()
         return obj
-
-def compute_likelihood(bernoulli_mixture,
-                       data_mat,ignore_weights=True):
-    """
-    Compute the likelihood of the model on the data. Should work with either 
-    a named tuple mixture representation or a BernoulliMixture object
-    
-    TODO: ignore_weights never used
-    """
-    num_data = data_mat.shape[0]
-    affinities = np.array([ np.tile(log_template,
-            (num_data,1)) * data_mat + np.tile(log_invtemplate,
-                                               (num_data,1)) *(
-                    1 - data_mat) for log_template, log_invtemplate in zip(
-                    bernoulli_mixture.log_templates,
-                    bernoulli_mixture.log_invtemplates)])
     

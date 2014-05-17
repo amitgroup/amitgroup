@@ -9,7 +9,6 @@ import amitgroup.features
 import amitgroup.stats
 import amitgroup.util
 import amitgroup.plot
-#import amitgroup.net
 
 VERSION = (0,0,0)
 ISRELEASED  = False

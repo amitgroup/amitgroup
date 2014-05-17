@@ -22,6 +22,7 @@ def _along_kernel(direction, radius):
             
     return kern
 
+
 def bspread(X, spread='box', radius=1, first_axis=False):
     """
     Spread binary edges.
@@ -53,6 +54,7 @@ def bspread(X, spread='box', radius=1, first_axis=False):
         Xnew = Xnew.reshape(Xnew.shape[1:]) 
 
     return Xnew
+
 
 def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, max_edges=None, preserve_size=True, pre_blurring=None):
     """
@@ -120,6 +122,7 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
         features = features[0]
 
     return features
+
 
 def bedges_from_image(im, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, return_original=False):
     """
