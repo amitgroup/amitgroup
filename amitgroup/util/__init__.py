@@ -13,7 +13,7 @@ except ImportError:
 
 
 from .blur import blur_image
-from .misc import zeropad, zeropad_to_shape, pad, multipad, border_value_pad
+from .misc import zeropad, zeropad_to_shape, pad, multipad, border_value_pad, border_value_pad_upper
 from .convolve2d import convolve2d, inflate2d, dilate2d
 from .saveable import Saveable
 

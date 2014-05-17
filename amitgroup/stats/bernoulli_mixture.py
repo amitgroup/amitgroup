@@ -1,3 +1,4 @@
+from __future__ import division
 import amitgroup as ag
 import numpy as np
 import random, collections
@@ -75,10 +76,13 @@ class BernoulliMixture(ag.util.Saveable):
            [  9.97376426e-01,   2.62357439e-03]])
 
     """
-    def __init__(self,num_mix,data_mat,min_num=0, init_type='unif_rand',init_seed=0, float_type=np.float64):
+    def __init__(self,num_mix,data_mat,min_num=0, init_type='unif_rand',init_seed=0, float_type=np.float64, max_iter=50, n_init=1):
         # TODO: opt_type='expected'
         self.num_mix = num_mix
         self.float_type = float_type
+        self.max_iter = max_iter
+        self.n_init = n_init
+        self.init_type = init_type
         # If we're reconstructing a trained Bernoulli mixture model, then we might
         # intiailize this class without a data matrix
         self.min_num=min_num
@@ -111,11 +115,6 @@ class BernoulliMixture(ag.util.Saveable):
 
 
             self.min_probability = 0.05 
-            
-            # initializing weights
-            self.weights = 1./num_mix * np.ones(num_mix, dtype=self.float_type)
-            #self.opt_type=opt_type TODO: Not used yet.
-            self.init_affinities_templates(init_type)
 
         # Data sizes:
         # data_mat : num_data * data_length
@@ -138,31 +137,52 @@ class BernoulliMixture(ag.util.Saveable):
             Disallow probabilities to fall below this value, and extend below one minus this value.
         """
         #self._preload_log_templates()
-    
-        self.min_probability = min_probability 
-        loglikelihood = -np.inf
-        # First E step plus likelihood computation
-        self.M_step()
-        new_loglikelihood = self._compute_loglikelihoods()
-
-        if debug_plot:
-            plw = ag.plot.PlottingWindow(subplots=(1, self.num_mix), figsize=(self.num_mix*3, 3))
-
-        self.iterations = 0
-        while np.isinf(loglikelihood) or np.fabs((new_loglikelihood - loglikelihood)/loglikelihood) > tol:
-            ag.info("Iteration {0}: loglikelihood {1}".format(self.iterations, loglikelihood))
-            loglikelihood = new_loglikelihood
-            # M-step
-            self.M_step()
-            # E-step
-            new_loglikelihood = self._compute_loglikelihoods()
             
-            self.iterations += 1
+        all_llhs = []
+        all_templates = []
+        all_weights = []
+    
+        for loop in xrange(self.n_init):
+            # initializing weights
+            self.weights = 1/self.num_mix * np.ones(self.num_mix, dtype=self.float_type)
+            #self.opt_type=opt_type TODO: Not used yet.
+            self.init_affinities_templates(self.init_type)
 
-            if debug_plot and not self._plot(plw):
-                raise ag.AbortException 
+            self.min_probability = min_probability 
+            loglikelihood = -np.inf
+            # First E step plus likelihood computation
+            self.M_step()
+            new_loglikelihood = self._compute_loglikelihoods()
 
-        self.set_templates()
+            if debug_plot:
+                plw = ag.plot.PlottingWindow(subplots=(1, self.num_mix), figsize=(self.num_mix*3, 3))
+
+            self.iterations = 0
+            while np.isinf(loglikelihood) or np.fabs((new_loglikelihood - loglikelihood)/loglikelihood) > tol:
+                if self.iterations >= self.max_iter:
+                    break
+                ag.info("Iteration {0}: loglikelihood {1}".format(self.iterations, loglikelihood))
+                loglikelihood = new_loglikelihood
+                # M-step
+                self.M_step()
+                # E-step
+                new_loglikelihood = self._compute_loglikelihoods()
+                
+                self.iterations += 1
+
+                if debug_plot and not self._plot(plw):
+                    raise ag.AbortException 
+
+            self.loglikelihood = loglikelihood
+            self.set_templates()
+
+            all_llhs.append(loglikelihood)
+            all_templates.append(self.templates)
+            all_weights.append(self.weights)
+
+        best_i = np.argmax(all_llhs)
+        self.templates = all_templates[best_i]
+        self.weights = all_weights[best_i]
         
     def cluster_underlying_data(self,underlying_data):
         """

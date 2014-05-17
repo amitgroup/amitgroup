@@ -100,6 +100,7 @@ def array_bedges2(np.ndarray[DTYPE_t, ndim=3] images, k, minimum_contrast, contr
     cdef int cols = images.shape[2] 
     cdef DTYPE_t[:,:,:] images_mv = images
     cdef Py_ssize_t i
+    cdef int j
     cdef int z0
     cdef int z1
     cdef int int_k = <int>k
@@ -146,6 +147,53 @@ def array_bedges2(np.ndarray[DTYPE_t, ndim=3] images, k, minimum_contrast, contr
                             
     return ret
 
+def array_intensities(np.ndarray[DTYPE_t, ndim=3] images, k, minimum_contrast, contrast_insensitive):
+    assert(images.dtype == DTYPE)
+    cdef int N = images.shape[0]
+    cdef int rows = images.shape[1]
+    cdef int cols = images.shape[2] 
+    cdef DTYPE_t[:,:,:] images_mv = images
+    cdef Py_ssize_t i
+    cdef int j
+    cdef int z0
+    cdef int z1
+    cdef int int_k = <int>k
+    cdef double double_minimum_contrast = <double>minimum_contrast
+    cdef int displace = 0
+    cdef int binary_features = 8
+
+    if contrast_insensitive:
+        displace = 0
+        binary_features = 4
+    else:
+        displace = 4 
+        binary_features = 8
+
+    cdef np.ndarray[np.uint8_t, ndim=4] ret = np.zeros((N, binary_features, rows, cols), dtype=np.uint8)
+    cdef np.uint8_t[:,:,:,:] ret_mv = ret
+
+    cdef np.ndarray[DTYPE_t, ndim=4] intensities = np.zeros((N, binary_features, rows, cols), dtype=DTYPE)
+    cdef DTYPE_t[:,:,:,:] intensities_mv = intensities
+
+    cdef int pol[4]
+    cdef int max_con_index
+    cdef DTYPE_t max_con
+    cdef DTYPE_t con[4] 
+    
+    #for i in prange(N, nogil=True):
+    with nogil:
+        for i in range(N):
+            for z0 in range(2, rows-2):
+                for z1 in range(2, cols-2):
+                    con[0] = _checkedge2(images_mv, i, 0, z0, z1, 1, 0, 0, -1, int_k, double_minimum_contrast, displace, &pol[0])
+                    con[1] = _checkedge2(images_mv, i, 1, z0, z1, 1, 1, 1, -1, int_k, double_minimum_contrast, displace, &pol[1])
+                    con[2] = _checkedge2(images_mv, i, 2, z0, z1, 0, 1, 1,  0, int_k, double_minimum_contrast, displace, &pol[2])
+                    con[3] = _checkedge2(images_mv, i, 3, z0, z1, -1, 1, 1, 1, int_k, double_minimum_contrast, displace, &pol[3])
+
+                    for j in range(4):
+                        intensities[i, j + displace*pol[j], z0, z1] = con[j]
+                            
+    return intensities
 
 def array_bspread(np.ndarray[np.uint8_t, ndim=4] X, spread='box', radius=1):
     cdef:
