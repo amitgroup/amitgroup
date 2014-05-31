@@ -22,6 +22,7 @@ def _along_kernel(direction, radius):
             
     return kern
 
+
 def bspread(X, spread='box', radius=1, first_axis=False):
     """
     Spread binary edges.
@@ -53,84 +54,6 @@ def bspread(X, spread='box', radius=1, first_axis=False):
         Xnew = Xnew.reshape(Xnew.shape[1:]) 
 
     return Xnew
-
-def bedges_CONCAT(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, max_edges=None, preserve_size=True, pre_blurring=None):
-    """
-    Extracts binary edge features for each pixel according to [1].
-
-    The function returns 8 different binary features, representing directed edges. Let us define a south-going edge as when it starts at high intensity and drops when going south (this would make south edges the lower edge of an object, if background is low intensity and the object is high intensity). By this defintion, the order of the returned edges is S, SE, E, NE, N, NW, W, SW.
-
-    Parameters
-    ----------
-    images : ndarray
-        Input an image of shape ``(rows, cols)`` or a list of images as an array of shape ``(N, rows, cols)``, where ``N`` is the number of images, and ``rows`` and ``cols`` the size of each image.
-    k : int
-        There are 6 contrast differences that are checked. The value `k` specifies how many of them must be fulfilled for an edge to be present. The default is all of them (`k` = 6) and gives more conservative edges.
-    spread : 'box', 'orthogonal', None 
-        If set to `'box'` and `radius` is set to 1, then an edge will appear if any of the 8 neighboring pixels detected an edge. This is equivalent to inflating the edges area with 1 pixel. The size of the box is dictated by `radius`. 
-        If `'orthogonal'`, then the features will be extended by `radius` perpendicular to the direction of the edge feature (i.e. along the gradient).
-    radius : int
-        Controls the extent of the inflation, see above.
-    minimum_contrast : double
-        Requires the gradient to have an absolute value greater than this, for an edge to be detected. Set to a non-zero value to reduce edges firing in low contrast areas.
-    contrast_insensitive : bool
-        If this is set to True, then the direction of the gradient does not matter and only 4 edge features will be returned.
-    first_axis: bool
-         If True, the images will be returned with the features on the first axis as ``(A, rows, cols)`` instead of ``(rows, cols, A)``, where `A` is either 4 or 8. If mutliple input entries, then the output will be ``(N, A, rows, cols)``.
-    max_edges : int or None
-        Maximum number of edges that can assigned at a single pixel. The ones assigned will be the ones with the higest contrast.
-    preserve_size : bool
-        If True, the returned feature vector has the same size as the input vector, but it will have an empty border of size 2 around it.
-    
-    Returns
-    -------
-    edges : ndarray
-        An array of shape ``(rows, cols, A)`` if entered as a single image, or ``(N, rows, cols, A)`` of multiple. Each pixel in the original image becomes a binary vector of size 8, one bit for each cardinal and diagonal direction. Note that if `first_axis` is True, this shape will change.
-
-    References
-    ----------
-    [1] Y. Amit : 2D Object Detection and Recognition: Models, Algorithms and Networks. Chapter 5.4.
-    """
-    single = len(images.shape) == 2
-    if single:
-        images = np.array([images])
-
-    # TODO: Temporary stuff
-    if pre_blurring is not None and pre_blurring != 0.0:
-        images = images.copy()
-        for i in xrange(images.shape[0]):
-            images[i] = ag.util.blur_image(images[i], pre_blurring)
-
-    if max_edges is not None:
-        features = array_bedges2(images, k, minimum_contrast, contrast_insensitive, max_edges)
-        #blurred_images = np.empty_like(images)
-        #for i in xrange(images.shape[0]):
-            #blurred_images[i] = ag.util.blur_image(images[i], 2.0)
-
-        #minimum_contrast = 0.05 
-        #features2 = array_bedges2(blurred_images, k, 0.075, contrast_insensitive, max_edges)
-        features2 = array_bedges2(images, k, 0.075, contrast_insensitive, max_edges)
-        features3 = array_bedges2(images, k, 0.05, True, max_edges)
-
-        features = np.concatenate((features, features2, features3), axis=1)
-        #import pdb; pdb.set_trace()
-    else:
-        features = array_bedges(images, k, minimum_contrast, contrast_insensitive) 
-
-    # Spread the feature
-    features = bspread(features, radius=radius, spread=spread, first_axis=True)
-
-    # Skip the 2-pixel border that is not valid
-    if not preserve_size:
-        features = features[:,:,2:-2,2:-2] 
-
-    if not first_axis:
-        features = np.rollaxis(features, axis=1, start=features.ndim)
-            
-    if single:
-        features = features[0]
-
-    return features
 
 
 def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, max_edges=None, preserve_size=True, pre_blurring=None):
@@ -172,7 +95,7 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
     """
     single = len(images.shape) == 2
     if single:
-        images = np.array([images])
+        images = images[np.newaxis] 
 
     # TODO: Temporary stuff
     if pre_blurring is not None and pre_blurring != 0.0:
@@ -180,84 +103,10 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
         for i in xrange(images.shape[0]):
             images[i] = ag.util.blur_image(images[i], pre_blurring)
 
-    if 1:
-        if max_edges is not None:
-            features = array_bedges2(images, k, minimum_contrast, contrast_insensitive, max_edges)
-        else:
-            features = array_bedges(images, k, minimum_contrast, contrast_insensitive) 
-
-    # TODO: Experimental stuff
-    if 0:
-        k = 5
-        intensities = array_intensities(images, k, 0.0, contrast_insensitive)
-        features = np.zeros(intensities.shape, dtype=np.uint8)
-
-        #print intensities.shape
-        #density = intensities.max(axis=1)
-        density = intensities.mean(axis=1) * 2
-
-        for n in xrange(images.shape[0]):
-            #features = (intensities > minimum_contrast).astype(np.uint8)
-
-            box = 15 
-            import itertools as itr
-            import scipy.stats
-            ths = []
-
-            dims = ((intensities.shape[2]-1)//box + 1,  (intensities.shape[3]-1)//box + 1)
-
-            densities = np.zeros(dims)
-
-            for i, j in itr.product(xrange(dims[0]), xrange(dims[1])):
-                selection = [n, slice(None), slice(i*box, min(intensities.shape[2], (i+1)*box)), slice(j*box, min(intensities.shape[3], (j+1)*box))]
-                selection2 = [n] + selection[2:] 
-
-                patch = intensities[selection]
-
-                vals = density[selection2].ravel()
-                vals = vals[vals > 0]
-                if vals.size > 0:
-                    th = scipy.stats.scoreatpercentile(vals, 50)
-                else:
-                    th = 0
-
-                th = max(th, minimum_contrast)
-
-                densities[i,j] = th
-
-                #for x, y in itr.product(xrange(patch.shape[2]), xrange(patch.shape[3])):
-                    #pass 
-
-                #features[selection] = (patch > th)
-
-            # Now interpolate the threshold
-            import scipy.ndimage
-            interpolated_densities = scipy.ndimage.zoom(densities, (box, box), order=2)
-            #print interpolated_densities.shape, intensities.shape[2:]
-            #thresholds = ag.util.border_value_pad_upper(interpolated_densities, intensities.shape[2:])
-            thresholds = interpolated_densities[:intensities.shape[2],:intensities.shape[3]]
-
-            if 0:
-                import pylab as plt
-                plt.figure()
-                plt.imshow(thresholds, interpolation='nearest')
-                plt.colorbar()
-                plt.savefig('edges/flum{}.png'.format(np.random.randint(1000)))
-                plt.close()
-
-                from scipy.stats.mstats import mquantiles
-                print 'thresholds', mquantiles(thresholds)
-            
-            features[n,:] = (intensities > thresholds)
-
-            #ths = np.asarray(ths)
-            #print (ths < minimum_contrast).mean()
-
-            #import pdb; pdb.set_trace()
-            #from scipy.stats import mstats
-            #print 'average threshold:', mstats.mquantiles(ths, np.linspace(0, 10)[1:-1])
-            #print 'average threshold:', np.mean(ths), np.median(ths), np.min(ths), np.max(ths) 
-
+    if max_edges is not None:
+        features = array_bedges2(images, k, minimum_contrast, contrast_insensitive, max_edges)
+    else:
+        features = array_bedges(images, k, minimum_contrast, contrast_insensitive) 
 
     # Spread the feature
     features = bspread(features, radius=radius, spread=spread, first_axis=True)
@@ -273,6 +122,7 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
         features = features[0]
 
     return features
+
 
 def bedges_from_image(im, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, return_original=False):
     """
