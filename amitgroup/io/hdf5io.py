@@ -17,18 +17,8 @@ def _save_level(handler, group, level, name=None):
         atom = tables.Atom.from_dtype(level.dtype)
         node = handler.createCArray(group, name, atom=atom, shape=level.shape, chunkshape=level.shape, filters=COMPRESSION) 
         node[:] = level
-    #elif isinstance(level, int):
-    #    atom = tables.Atom.from_dtype(np.dtype(np.int64))
-    #    node = handler.createCArray(group, name, atom=atom, shape=(1,), chunkshape=(1,)) 
-    #    node[0] = level
-    #elif isinstance(level, float):
-    #    atom = tables.Atom.from_dtype(np.dtype(np.float64))
-    #    node = handler.createCArray(group, name, atom=atom, shape=(1,), chunkshape=(1,)) 
-    #    node[0] = level
     else:
-        atom = tables.Atom.from_dtype(np.dtype(type(level)))
-        node = handler.createCArray(group, name, atom=atom, shape=(1,), chunkshape=(1,)) 
-        node[0] = level
+        setattr(group._v_attrs, name, level)
         
 
 def save(filename, dct):
@@ -41,8 +31,14 @@ def save(filename, dct):
 def _load_level(level):
     if isinstance(level, tables.Group):
         dct = {} 
+        # Load sub-groups
         for grp in level: 
             dct[grp._v_name] = _load_level(grp)
+
+        # Load attributes
+        for name in level._v_attrs._f_list():
+            dct[name] = level._v_attrs[name]
+    
         return dct
     elif isinstance(level, tables.Array):
         if level.shape == (1,):
