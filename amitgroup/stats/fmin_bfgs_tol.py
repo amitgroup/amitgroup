@@ -1,3 +1,4 @@
+from __future__ import division, print_function, absolute_import
 # This is an almost exact copy of the fmin_bfgs in scipy.optimize, except that the stopping
 # condition has been changed from checking the gtol norm, to the difference in cost.
 # For use when fprime might not converge to a 0 norm at convergence.
@@ -282,10 +283,10 @@ def _minimize_bfgs(fun, x0, args=(), jac=None, callback=None,
             rhok = 1.0 / (numpy.dot(yk, sk))
         except ZeroDivisionError:
             rhok = 1000.0
-            print "Divide-by-zero encountered: rhok assumed large"
+            print("Divide-by-zero encountered: rhok assumed large")
         if isinf(rhok):  #this is patch for numpy
             rhok = 1000.0
-            print "Divide-by-zero encountered: rhok assumed large"
+            print("Divide-by-zero encountered: rhok assumed large")
         A1 = I - sk[:, numpy.newaxis] * yk[numpy.newaxis, :] * rhok
         A2 = I - yk[:, numpy.newaxis] * sk[numpy.newaxis, :] * rhok
         Hk = numpy.dot(A1, numpy.dot(Hk, A2)) + rhok * sk[:, numpy.newaxis] \
@@ -295,29 +296,29 @@ def _minimize_bfgs(fun, x0, args=(), jac=None, callback=None,
     if warnflag == 2:
         msg = _status_message['pr_loss']
         if disp:
-            print "Warning: " + msg
-            print "         Current function value: %f" % fval
-            print "         Iterations: %d" % k
-            print "         Function evaluations: %d" % func_calls[0]
-            print "         Gradient evaluations: %d" % grad_calls[0]
+            print("Warning:", msg)
+            print("         Current function value:",fval)
+            print("         Iterations:", k)
+            print("         Function evaluations:", func_calls[0])
+            print("         Gradient evaluations:", grad_calls[0])
 
     elif k >= maxiter:
         warnflag = 1
         msg = _status_message['maxiter']
         if disp:
-            print "Warning: " + msg
-            print "         Current function value: %f" % fval
-            print "         Iterations: %d" % k
-            print "         Function evaluations: %d" % func_calls[0]
-            print "         Gradient evaluations: %d" % grad_calls[0]
+            print("Warning:", msg)
+            print("         Current function value:", fval)
+            print("         Iterations:", k)
+            print("         Function evaluations:", func_calls[0])
+            print("         Gradient evaluations:", grad_calls[0])
     else:
         msg = _status_message['success']
         if disp:
-            print msg
-            print "         Current function value: %f" % fval
-            print "         Iterations: %d" % k
-            print "         Function evaluations: %d" % func_calls[0]
-            print "         Gradient evaluations: %d" % grad_calls[0]
+            print(msg)
+            print("         Current function value:", fval)
+            print("         Iterations:", k)
+            print("         Function evaluations:", func_calls[0])
+            print("         Gradient evaluations:", grad_calls[0])
 
     result = Result(fun=fval, jac=gfk, hess=Hk, nfev=func_calls[0],
                     njev=grad_calls[0], status=warnflag,

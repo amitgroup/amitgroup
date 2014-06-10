@@ -1,5 +1,4 @@
-from __future__ import division
-
+from __future__ import division, print_function, absolute_import
 from sklearn.utils.extmath import logsumexp
 from sklearn.utils import check_random_state
 from sklearn.base import BaseEstimator
@@ -271,9 +270,9 @@ class BernoulliMM(BaseEstimator):
             responsibilities = np.zeros((X.shape[0],self.n_components),dtype=self.float_type)
             block_id = 0
             if self.verbose:
-                print "Running block multiplication"
+                print("Running block multiplication")
 
-            for block_id in xrange(0,X.shape[0],self.blocksize):
+            for block_id in range(0,X.shape[0],self.blocksize):
                 blockend = min(X.shape[0],block_id+self.blocksize)
                 lpr = (log_product_of_bernoullis_mixture_likelihood(X[block_id:blockend], self.log_odds_,
                                                             self.log_inv_mean_sums_)
@@ -422,25 +421,25 @@ class BernoulliMM(BaseEstimator):
 
         for cur_init in range(self.n_init):
             if self.verbose:
-                print "Current parameter initialization: {0}".format(cur_init)
+                print("Current parameter initialization: {0}".format(cur_init))
 
 
             if 'm' in self.init_params or not hasattr(self,'means_'):
                 if self.verbose:
-                    print "Initializing means"
+                    print("Initializing means")
                 indices = np.arange(X.shape[0])
                 random_state.shuffle(indices)
                 self.means_ = np.array(tuple(
                     np.clip(X[indices[i::self.n_components]].mean(0),
                             self.min_prob,
                             1-self.min_prob)
-                    for i in xrange(self.n_components)))
+                    for i in range(self.n_components)))
 
                 self.log_odds_, self.log_inv_mean_sums_ = _compute_log_odds_inv_means_sums(self.means_)
 
             if 'w' in self.init_params or not hasattr(self,'weights_'):
                 if self.verbose:
-                    print "Initializing weights"
+                    print("Initializing weights")
 
                 self.weights_ = np.tile(1.0 / self.n_components,
                                         self.n_components)
@@ -457,7 +456,7 @@ class BernoulliMM(BaseEstimator):
                 curr_log_likelihood, responsibilities = self.eval(X)
                 log_likelihood.append(curr_log_likelihood.sum())
                 if self.verbose:
-                    print "Iteration {0}: loglikelihood {1}".format(i, log_likelihood[-1])
+                    print("Iteration {0}: loglikelihood {1}".format(i, log_likelihood[-1]))
 
                 # check for convergence
                 if i > 0 and abs(log_likelihood[-1] - log_likelihood[-2])/abs(log_likelihood[-2]) < \
@@ -477,7 +476,7 @@ class BernoulliMM(BaseEstimator):
             if self.n_iter:
                 if log_likelihood[-1] > max_log_prob:
                     if self.verbose:
-                        print "updated best params for {0}".format(self.score(X).sum())
+                        print("updated best params for {0}".format(self.score(X).sum()))
                     max_log_prob = log_likelihood[-1]
                     best_params = {'weights': self.weights_,
                                    'means' : self.means_}
@@ -512,9 +511,9 @@ class BernoulliMM(BaseEstimator):
             weighted_X_sum=np.zeros((weights.shape[0],X.shape[1]),dtype=self.float_type)
 
             if self.verbose:
-                print "Running block multiplication for mstep"
+                print("Running block multiplication for mstep")
 
-            for blockstart in xrange(0,X.shape[0],self.blocksize):
+            for blockstart in range(0,X.shape[0],self.blocksize):
                 blockend=min(X.shape[0],blockstart+self.blocksize)
                 res = responsibilities[blockstart:blockend].T
                 weighted_X_sum += np.dot(res,X[blockstart:blockend])

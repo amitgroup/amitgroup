@@ -34,19 +34,19 @@ def hog(data, cell_size, block_size, num_bins=9):
     histograms = np.zeros(data.shape[:2] + (num_bins,))
     
     # TODO: This can be optimized.
-    for x in xrange(data.shape[0]):
-        for y in xrange(data.shape[1]):
+    for x in range(data.shape[0]):
+        for y in range(data.shape[1]):
             histograms[x,y,discrete_angles[x,y]] = amplitudes[x,y]
 
     num_cells_per_block = np.prod(block_size)
-    cells_shape = tuple([data.shape[i]//cell_size[i] for i in xrange(2)])
-    blocks_shape = tuple([cells_shape[i]-block_size[i]+1 for i in xrange(2)])
+    cells_shape = tuple([data.shape[i]//cell_size[i] for i in range(2)])
+    blocks_shape = tuple([cells_shape[i]-block_size[i]+1 for i in range(2)])
 
     w, h = (cell_size[0]-1)/2, (cell_size[1]-1)/2
     
     features = np.zeros(blocks_shape + (num_bins, num_cells_per_block)) 
     
-    block_pixel_size = tuple([block_size[i]*cell_size[i] for i in xrange(2)])
+    block_pixel_size = tuple([block_size[i]*cell_size[i] for i in range(2)])
     mbx, mby = np.mgrid[0:block_pixel_size[0], 0:block_pixel_size[1]]
     block_gaussian = scipy.stats.norm.pdf(
         np.sqrt((mbx - (block_pixel_size[0]-1)/2)**2 + (mby - (block_pixel_size[1]-1)/2)**2), 
@@ -54,10 +54,10 @@ def hog(data, cell_size, block_size, num_bins=9):
     
     
     # First, create histograms for each pixel
-    for bx in xrange(blocks_shape[0]):
-        for by in xrange(blocks_shape[1]):
+    for bx in range(blocks_shape[0]):
+        for by in range(blocks_shape[1]):
             b = bx, by
-            selection = [slice(b[i]*cell_size[i], (b[i]+block_size[i])*cell_size[i]) for i in xrange(2)]
+            selection = [slice(b[i]*cell_size[i], (b[i]+block_size[i])*cell_size[i]) for i in range(2)]
             
             # Extract block and add gaussian
             block_hist = histograms[selection] * block_gaussian.reshape(block_gaussian.shape + (1,))
@@ -65,8 +65,8 @@ def hog(data, cell_size, block_size, num_bins=9):
             # And subsample it, so that each cell becomes a pixel
             #im = scipy.misc.imresize(histograms[selection], block_size)
             im = np.zeros((num_bins, num_cells_per_block))
-            for px in xrange(block_hist.shape[0]):
-                for py in xrange(block_hist.shape[1]):
+            for px in range(block_hist.shape[0]):
+                for py in range(block_hist.shape[1]):
                     # TODO: This is a mess. Handle corner cases in a better and faster way.
                     cx = (px-w)//cell_size[0]
                     cy = (py-h)//cell_size[1]

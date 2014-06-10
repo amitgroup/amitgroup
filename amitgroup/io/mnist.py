@@ -80,7 +80,7 @@ def load_mnist(dataset="training", digits=None, path=None, asbytes=False, select
     fimg.close()
 
     if digits:
-        indices = [k for k in xrange(size) if labels_raw[k] in digits]
+        indices = [k for k in range(size) if labels_raw[k] in digits]
     else:
         indices = range(size)
 

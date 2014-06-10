@@ -58,7 +58,7 @@ def array_bedges(np.ndarray[DTYPE_t, ndim=3] images, k, minimum_contrast, contra
     
     #for i in prange(N, nogil=True):
     with nogil:
-        for i in xrange(N):
+        for i in range(N):
             for z0 in range(2, rows-2):
                 for z1 in range(2, cols-2):
                     _checkedge(images_mv, ret_mv, i, 0, z0, z1, 1, 0, 0, -1, int_k, double_minimum_contrast, displace)

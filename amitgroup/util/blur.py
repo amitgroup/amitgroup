@@ -53,7 +53,7 @@ def blur_image(im, n, ny=None, maintain_size=True):
 
     if im.ndim == 3:
         assert maintain_size, "Not implemented yet"
-        for ch in xrange(im.shape[2]):
+        for ch in range(im.shape[2]):
             im[...,ch] = blur_image(im[...,ch], n, ny)
         return im
 

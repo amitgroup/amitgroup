@@ -1,6 +1,4 @@
-
-from __future__ import absolute_import
-
+from __future__ import division, print_function, absolute_import
 from .displacement_field import DisplacementField 
 from .displacement_field_wavelet import DisplacementFieldWavelet
 

@@ -142,7 +142,7 @@ def load_all_images(filename, asbytes=False):
 
     N, buf = _get_buf_and_length(filename)
     images = []
-    for i in xrange(N):
+    for i in range(N):
         images.append(_unpack_image(buf, i, asbytes))
     
     return np.array(images) 

@@ -1,9 +1,8 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 import amitgroup as ag
 import numpy as np
 import random, collections
 import scipy.sparse
-
 
 BernoulliMixtureSimple = collections.namedtuple('BernoulliMixtureSimple',
                                                 'log_templates log_invtemplates weights')
@@ -142,7 +141,7 @@ class BernoulliMixture(ag.util.Saveable):
         all_templates = []
         all_weights = []
     
-        for loop in xrange(self.n_init):
+        for loop in range(self.n_init):
             # initializing weights
             self.weights = 1/self.num_mix * np.ones(self.num_mix, dtype=self.float_type)
             #self.opt_type=opt_type TODO: Not used yet.
@@ -200,7 +199,7 @@ class BernoulliMixture(ag.util.Saveable):
         if not plw.tick():
             return False 
         self.set_templates()
-        for m in xrange(self.num_mix):
+        for m in range(self.num_mix):
             # TODO: Fix this somehow
             if self.templates.ndim == 3:
                 plw.imshow(self.templates[m], subplot=m)
@@ -250,7 +249,7 @@ class BernoulliMixture(ag.util.Saveable):
             #self.affinities /= self.affinities.sum(axis=0)
             self.affinities /= np.sum(self.affinities,axis=1).reshape((self.num_data, 1))
             if 0:
-                for mix_id in xrange(self.num_mix):
+                for mix_id in range(self.num_mix):
                     self.affinities[self.num_mix*np.arange(self.num_data/self.num_mix)+mix_id,mix_id] = 1.
                     aff = self.affinities[:,mix_id]
                     self.work_templates[mix_id] = np.squeeze(np.asarray(self.data_mat.T * aff.reshape((-1, 1)))) / aff.sum() 
@@ -263,7 +262,7 @@ class BernoulliMixture(ag.util.Saveable):
                                         self.num_mix))
             self.work_templates = np.zeros((self.num_mix,
                                        self.data_length))
-            for mix_id in xrange(self.num_mix):
+            for mix_id in range(self.num_mix):
                 self.affinities[self.num_mix*np.arange(self.num_data/self.num_mix)[1]+mix_id,mix_id] = 1.
                 self.work_templates[mix_id] = np.mean(self.data_mat[self.affinities[:,mix_id]==1],axis=0)
                 self.threshold_templates()
@@ -338,7 +337,7 @@ class BernoulliMixture(ag.util.Saveable):
             The `data` averaged according to the mixture components. Will have the shape ``(num_mix, A', B', ...)``.
         """
         aff = np.asarray(self.affinities)
-        return np.asarray([np.average(data, axis=0, weights=aff[:,m]) for m in xrange(self.num_mix)])
+        return np.asarray([np.average(data, axis=0, weights=aff[:,m]) for m in range(self.num_mix)])
 
     def remix_iterable(self, iterable):
         """
@@ -361,7 +360,7 @@ class BernoulliMixture(ag.util.Saveable):
             if output is None:
                 output = np.zeros((self.num_mix,) + edges.shape) 
 
-            for k in xrange(self.num_mix):
+            for k in range(self.num_mix):
                 output[k] += edges * self.affinities[i,k]
             N += 1
 
@@ -396,7 +395,7 @@ class BernoulliMixture(ag.util.Saveable):
         """
         # Probably an easier and faster way to do this
         indices = self.mixture_components()
-        return [np.where(indices == i)[0] for i in xrange(self.num_mix)]
+        return [np.where(indices == i)[0] for i in range(self.num_mix)]
       
     if 0:
         def save(self, filename, save_affinities=False):

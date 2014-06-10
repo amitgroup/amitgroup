@@ -1,6 +1,4 @@
-
-from __future__ import division
-
+from __future__ import division, print_function, absolute_import
 import numpy as np
 import amitgroup as ag
 import amitgroup.util
@@ -45,7 +43,7 @@ def _cost_deriv(u, imdef, F, X, neg_X, delFjs, x, y, level, all_js):
 
     s = -(X/Fjzs - neg_X/neg_Fjzs)
     W = np.empty((2,) + x.shape) # Change to empty
-    for q in xrange(2):
+    for q in range(2):
         grad = delFjzs[q]
         W[q] = (s * grad).sum(axis=0) 
 
@@ -63,8 +61,8 @@ if 0:
         deriv = np.zeros(orig_u.shape)
         limit = imdef.flat_limit(level) 
         dt = 0.00001
-        for q in xrange(2):
-            for i in xrange(limit):
+        for q in range(2):
+            for i in range(limit):
                 u = np.copy(orig_u)
                 u[q,i] -= dt
                 cost0 = _cost(u, imdef, F, X, delFjs, x, y, level, all_js)
@@ -117,14 +115,14 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, tol=0.001, rho=2.0
         def cb(uk):
             if not plw.tick(1):
                 raise ag.AbortException() 
-            for j in xrange(8):
+            for j in range(8):
                 plw.imshow(imdef.deform(F[j]), subplot=j*2)
                 plw.imshow(I[j], subplot=j*2+1)
     else:
         cb = None 
 
     min_cost = np.inf
-    for level in xrange(start_level, last_level+1): 
+    for level in range(start_level, last_level+1): 
         ag.info("Running coarse-to-fine level", level)
         
         imdef.reset(level)
@@ -138,8 +136,6 @@ def bernoulli_deformation(F, I, last_level=None, penalty=1.0, tol=0.001, rho=2.0
         except ag.AbortException:
             return None, {}
     
-        #print warnflag, cost, (min_deriv.min(), min_deriv.max())
-
         if cost < min_cost:
             # If the algorithm makes mistakes and returns a really high cost, don't use it.
             min_cost = cost

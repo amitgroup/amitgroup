@@ -48,7 +48,7 @@ if __name__ == '__main__':
     data = np.zeros((len(shapes), 4))
     for i, shape in enumerate(shapes):
         max_level = int(np.log2(max(shape)))
-        for levels in xrange(1, max_level+1):
+        for levels in range(1, max_level+1):
             row = run_test(shape, levels)
             data[i] = row
 

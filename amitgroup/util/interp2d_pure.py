@@ -48,8 +48,8 @@ def interp2d(xs, z, dx=None, startx=None, fill_value=None):
     f.startx = startx if startx is not None else np.zeros(2) 
 
     output = np.empty(z.shape)
-    for x0 in xrange(xs.shape[0]):
-        for x1 in xrange(xs.shape[1]):
+    for x0 in range(xs.shape[0]):
+        for x1 in range(xs.shape[1]):
             x = xs[x0, x1] 
             output[x0,x1] = f(x)
     return output 

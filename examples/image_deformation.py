@@ -17,8 +17,8 @@ def main():
 
     x, y = imdef.meshgrid() 
     Ux, Uy = imdef.deform_map(x, y)
-    for i in xrange(Ux.shape[0]):
-        for j in xrange(Ux.shape[1]):
+    for i in range(Ux.shape[0]):
+        for j in range(Ux.shape[1]):
             print Ux[i,j], Uy[i,j]
 
     print 'mins', Ux.min(), Uy.min()

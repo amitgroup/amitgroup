@@ -93,7 +93,7 @@ class PartsDescriptor(BinaryDescriptor):
 
         # Reject weak parts
         scores = np.empty(self.num_parts) 
-        for i in xrange(self.num_parts):
+        for i in range(self.num_parts):
             part = mixture.templates[i]
             sh = part.shape
             p = part.reshape((sh[0]*sh[1], sh[2]))
@@ -216,12 +216,12 @@ class PartsDescriptor(BinaryDescriptor):
         #edges_nospread = ag.features.bedges_from_image(filename, radius=0, **s)
 
         # How many patches could we extract?
-        w, h = [edges.shape[i]-self.patch_size[i]+1 for i in xrange(2)]
+        w, h = [edges.shape[i]-self.patch_size[i]+1 for i in range(2)]
 
         # TODO: Maybe shuffle an iterator of the indices?
 
-        for sample in xrange(samples_per_image):
-            for tries in xrange(20):
+        for sample in range(samples_per_image):
+            for tries in range(20):
                 x, y = random.randint(0, w-1), random.randint(0, h-1)
                 selection = [slice(x, x+self.patch_size[0]), slice(y, y+self.patch_size[1])]
                 # Return grayscale patch and edges patch

@@ -8,8 +8,8 @@ SPARSITY_THRESHOLD = 256
 
 def _populate(W, filtr, yoffset):
     N = len(filtr)
-    for i in xrange(W.shape[1]//2):
-        for j in xrange(N):
+    for i in range(W.shape[1]//2):
+        for j in range(N):
             W[yoffset+i, (-(N-2)//2+2*i+j)%W.shape[1]] += filtr[j]
 
 def _create_W(shape, level, filter_low, filter_high):
@@ -93,7 +93,7 @@ def _arrange_filter_matrices(shape, wavelet):
 
     # Combine all the matrices for the steps where we throw away the coefficients.
     Wg = np.asmatrix(np.eye(shape[0], shape[1]))
-    for l in xrange(0, max_level):
+    for l in range(0, max_level):
         new_M = Ws[l] * Wg
         if min(new_M.shape) >= SPARSITY_THRESHOLD:
             new_M = scipy.sparse.csr_matrix(new_M)
@@ -154,14 +154,14 @@ def daubechies_factory(shape, wavelet='db2'):
             A = A.reshape((len(A), 1))
             levels = min(max_level, levels)
             coefs = Wgs[levels] * A 
-            for l in xrange(levels-1, 0, -1):
+            for l in range(levels-1, 0, -1):
                 N = 1 << l 
                 coefs[:N] = Ws[max_level-l] * coefs[:N]
             return np.asarray(coefs).flatten()
         def waverec(coefs):
             levels = int(np.log2(coefs.shape[0]))
             A = coefs.reshape((len(coefs), 1)).copy()
-            for l in xrange(1, levels):
+            for l in range(1, levels):
                 N = 1 << l 
                 A[:N] = WsT[max_level-l] * A[:N]
             A = WgsT[levels] * A
@@ -173,7 +173,7 @@ def daubechies_factory(shape, wavelet='db2'):
         def wavedec2(A, levels=np.inf):
             levels = min(max_level, levels)
             coefs = Wgs[levels] * A * WgsT[levels]
-            for l in xrange(levels-1, 0, -1):
+            for l in range(levels-1, 0, -1):
                 N = 1 << l 
                 L = max_level-l
                 coefs[:N,:N] = Ws[L] * coefs[:N,:N] * WsT[L]
@@ -183,7 +183,7 @@ def daubechies_factory(shape, wavelet='db2'):
             levels = int(np.log2(coefs.shape[0]))
             #levels = min(max_level, levels)
             A = coefs.copy()
-            for l in xrange(1, levels):
+            for l in range(1, levels):
                 N = 1 << l 
                 L = max_level-l
                 A[:N,:N] = WsT[L] * A[:N,:N] * Ws[L]
@@ -441,12 +441,12 @@ def contiguous_to_structured(contiguous_coefs, levels=np.inf):
     coefs = []
     if in2d:
         coefs.append( contiguous_coefs[:1,:1] )
-        for level in xrange(min(levels, N)):
+        for level in range(min(levels, N)):
             S = 1 << level
             coefs.append( (contiguous_coefs[S:2*S,:S], contiguous_coefs[:S,S:2*S], contiguous_coefs[S:2*S,S:2*S]) )
     else:
         coefs.append( contiguous_coefs[:1] )
-        for level in xrange(min(levels, N)):
+        for level in range(min(levels, N)):
             S = 1 << level
             coefs.append( contiguous_coefs[S:2*S] ) 
         

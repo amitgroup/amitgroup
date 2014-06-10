@@ -1,3 +1,4 @@
+from __future__ import division, print_function, absolute_import
 import unittest, itertools
 
 from nose.tools import assert_true
@@ -215,10 +216,10 @@ def test_multiple_init():
     train1 = b.fit(X).score(X).sum()
     b.n_init = 5
     out_b = b.fit(X)
-    print out_b.means_
+    print(out_b.means_)
     train2 = out_b.score(X).sum()
 
-    print "train2 = {0}, train1 = {1}".format(train2,train1)
+    print("train2 = {0}, train1 = {1}".format(train2,train1))
     assert_true(train2 >= train1 - 1.e-2)
 
 

@@ -101,7 +101,7 @@ class DisplacementFieldWavelet(DisplacementField):
             levels = int(np.log2(max(shape)))
         N = 1 << levels
         lambdas = np.zeros((N, N))
-        for level in xrange(levels, -1, -1):
+        for level in range(levels, -1, -1):
             S = 1 << level 
             lambdas[:S,:S] = eta * 2.0**(rho * level)
         return lambdas
@@ -109,7 +109,7 @@ class DisplacementFieldWavelet(DisplacementField):
 
     def _init_default_lmbks(self):
         self.lmbks = np.zeros(self.ushape)
-        for level in xrange(self.levels, -1, -1):
+        for level in range(self.levels, -1, -1):
             N = 2**level
             self.lmbks[:,:N,:N] = self.penalty_adjusted * 2.0**(self.rho * level)
     
@@ -238,8 +238,8 @@ class DisplacementFieldWavelet(DisplacementField):
         self.u.fill(0.0)
     
         end_level = min(self.levels+1, start_level+levels)
-        for q in xrange(2):
-            for level in xrange(end_level, start_level-1, -1):
+        for q in range(2):
+            for level in range(end_level, start_level-1, -1):
                 N = 1 << level
 
                 # First of all, a coefficient of 1, will be shift the image 1/2**self.levels, 
@@ -254,7 +254,7 @@ class DisplacementFieldWavelet(DisplacementField):
         return self
 
     def ilevels(self):
-        for level in xrange(self.levels+1):
+        for level in range(self.levels+1):
             alphas = 1 if level == 0 else 3
             yield level, (alphas,)+_levels2shape(self.levelshape, level)
 

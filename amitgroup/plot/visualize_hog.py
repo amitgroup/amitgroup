@@ -8,7 +8,7 @@ def visualize_hog(hog_features, cell_size, show=True, polarity_sensitive=True, p
     import matplotlib.pylab as plt
 
     # We'll construct an image and then show it
-    img = np.zeros(tuple([hog_features.shape[i] * cell_size[i] for i in xrange(2)]))
+    img = np.zeros(tuple([hog_features.shape[i] * cell_size[i] for i in range(2)]))
 
     num_bins = hog_features.shape[2] 
 
@@ -19,7 +19,7 @@ def visualize_hog(hog_features, cell_size, show=True, polarity_sensitive=True, p
     arrows = np.empty((num_bins,) + cell_size)
     
     # Generate the lines that will indicate directions
-    for d in xrange(num_bins):
+    for d in range(num_bins):
         # v is perpendicular to the gradient (thus visualizing an edge)
         if polarity_sensitive:
             eff_num_bins = num_bins
@@ -37,9 +37,9 @@ def visualize_hog(hog_features, cell_size, show=True, polarity_sensitive=True, p
     # We're only visualizing the max in each cell
     vis_features = hog_features.max(axis=-1)
 
-    for x in xrange(hog_features.shape[0]):
-        for y in xrange(hog_features.shape[1]):
-            for angle in xrange(num_bins):
+    for x in range(hog_features.shape[0]):
+        for y in range(hog_features.shape[1]):
+            for angle in range(num_bins):
                 img[x*cell_size[0]:(x+1)*cell_size[0],y*cell_size[1]:(y+1)*cell_size[1]] += arrows[angle] * vis_features[x, y, angle]
     
     plt.imshow(img, interpolation='nearest', cmap=plt.cm.gray)
@@ -51,7 +51,7 @@ def visualize_hog_color(hog_features, cell_size, show=True, polarity_sensitive=T
     import matplotlib.pylab as plt
 
     # We'll construct an image and then show it
-    img = np.zeros(tuple([hog_features.shape[i] * cell_size[i] for i in xrange(2)]) + (3,), dtype=np.float64)
+    img = np.zeros(tuple([hog_features.shape[i] * cell_size[i] for i in range(2)]) + (3,), dtype=np.float64)
 
     num_bins = hog_features.shape[2] 
 
@@ -62,7 +62,7 @@ def visualize_hog_color(hog_features, cell_size, show=True, polarity_sensitive=T
     arrows = np.empty((num_bins,) + cell_size)
     
     # Generate the lines that will indicate directions
-    for d in xrange(num_bins):
+    for d in range(num_bins):
         # v is perpendicular to the gradient (thus visualizing an edge)
         if polarity_sensitive:
             eff_num_bins = num_bins
@@ -84,9 +84,9 @@ def visualize_hog_color(hog_features, cell_size, show=True, polarity_sensitive=T
 
     arrows = np.expand_dims(arrows, -1)
 
-    for x in xrange(hog_features.shape[0]):
-        for y in xrange(hog_features.shape[1]):
-            for angle in xrange(num_bins):
+    for x in range(hog_features.shape[0]):
+        for y in range(hog_features.shape[1]):
+            for angle in range(num_bins):
                 mag = vis_features[x, y, angle]
                 #mag = np.max(vis_features[x, y, angle]*2 - 1, 0)
                 #ch = 1+angle%2#0#[0, 1][mag > 0.5]

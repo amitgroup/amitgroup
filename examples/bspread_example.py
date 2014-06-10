@@ -11,7 +11,7 @@ X = np.array(
 
 X = np.ones((174, 15, 15, 4), dtype=np.uint8)
 
-for i in xrange(1000):
+for i in range(1000):
     Xs = ag.features.bspread(X, spread='orthogonal', radius=3)
 
 print "Before"

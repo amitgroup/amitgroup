@@ -1,6 +1,4 @@
-
-from __future__ import print_function
-
+from __future__ import division, print_function, absolute_import
 _is_verbose = False
 _is_silent = False
 

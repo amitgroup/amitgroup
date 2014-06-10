@@ -603,7 +603,7 @@ def code_parts_mmm_adaptive_EXPERIMENTAL(np.ndarray[ndim=3,dtype=UINT_t] X,
     return out_map
 
 def subsample_offset_shape(shape, size):
-    return [int(shape[i]%size[i]/2 + size[i]/2)  for i in xrange(2)]
+    return [int(shape[i]%size[i]/2 + size[i]/2)  for i in range(2)]
 
 def extract_parts(edges, unspread_edges, log_parts, log_invparts, int threshold, 
                   outer_frame=0, spread_radii=(4, 4), subsample_size=(4, 4), 
@@ -655,7 +655,7 @@ def extract_parts(edges, unspread_edges, log_parts, log_invparts, int threshold,
                         p = parts_mv[i0,j0]
                         if p != -1:
                             #feats_mv[i,j,p] = 1
-                            for b in xrange(bfs_mult):
+                            for b in range(bfs_mult):
                                 feats_mv[i,j,between_feature_spreading_mv[p,b]] = 1
 
     return feats 

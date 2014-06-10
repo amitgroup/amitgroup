@@ -1,4 +1,4 @@
-
+from __future__ import division, print_function, absolute_import
 import numpy as np
 
 class PlottingWindow(object):
@@ -36,7 +36,7 @@ class PlottingWindow(object):
         import pygame
 
         pygame.init() 
-        #if not pygame.font: print 'Warning, fonts disabled'
+        #if not pygame.font: print('Warning, fonts disabled')
         self._window_size = tuple(map(lambda x: x*80, figsize))
         self._screen = pygame.display.set_mode(self._window_size)
         pygame.display.set_caption(caption)

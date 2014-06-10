@@ -100,7 +100,7 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
     # TODO: Temporary stuff
     if pre_blurring is not None and pre_blurring != 0.0:
         images = images.copy()
-        for i in xrange(images.shape[0]):
+        for i in range(images.shape[0]):
             images[i] = ag.util.blur_image(images[i], pre_blurring)
 
     if max_edges is not None:
@@ -156,7 +156,7 @@ def bedges_from_image(im, k=6, spread='box', radius=1, minimum_contrast=0.0, con
     dimensions = im.shape[-1]
     
     # This will use all color channels, including alpha, if there is one
-    edges = [bedges(im[...,i], k=k, spread=spread, radius=radius, minimum_contrast=minimum_contrast, contrast_insensitive=contrast_insensitive, first_axis=first_axis) for i in xrange(dimensions)]
+    edges = [bedges(im[...,i], k=k, spread=spread, radius=radius, minimum_contrast=minimum_contrast, contrast_insensitive=contrast_insensitive, first_axis=first_axis) for i in range(dimensions)]
 
     final = reduce(np.bitwise_or, edges)
 

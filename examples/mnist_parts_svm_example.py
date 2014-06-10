@@ -30,7 +30,7 @@ descriptor.train_from_images(anydata)
 X = None#np.zeros((10, N,) + part_size)
 labels = np.zeros((10, N))
 
-for d in xrange(10):
+for d in range(10):
     ims = ag.io.load_mnist('training', [d], selection=slice(N), return_labels=False)
     parts = descriptor.extract_features_many(ims, settings)
     if X is None:
