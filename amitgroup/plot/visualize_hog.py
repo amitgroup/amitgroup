@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 import numpy as np
 import scipy.stats
 import math
@@ -81,8 +81,6 @@ def visualize_hog_color(hog_features, cell_size, show=True, polarity_sensitive=T
 
     # We're only visualizing the max in each cell
     vis_features = hog_features.max(axis=-1)
-
-    print  arrows.max()
 
     arrows = np.expand_dims(arrows, -1)
 

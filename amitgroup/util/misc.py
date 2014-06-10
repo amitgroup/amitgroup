@@ -1,4 +1,4 @@
-
+from __future__ import division, print_function, absolute_import
 import numpy as np
 
 def pad(data, padwidth, value):
@@ -31,7 +31,7 @@ def zeropad(data, padwidth):
 def zeropad_to_shape(data, shape):
     """Zero-pads an array to a certain shape"""
     new_data = np.zeros(shape)
-    new_data[ [slice(shape[i]//2 - data.shape[i]//2, shape[i]//2 - data.shape[i]//2 + data.shape[i]) for i in xrange(len(shape))] ] = data
+    new_data[ [slice(shape[i]//2 - data.shape[i]//2, shape[i]//2 - data.shape[i]//2 + data.shape[i]) for i in range(len(shape))] ] = data
     return new_data
 
 def border_value_pad(data, padwidth):
@@ -69,7 +69,7 @@ def border_value_pad_upper(data, target_size):
     """
     new_data = np.empty(target_size)
     new_data[[slice(upper) for upper in data.shape]] = data
-    for i in xrange(len(target_size)):
+    for i in range(len(target_size)):
         selection = [slice(None)]*i + [slice(data.shape[i], None)]
         selection2 = [slice(None)]*i + [slice(data.shape[i]-1, data.shape[i])]
         new_data[selection] = new_data[selection2]
