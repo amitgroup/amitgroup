@@ -1,15 +1,49 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
 
-def pad(data, padwidth, value):
+def pad(data, padwidth, value=0.0):
+    """
+    Pad an array with a specific value.
+
+    Parameters
+    ----------
+    data : ndarray
+        Numpy array of any dimension and type.
+    padwidth : int or tuple
+        If int, it will pad using this amount at the beginning and end of all
+        dimensions. If it is a tuple (of same length as `ndim`), then the
+        padding amount will be specified per axis.
+    value : data.dtype 
+        The value with which to pad. Default is ``0.0``.
+
+    See also
+    --------
+    pad_to_size, pad_repeat_border, pad_repeat_upper_border
+
+    Examples
+    --------
+    >>> import amitgroup as ag
+    >>> import numpy as np
+
+    Pad an array with zeros.
+
+    >>> x = np.ones((3, 3))
+    >>> ag.util.pad(x, (1, 2), value=0.0) 
+    array([[ 0.,  0.,  0.,  0.,  0.,  0.,  0.],
+           [ 0.,  0.,  1.,  1.,  1.,  0.,  0.],
+           [ 0.,  0.,  1.,  1.,  1.,  0.,  0.],
+           [ 0.,  0.,  1.,  1.,  1.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.,  0.,  0.]])
+
+    """
     data = np.asarray(data)
     shape = data.shape
     if isinstance(padwidth, int):
         padwidth = (padwidth,)*len(shape) 
         
-    padded_shape = map(lambda ix: ix[1]+padwidth[ix[0]]*2, enumerate(shape))
-    new_data = np.zeros(padded_shape, dtype=data.dtype)
-    new_data.fill(value)
+    padded_shape = tuple(map(lambda ix: ix[1]+padwidth[ix[0]]*2, enumerate(shape)))
+    new_data = np.empty(padded_shape, dtype=data.dtype)
+    new_data[:] = value
     new_data[ [slice(w, -w) if w > 0 else slice(None) for w in padwidth] ] = data 
     return new_data
 
@@ -25,22 +59,85 @@ def multipad(data, padwidth, values):
     new_data[ [slice(w, -w) if w > 0 else slice(None) for w in padwidth] ] = data 
     return new_data
 
-def zeropad(data, padwidth):
-    return pad(data, padwidth, 0.0) 
+def pad_to_size(data, shape, value=0.0):
+    """
+    This is similar to `pad`, except you specify the final shape of the array. 
 
-def zeropad_to_shape(data, shape):
-    """Zero-pads an array to a certain shape"""
-    new_data = np.zeros(shape)
+    Parameters
+    ----------
+    data : ndarray
+        Numpy array of any dimension and type.
+    shape : tuple
+        Final shape of padded array. Should be tuple of length ``data.ndim``.
+        If it has to pad unevenly, it will pad one more at the end of the axis
+        than at the beginning.
+    value : data.dtype 
+        The value with which to pad. Default is ``0.0``. This can even be an
+        array, as long as ``pdata[:] = value`` is valid, where ``pdata`` is the
+        size of the padded array.
+
+    Examples
+    --------
+    >>> import amitgroup as ag
+    >>> import numpy as np
+
+    Pad an array with zeros.
+
+    >>> x = np.ones((4, 2))
+    >>> ag.util.pad_to_size(x, (5, 5)) 
+    array([[ 0.,  1.,  1.,  0.,  0.],
+           [ 0.,  1.,  1.,  0.,  0.],
+           [ 0.,  1.,  1.,  0.,  0.],
+           [ 0.,  1.,  1.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.]])
+
+    
+    """
+    new_data = np.empty(shape)
+    new_data[:] = value
     new_data[ [slice(shape[i]//2 - data.shape[i]//2, shape[i]//2 - data.shape[i]//2 + data.shape[i]) for i in range(len(shape))] ] = data
     return new_data
 
-def border_value_pad(data, padwidth):
+
+def pad_repeat_border(data, padwidth):
+    """
+    Similar to `pad`, except the border value from ``data`` is used to pad. 
+
+    Parameters
+    ----------
+    data : ndarray
+        Numpy array of any dimension and type.
+    padwidth : int or tuple
+        If int, it will pad using this amount at the beginning and end of all
+        dimensions. If it is a tuple (of same length as `ndim`), then the
+        padding amount will be specified per axis.
+
+    Examples
+    --------
+    >>> import amitgroup as ag
+    >>> import numpy as np
+
+    Pad an array by repeating its borders:
+
+    >>> shape = (3, 4) 
+    >>> x = np.arange(np.prod(shape)).reshape(shape)
+    >>> ag.util.pad_repeat_border(x, 2)
+    array([[ 0,  0,  0,  1,  2,  3,  3,  3],
+           [ 0,  0,  0,  1,  2,  3,  3,  3],
+           [ 0,  0,  0,  1,  2,  3,  3,  3],
+           [ 4,  4,  4,  5,  6,  7,  7,  7],
+           [ 8,  8,  8,  9, 10, 11, 11, 11],
+           [ 8,  8,  8,  9, 10, 11, 11, 11],
+           [ 8,  8,  8,  9, 10, 11, 11, 11]])
+
+    """
+
     data = np.asarray(data)
     shape = data.shape
     if isinstance(padwidth, int):
         padwidth = (padwidth,)*len(shape) 
         
-    padded_shape = map(lambda ix: ix[1]+padwidth[ix[0]]*2, enumerate(shape))
+    padded_shape = tuple(map(lambda ix: ix[1]+padwidth[ix[0]]*2, enumerate(shape)))
     new_data = np.empty(padded_shape, dtype=data.dtype)
     new_data[ [slice(w, -w) if w > 0 else slice(None) for w in padwidth] ] = data
     
@@ -62,14 +159,41 @@ def border_value_pad(data, padwidth):
      
     return new_data
     
-def border_value_pad_upper(data, target_size):
+#def border_value_pad_upper(data, target_size):
+def pad_repeat_border_corner(data, shape):
     """
-    Pads an ndarray with the border values on the upper range of each axis.
-    Padding width is specified by setting the target size.
+    Similar to `pad_repeat_border`, except the padding is always done on the upper end of each axis and the target
+    size is specified.
+
+    Parameters
+    ----------
+    data : ndarray
+        Numpy array of any dimension and type.
+    shape : tuple
+        Final shape of padded array. Should be tuple of length ``data.ndim``.
+        If it has to pad unevenly, it will pad one more at the end of the axis
+        than at the beginning.
+
+    Examples
+    --------
+    >>> import amitgroup as ag
+    >>> import numpy as np
+
+    Pad an array by repeating its upper borders. 
+
+    >>> shape = (3, 4) 
+    >>> x = np.arange(np.prod(shape)).reshape(shape)
+    >>> ag.util.pad_repeat_border_corner(x, (5, 5))
+    array([[  0.,   1.,   2.,   3.,   3.],
+           [  4.,   5.,   6.,   7.,   7.],
+           [  8.,   9.,  10.,  11.,  11.],
+           [  8.,   9.,  10.,  11.,  11.],
+           [  8.,   9.,  10.,  11.,  11.]])
+
     """
-    new_data = np.empty(target_size)
+    new_data = np.empty(shape)
     new_data[[slice(upper) for upper in data.shape]] = data
-    for i in range(len(target_size)):
+    for i in range(len(shape)):
         selection = [slice(None)]*i + [slice(data.shape[i], None)]
         selection2 = [slice(None)]*i + [slice(data.shape[i]-1, data.shape[i])]
         new_data[selection] = new_data[selection2]
