@@ -8,7 +8,7 @@ This explains how to install the package ``amitgroup``.
 Requirements
 ------------
 
- * Python_ (2.6>=)
+ * Python_ (2.6>=, 3.3>=)
  * Cython_ (0.16>=)
  * Numpy_ 
  * Scipy_
@@ -61,15 +61,6 @@ Don't forget to add the top ``amitgroup`` directory to your ``PYTHONPATH``. On m
 
 If you do not have a ``~/.bashrc``, then look for a ``~/.bash_profile`` or a ``~/.profile`` and add the same line. 
 
-OS X
-~~~~
-
-On some more recent versions of OS X, the default compiler is clang and not gcc. If you have problems compiling using clang (a problem documented on OS X 10.8) you can try::
-
-    $ export CC=gcc
-    $ python setup.py install 
-
-It's only OpenMP that clang does not support, so currently this should not be a problem, since no code uses that yet.
 
 .. _Python: http://python.org/
 .. _Cython: https://github.com/cython/cython

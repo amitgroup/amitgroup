@@ -27,13 +27,25 @@ Input/Output (:mod:`amitgroup.io`)
 ----------------------------------
 .. currentmodule:: amitgroup.io
 
+Main functions
+~~~~~~~~~~~~~~
+
 .. autosummary::
    :toctree: generated/
 
-   load_all_images
+   load
+   save
+
+Load data sets
+~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
+   load_casia
    load_example
-   load_image
    load_mnist
+   load_small_norb
 
 Statistics (:mod:`amitgroup.stats`)
 -----------------------------------
@@ -55,9 +67,13 @@ Utilities (:mod:`amitgroup.util`)
 
    DisplacementField
    DisplacementFieldWavelet
+   Saveable
    blur_image
    interp2d
-   zeropad
+   pad
+   pad_repeat_border
+   pad_repeat_border_corner
+   pad_to_size
 
 Wavelets (:mod:`amitgroup.util.wavelet`)
 ----------------------------------------
