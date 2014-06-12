@@ -4,6 +4,7 @@ from .mnist import load_mnist
 from .norb import load_small_norb
 from .casia import load_casia
 from .book import *
+from .norb import load_small_norb
 from .examples import load_example
 
 try:
