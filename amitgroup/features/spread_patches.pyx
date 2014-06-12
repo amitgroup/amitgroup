@@ -18,7 +18,7 @@ def spread_patches(np.ndarray[ndim=2,dtype=np.int64_t] X,
                    int spread_1_dim,
                    int num_parts):
     """
-    Performs patch spreading according to Bernstein and Amit [1].
+    Performs patch spreading according to Bernstein and Amit [2]_.
 
     Parameters
     ----------
@@ -41,11 +41,11 @@ def spread_patches(np.ndarray[ndim=2,dtype=np.int64_t] X,
     Returns
     -------
     bin_out_map : np.ndarray[ndim=3,dtype=np.uint8]
-        Performs spreading and returns TODO.
+        Performs spreading and returns feature map.
 
     References
     ----------
-    [1] E.J. Bernstein, Y. Amit : Part-Based Statistical Models for Object Classification and Detection (2005)
+    .. [2] E. J. Bernstein, Y. Amit : Part-Based Statistical Models for Object Classification and Detection (2005)
     """
     cdef np.uint16_t X_dim_0 = X.shape[0]
     cdef np.uint16_t X_dim_1 = X.shape[1]
