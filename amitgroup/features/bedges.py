@@ -30,12 +30,19 @@ def bspread(X, spread='box', radius=1, first_axis=False):
     Parameters
     ----------
     X : ndarray  (3D or 4D)
-        Binary edges to spread. Shape should be ``(rows, cols, A)`` or ``(N, rows, cols, A)``, where `A` is the number of edge features.
+        Binary edges to spread. Shape should be ``(rows, cols, A)`` or ``(N,
+        rows, cols, A)``, where `A` is the number of edge features.
     first_axis: bool
-         If True, the images will be assumed to be ``(A, rows, cols)`` or ``(N, A, rows, cols)``. 
+         If True, the images will be assumed to be ``(A, rows, cols)`` or ``(N,
+         A, rows, cols)``. 
     spread : 'box', 'orthogonal', None 
-        If set to `'box'` and `radius` is set to 1, then an edge will appear if any of the 8 neighboring pixels detected an edge. This is equivalent to inflating the edges area with 1 pixel. The size of the box is dictated by `radius`. 
-        If `'orthogonal'`, then the features will be extended by `radius` perpendicular to the direction of the edge feature (i.e. along the gradient).
+        If set to `'box'` and `radius` is set to 1, then an edge will appear if
+        any of the 8 neighboring pixels detected an edge. This is equivalent to
+        inflating the edges area with 1 pixel. The size of the box is dictated
+        by `radius`. 
+        If `'orthogonal'`, then the features will be extended by `radius`
+        perpendicular to the direction of the edge feature (i.e. along the
+        gradient).
     radius : int
         Controls the extent of the inflation, see above.
     """
@@ -58,40 +65,67 @@ def bspread(X, spread='box', radius=1, first_axis=False):
 
 def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, max_edges=None, preserve_size=True, pre_blurring=None):
     """
-    Extracts binary edge features for each pixel according to [1].
+    Extracts binary edge features for each pixel according to [1]_.
 
-    The function returns 8 different binary features, representing directed edges. Let us define a south-going edge as when it starts at high intensity and drops when going south (this would make south edges the lower edge of an object, if background is low intensity and the object is high intensity). By this defintion, the order of the returned edges is S, SE, E, NE, N, NW, W, SW.
+    The function returns 8 different binary features, representing directed
+    edges. Let us define a south-going edge as when it starts at high intensity
+    and drops when going south (this would make south edges the lower edge of
+    an object, if background is low intensity and the object is high
+    intensity). By this defintion, the order of the returned edges is S, SE, E,
+    NE, N, NW, W, SW.
 
     Parameters
     ----------
     images : ndarray
-        Input an image of shape ``(rows, cols)`` or a list of images as an array of shape ``(N, rows, cols)``, where ``N`` is the number of images, and ``rows`` and ``cols`` the size of each image.
+        Input an image of shape ``(rows, cols)`` or a list of images as an
+        array of shape ``(N, rows, cols)``, where ``N`` is the number of
+        images, and ``rows`` and ``cols`` the size of each image.
     k : int
-        There are 6 contrast differences that are checked. The value `k` specifies how many of them must be fulfilled for an edge to be present. The default is all of them (`k` = 6) and gives more conservative edges.
+        There are 6 contrast differences that are checked. The value `k`
+        specifies how many of them must be fulfilled for an edge to be present.
+        The default is all of them (`k` = 6) and gives more conservative edges.
     spread : 'box', 'orthogonal', None 
-        If set to `'box'` and `radius` is set to 1, then an edge will appear if any of the 8 neighboring pixels detected an edge. This is equivalent to inflating the edges area with 1 pixel. The size of the box is dictated by `radius`. 
-        If `'orthogonal'`, then the features will be extended by `radius` perpendicular to the direction of the edge feature (i.e. along the gradient).
+        If set to `'box'` and `radius` is set to 1, then an edge will appear if
+        any of the 8 neighboring pixels detected an edge. This is equivalent to
+        inflating the edges area with 1 pixel. The size of the box is dictated
+        by `radius`. 
+        If `'orthogonal'`, then the features will be extended by `radius`
+        perpendicular to the direction of the edge feature (i.e. along the
+        gradient).
     radius : int
         Controls the extent of the inflation, see above.
     minimum_contrast : double
-        Requires the gradient to have an absolute value greater than this, for an edge to be detected. Set to a non-zero value to reduce edges firing in low contrast areas.
+        Requires the gradient to have an absolute value greater than this, for
+        an edge to be detected. Set to a non-zero value to reduce edges firing
+        in low contrast areas.
     contrast_insensitive : bool
-        If this is set to True, then the direction of the gradient does not matter and only 4 edge features will be returned.
+        If this is set to True, then the direction of the gradient does not
+        matter and only 4 edge features will be returned.
     first_axis: bool
-         If True, the images will be returned with the features on the first axis as ``(A, rows, cols)`` instead of ``(rows, cols, A)``, where `A` is either 4 or 8. If mutliple input entries, then the output will be ``(N, A, rows, cols)``.
+         If True, the images will be returned with the features on the first
+         axis as ``(A, rows, cols)`` instead of ``(rows, cols, A)``, where `A`
+         is either 4 or 8. If mutliple input entries, then the output will be
+         ``(N, A, rows, cols)``.
     max_edges : int or None
-        Maximum number of edges that can assigned at a single pixel. The ones assigned will be the ones with the higest contrast.
+        Maximum number of edges that can assigned at a single pixel. The ones
+        assigned will be the ones with the higest contrast.
     preserve_size : bool
-        If True, the returned feature vector has the same size as the input vector, but it will have an empty border of size 2 around it.
+        If True, the returned feature vector has the same size as the input
+        vector, but it will have an empty border of size 2 around it.
     
     Returns
     -------
     edges : ndarray
-        An array of shape ``(rows, cols, A)`` if entered as a single image, or ``(N, rows, cols, A)`` of multiple. Each pixel in the original image becomes a binary vector of size 8, one bit for each cardinal and diagonal direction. Note that if `first_axis` is True, this shape will change.
+        An array of shape ``(rows, cols, A)`` if entered as a single image, or
+        ``(N, rows, cols, A)`` of multiple. Each pixel in the original image
+        becomes a binary vector of size 8, one bit for each cardinal and
+        diagonal direction. Note that if `first_axis` is True, this shape will
+        change.
 
     References
     ----------
-    [1] Y. Amit : 2D Object Detection and Recognition: Models, Algorithms and Networks. Chapter 5.4.
+    .. [1] Y. Amit : 2D Object Detection and Recognition: Models, Algorithms
+                     and Networks. Chapter 5.4.
     """
     single = len(images.shape) == 2
     if single:
