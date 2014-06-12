@@ -39,7 +39,6 @@ setup(name='amitgroup',
         'amitgroup.stats',
         'amitgroup.util',
         'amitgroup.util.wavelet',
-        'amitgroup.net',
         'amitgroup.plot',
     ],
     ext_modules = [
