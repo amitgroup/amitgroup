@@ -15,7 +15,7 @@ def _populate(W, filtr, yoffset):
 def _create_W(shape, level, filter_low, filter_high):
     d = 1 << (level-1)
     sh = (shape[0]//d, shape[1]//d)
-    if min(sh) >= SPARSITY_THRESHOLD:
+    if np.min(sh) >= SPARSITY_THRESHOLD:
         W = scipy.sparse.lil_matrix(sh)
     else:
         W = np.asmatrix(np.zeros(sh))
@@ -30,7 +30,7 @@ def _create_W(shape, level, filter_low, filter_high):
 def _create_single(shape, level, filtr):
     d = 1 << (level-1)
     sh = (shape[0]//(2*d), shape[1]//d)
-    if min(sh) >= SPARSITY_THRESHOLD:
+    if np.min(sh) >= SPARSITY_THRESHOLD:
         GH = scipy.sparse.lil_matrix(sh)
     else:
         GH = np.asmatrix(np.zeros(sh))
@@ -95,7 +95,7 @@ def _arrange_filter_matrices(shape, wavelet):
     Wg = np.asmatrix(np.eye(shape[0], shape[1]))
     for l in range(0, max_level):
         new_M = Ws[l] * Wg
-        if min(new_M.shape) >= SPARSITY_THRESHOLD:
+        if np.min(new_M.shape) >= SPARSITY_THRESHOLD:
             new_M = scipy.sparse.csr_matrix(new_M)
         Wgs.append(new_M)
         Wg = _create_single(shape, l+1, filter_low) * Wg
