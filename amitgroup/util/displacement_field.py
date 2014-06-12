@@ -1,3 +1,4 @@
+from __future__ import division, print_function, absolute_import
 import numpy as np
 
 class DisplacementField(object):
@@ -94,8 +95,8 @@ class DisplacementField(object):
                [ 0.75,  0.75,  0.75,  0.75]])
 
         """
-        dx = 1./shape[0]
-        dy = 1./shape[1]
+        dx = 1 / shape[0]
+        dy = 1 / shape[1]
         return np.mgrid[0:1.0-dx:shape[0]*1j, 0:1.0-dy:shape[1]*1j]
  
     def __repr__(self):
