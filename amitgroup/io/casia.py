@@ -26,7 +26,12 @@ def _load_gnt_file(fn, Xs, ys):
 
 def load_casia(section, dataset='HWDB1.1', path=None):
     """
-    Load dataset CASIA with Chinese characters [CASIA]_ TEST.
+    Load dataset CASIA with Chinese characters [CASIA]_.
+
+    The `gnt` files should be located inside the following subdirectories:
+
+    * HWDB1.1trn
+    * HWDB1.1tst 
 
     Parameters
     ----------
@@ -35,7 +40,8 @@ def load_casia(section, dataset='HWDB1.1', path=None):
     dataset : ('HWDB1.1',)
         Which dataset to use. 
     path : str
-        Path of root CASIA directory. Default is None, in which case the environment variable ``CASIA_DIR`` is used.
+        Path of root CASIA directory. Default is None, in which case the
+        environment variable ``CASIA_DIR`` is used.
 
     Returns
     -------
