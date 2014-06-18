@@ -19,6 +19,7 @@ Contents:
    installation
    reference
    wavelet
+   refs
 
 Indices and tables
 ==================

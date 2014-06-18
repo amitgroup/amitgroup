@@ -6,26 +6,40 @@ def load_mnist(dataset="training", digits=None, path=None, asbytes=False, select
     """
     Loads MNIST files into a 3D numpy array.
 
-    You have to download the data separately from http://yann.lecun.com/exdb/mnist/. It is recommended to set the environment variable ``MNIST`` to point to the folder where you put the data, so that you don't have to select path. On a Linux+bash setup, this is done by adding the following to your ``.bashrc``::
+    You have to download the data separately from [MNIST]_. It is recommended
+    to set the environment variable ``MNIST`` to point to the folder where you
+    put the data, so that you don't have to select path. On a Linux+bash setup,
+    this is done by adding the following to your ``.bashrc``::
 
         export MNIST=/path/to/mnist
 
     Parameters
     ----------
     dataset : str 
-        Either "training" or "testing", depending on which dataset you want to load. 
+        Either "training" or "testing", depending on which dataset you want to
+        load. 
     digits : list 
-        Integer list of digits to load. The entire database is loaded if set to ``None``. Default is ``None``.
+        Integer list of digits to load. The entire database is loaded if set to
+        ``None``. Default is ``None``.
     path : str 
-        Path to your MNIST datafiles. The default is ``None``, which will try to take the path from your environment variable ``MNIST``. The data can be downloaded from http://yann.lecun.com/exdb/mnist/.
+        Path to your MNIST datafiles. The default is ``None``, which will try
+        to take the path from your environment variable ``MNIST``. The data can
+        be downloaded from http://yann.lecun.com/exdb/mnist/.
     asbytes : bool
-        If True, returns data as ``numpy.uint8`` in [0, 255] as opposed to ``numpy.float64`` in [0.0, 1.0].
+        If True, returns data as ``numpy.uint8`` in [0, 255] as opposed to
+        ``numpy.float64`` in [0.0, 1.0].
     selection : slice
-        Using a ``slice`` object, specify what subset of the dataset to load. An example is ``slice(0, 20, 2)``, which would load every other digit until--but not including--the twentieth.
+        Using a `slice` object, specify what subset of the dataset to load. An
+        example is ``slice(0, 20, 2)``, which would load every other digit
+        until--but not including--the twentieth.
     return_labels : bool
-        Specify whether or not labels should be returned. This is also a speed performance if digits are not specified, since then the labels file does not need to be read at all.
+        Specify whether or not labels should be returned. This is also a speed
+        performance if digits are not specified, since then the labels file
+        does not need to be read at all.
     return_indicies : bool
-        Specify whether or not to return the MNIST indices that were fetched. This is valuable only if digits is specified, because in that case it can be valuable to know how far
+        Specify whether or not to return the MNIST indices that were fetched.
+        This is valuable only if digits is specified, because in that case it
+        can be valuable to know how far
         in the database it reached.
 
     Returns
@@ -39,7 +53,9 @@ def load_mnist(dataset="training", digits=None, path=None, asbytes=False, select
 
     Examples
     --------
-    Assuming that you have downloaded the MNIST database and set the environment variable ``$MNIST`` point to the folder, this will load all images and labels from the training set:
+    Assuming that you have downloaded the MNIST database and set the
+    environment variable ``$MNIST`` point to the folder, this will load all
+    images and labels from the training set:
 
     >>> images, labels = ag.io.load_mnist('training') # doctest: +SKIP
 

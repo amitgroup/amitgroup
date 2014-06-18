@@ -13,10 +13,13 @@ Requirements
  * Numpy_ 
  * Scipy_
 
-Select features also require
+Select features may also require
 
  * matplotlib_
  * pygame_
+ * skimage_
+ * sklearn_
+ * PyTables_
 
 Installation
 ------------
@@ -36,7 +39,7 @@ Now, to see if it was successfully installed, fire up a Python prompt and type::
 
 If that works, you can try for instance::
 
-    >>> ag.util.zeropad(np.ones((3, 1), dtype=int), (1, 2)) 
+    >>> ag.util.pad(np.ones((3, 1), dtype=int), (1, 2)) 
     array([[0, 0, 0, 0, 0],
            [0, 0, 1, 0, 0],
            [0, 0, 1, 0, 0],
@@ -52,10 +55,9 @@ For developers of amitgroup
 
 If you are planning to develop for `amitgroup`, it might be nicer to run it in place. For this, compile the Cython-driven code by::
 
-    $ make inplace 
+    $ python setup.py build_ext --inplace 
 
 Don't forget to add the top ``amitgroup`` directory to your ``PYTHONPATH``. On most Linux/OS X systems, this is done by opening the file ``~/.bashrc`` and adding the following::
-
 
     export PYTHONPATH=/path/to/your/amitgroup:$PYTHONPATH
 
@@ -68,3 +70,6 @@ If you do not have a ``~/.bashrc``, then look for a ``~/.bash_profile`` or a ``~
 .. _Scipy: https://github.com/scipy/scipy
 .. _matplotlib: http://matplotlib.sourceforge.net
 .. _pygame: http://www.pygame.org/
+.. _sklearn: http://scikit-learn.org/
+.. _skimage: http://scikit-image.org/
+.. _PyTables: http://www.pytables.org/

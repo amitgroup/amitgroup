@@ -15,7 +15,7 @@ class PartsDescriptor(BinaryDescriptor):
     Parts descriptor based on a mixture model of image patches.
 
     Edges are extracted using :func:`amitgroup.features.bedges`. Then, a mixture model of patches of 
-    these edges is trained. The procedure is described in [1]. 
+    these edges is trained. The procedure is described in [Bernstein05]_.
 
     In the following, a `patch` refers to any random sample of an image, while a `part`
     refers to one of the trained mixture components.
@@ -42,10 +42,6 @@ class PartsDescriptor(BinaryDescriptor):
         Minimum probability of each Bernoulli probability. 
     bedges_settings : dict
         Dictionary of settings passed to :func:`amitgroup.features.bedges`.
-
-    References
-    ----------
-    [1] E.J. Bernstein, Y. Amit : Part-based statistical models for object classification and detection (2005)
     """
     def __init__(self, patch_size, num_parts, patch_frame=1, edges_threshold=10, samples_per_image=100, \
                  discard_threshold=None, min_probability=0.05, bedges_settings={}):

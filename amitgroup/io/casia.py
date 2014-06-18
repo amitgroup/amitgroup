@@ -45,10 +45,11 @@ def load_casia(section, dataset='HWDB1.1', path=None):
 
     Returns
     -------
+    X : list
+        List of differently sized Chinese characters.
+    y : ndarray
+        Numpy array of integers with corresponding labels.
 
-    References
-    ----------
-    .. [CASIA] : http://www.nlpr.ia.ac.cn/databases/handwriting/Home.html
     """
     assert section in ('training', 'testing')
 

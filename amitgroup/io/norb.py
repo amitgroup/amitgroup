@@ -3,16 +3,22 @@ import os
 import struct
 import numpy as np
 
-def load_small_norb(dataset, path=None, selection=None):
+def load_small_norb(section, path=None, selection=None):
     """
-    Loads the small NORB dataset [1].
+    Loads the small NORB dataset [NORB]_.
 
     Parameters
     ---------- 
-    dataset : ('training', 'testing')
-        Select between training or testing.
+    section : ('training', 'testing')
+        Select between the training and testing data.
     path : str
         Specifies the path in which you have your NORB files. Default is None, in which case the environment variable ``NORB_DIR`` is used.
+    selection : slice
+        Using a `slice` object, specify what subset of the dataset to load. An
+        example is ``slice(50, 150)``, which would load 100 samples starting
+        with the 50th. Currently does not support strides other than 1 and
+        since the dataset come in twin pairs, your offsets and counts should be
+        multiples of 2.
 
     Returns
     -------
@@ -20,12 +26,8 @@ def load_small_norb(dataset, path=None, selection=None):
         The images
     y : ndarray
         The labels
-
-    References
-    ----------
-    [1] : http://www.cs.nyu.edu/~ylclab/data/norb-v1.0-small/
     """
-    assert dataset in ('training', 'testing')
+    assert section in ('training', 'testing')
 
     if selection is not None:
         if selection.start is not None:
@@ -39,7 +41,7 @@ def load_small_norb(dataset, path=None, selection=None):
     name = {
         'training': 'smallnorb-5x46789x9x18x6x2x96x96-training',
         'testing': 'smallnorb-5x01235x9x18x6x2x96x96-testing',
-    }[dataset]
+    }[section]
 
     dat_fn = os.path.join(path, name + '-dat.mat')
             
