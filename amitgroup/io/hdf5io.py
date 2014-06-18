@@ -1,6 +1,13 @@
 import numpy as np
 import tables
 
+# Types that should be saved as pytables attribute
+ATTR_TYPES = (int, float, bool, str, 
+              np.int8, np.int16, np.int32, np.int64, 
+              np.uint8, np.uint16, np.uint32, np.uint64,
+              np.float16, np.float32, np.float64,
+              np.bool_, np.complex64, np.complex128)
+
 try:
     COMPRESSION = tables.Filters(complevel=9, complib='blosc', shuffle=True)
 except Exception: #type?
@@ -26,8 +33,11 @@ def _save_level(handler, group, level, name=None):
         atom = tables.Atom.from_dtype(level.dtype)
         node = handler.createCArray(group, name, atom=atom, shape=level.shape, chunkshape=level.shape, filters=COMPRESSION) 
         node[:] = level
-    else:
+    elif isinstance(level, ATTR_TYPES):
         setattr(group._v_attrs, name, level)
+    else:
+        node = handler.createVLArray(group, name, tables.ObjectAtom())
+        node.append(level)
         
 
 def _load_level(level):
@@ -49,11 +59,13 @@ def _load_level(level):
             return lst
         else:
             return dct
-    elif isinstance(level, tables.Array):
+    elif isinstance(level, tables.VLArray):
         if level.shape == (1,):
             return level[0]
         else: 
             return level[:]
+    elif isinstance(level, tables.Array):
+        return level[:]
 
 def save(path, data):
     """
@@ -63,8 +75,9 @@ def save(path, data):
     ``data.flat[1]`` to retrieve it from inside a Numpy array of type
     ``object``.
 
-    Four types objects get saved natively in HDF5, the rest get serialized. For
-    most needs, you should be able to stick to the four, which are:
+    Four types of objects get saved natively in HDF5, the rest get serialized
+    automatically.  For most needs, you should be able to stick to the four,
+    which are:
 
     * Dictionaries
     * Lists
@@ -73,7 +86,9 @@ def save(path, data):
 
     A recommendation is to always convert your data to using only these four
     ingredients. That way your data will always be retrievable by any HDF5 
-    reader.
+    reader. A class that helps you with this is `amitgroup.util.Saveable`.
+
+    This function requires the [PyTables] module to be installed.
 
     Parameters
     ---------- 
@@ -100,7 +115,9 @@ def save(path, data):
 
 def load(path):
     """
-    Load an HDF5 saved with `save`.
+    Loads an HDF5 saved with `save`.
+
+    This function requires the [PyTables] module to be installed.
 
     Parameters
     ---------- 
