@@ -46,10 +46,13 @@ class ImageGrid:
     The most convenient way of using `ImageGrid` is through
     `ImageGrid.fromarray`:
 
-    >>> G = ag.plot.ImageGrid.fromarray(images, cmap=cm.hsv)
-    >>> plt.imshow(G.scaled_image(scale=5))
+    >>> grid = ag.plot.ImageGrid.fromarray(images, cmap=cm.hsv)
+    >>> img = grid.scaled_image(scale=5)
+    >>> plt.imshow(img)
     >>> plt.show()
-    
+
+    If you are working in an IPython notebook, you can display
+    ``img`` simply by adding it to the end of a cell.
     """
     def __init__(self, rows, cols, shape, border_color=None, border_width=1):
         if border_color is None:
@@ -92,7 +95,7 @@ class ImageGrid:
         cmap, vmin, vmax :
             See `ImageGrid.set_image`.
         global_bounds : bool
-            If this is set to True and either vmin or vmax is not specified, it
+            If this is set to True and either `vmin` or `vmax` is not specified, it
             will infer it globally for the data. If it is set to False, it does
             it per image, which would be the equivalent of calling `set_image`
             manually with `vmin` and `vmax` set as such.
