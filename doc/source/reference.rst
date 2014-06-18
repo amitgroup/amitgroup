@@ -75,6 +75,25 @@ Utilities (:mod:`amitgroup.util`)
    pad_repeat_border_corner
    pad_to_size
 
+Image handling (:mod:`amitgroup.image`)
+---------------------------------------
+.. currentmodule:: amitgroup.image
+
+.. autosummary::
+   :toctree: generated/
+
+    asgray
+    bounding_box
+    bounding_box_as_binary_map
+    crop
+    crop_to_bounding_box
+    extract_patches
+    integrate
+    load
+    offset
+    resize_by_factor
+    save
+
 Wavelets (:mod:`amitgroup.util.wavelet`)
 ----------------------------------------
 .. currentmodule:: amitgroup.util.wavelet
