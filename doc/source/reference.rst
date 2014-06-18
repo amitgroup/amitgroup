@@ -11,12 +11,22 @@ Feature extraction (:mod:`amitgroup.features`)
 ----------------------------------------------
 .. currentmodule:: amitgroup.features
 
+Classes
+~~~~~~~
+
 .. autosummary:: 
    :toctree: generated/
 
    BinaryDescriptor
    EdgeDescriptor
    PartsDescriptor
+
+Functions
+~~~~~~~~~
+
+.. autosummary:: 
+   :toctree: generated/
+
    bedges
    spread_patches
    code_parts
@@ -129,10 +139,21 @@ Plotting (:mod:`amitgroup.plot`)
 
 The plotting module adds some convenience functions for using matplotlib_ and pygame_.
 
+Classes
+~~~~~~~
+
 .. autosummary::
    :toctree: generated/
- 
+
+   ImageGrid
    PlottingWindow
+
+Functions
+~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
    deformation
    images
 

@@ -2,6 +2,13 @@ from __future__ import division, print_function, absolute_import
 import numpy as np
 import amitgroup as ag
 
+# If skimage is available, the image returned will be wrapped
+# in the Image class. This is nice since it will be automatically
+# displayed in an IPython notebook.
+try:
+    from skimage.io import Image
+except ImportError:
+    def Image(x): x
 
 class ImageGrid:
     """
@@ -20,6 +27,29 @@ class ImageGrid:
         grayscale intensity.
     border_width : int
         Pixel width of border.
+
+    Examples
+    --------
+
+    >>> import amitgroup as ag
+    >>> import numpy as np
+    >>> import matplotlib.pylab as plt
+    >>> from matplotlib.pylab import cm
+    >>> rs = np.random.RandomState(0)
+
+    Let's generate a set of 100 8x8 image patches. 
+
+    >>> shape = (100, 8, 8)
+    >>> images = np.arange(np.prod(shape)).reshape(shape)
+    >>> images += rs.uniform(0, np.prod(shape), size=shape)
+
+    The most convenient way of using `ImageGrid` is through
+    `ImageGrid.fromarray`:
+
+    >>> G = ag.plot.ImageGrid.fromarray(images, cmap=cm.hsv)
+    >>> plt.imshow(G.scaled_image(scale=5))
+    >>> plt.show()
+    
     """
     def __init__(self, rows, cols, shape, border_color=None, border_width=1):
         if border_color is None:
@@ -97,9 +127,9 @@ class ImageGrid:
     @property
     def image(self):
         """
-        Returns the image as an RGB Numpy array.
+        Returns the image as a skimage.io.Image class.
         """
-        return self._data
+        return Image(self._data)
 
     def set_image(self, image, row, col, cmap=None, vmin=None, vmax=None):
         """
@@ -153,7 +183,7 @@ class ImageGrid:
         self._data[anchor[0]:anchor[0] + rgb.shape[0],
                    anchor[1]:anchor[1] + rgb.shape[1]] = rgb
 
-    def scaled_image(self, scale):
+    def scaled_image(self, scale=1):
         """
         Returns a nearest-neighbor upscaled scaled version of the image.
 
@@ -165,8 +195,11 @@ class ImageGrid:
 
         Returns
         -------
-        scaled_image : ndarray, (height, width, 3)
-            Returns a scaled up RGB image.
+        scaled_image : skimage.io.Image, (height, width, 3)
+            Returns a scaled up RGB image. If you do not have scikit-image, it
+            will be returned as a regular Numpy array. The benefit of wrapping
+            it in `Image`, is so that it will be automatically displayed in
+            IPython notebook, without having to issue any drawing calls.
         """
 
         if scale == 1:
@@ -180,7 +213,7 @@ class ImageGrid:
             data[-scale * self._border:] = self._border_color
             data[:, :scale * self._border] = self._border_color
             data[:, -scale * self._border:] = self._border_color
-            return data
+            return Image(data)
 
     def save(self, path, scale=1):
         """
