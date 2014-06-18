@@ -3,7 +3,11 @@ from __future__ import absolute_import
 import numpy as np
 import scipy.signal
 import amitgroup as ag
-from amitgroup.features.features import array_bedges, array_bedges2, array_bspread, array_intensities # TODO: Experimental
+from amitgroup.features.features import (array_bedges, 
+                                         array_byte_bedges,
+                                         array_bedges2, 
+                                         array_bspread, 
+                                         array_intensities)
 
 # Builds a kernel along the edge direction
 def _along_kernel(direction, radius):
@@ -65,7 +69,7 @@ def bspread(X, spread='box', radius=1, first_axis=False):
 
 def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_insensitive=False, first_axis=False, max_edges=None, preserve_size=True, pre_blurring=None):
     """
-    Extracts binary edge features for each pixel according to [1]_.
+    Extracts binary edge features for each pixel according to [AmitBook]_.
 
     The function returns 8 different binary features, representing directed
     edges. Let us define a south-going edge as when it starts at high intensity
@@ -121,11 +125,6 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
         becomes a binary vector of size 8, one bit for each cardinal and
         diagonal direction. Note that if `first_axis` is True, this shape will
         change.
-
-    References
-    ----------
-    .. [1] Y. Amit : 2D Object Detection and Recognition: Models, Algorithms
-                     and Networks. Chapter 5.4.
     """
     single = len(images.shape) == 2
     if single:
@@ -137,10 +136,17 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0, contrast_i
         for i in range(images.shape[0]):
             images[i] = ag.util.blur_image(images[i], pre_blurring)
 
-    if max_edges is not None:
-        features = array_bedges2(images, k, minimum_contrast, contrast_insensitive, max_edges)
+    if images.dtype == np.float64:
+        if max_edges is not None:
+            features = array_bedges2(images, k, minimum_contrast, contrast_insensitive, max_edges)
+        else:
+            features = array_bedges(images, k, minimum_contrast, contrast_insensitive) 
+    elif images.dtype == np.uint8:
+        features = array_byte_bedges(images, k, int(minimum_contrast*255), contrast_insensitive).view(np.uint8) 
+
     else:
-        features = array_bedges(images, k, minimum_contrast, contrast_insensitive) 
+        raise ValueError("Input image must be float64 or uint8")
+
 
     # Spread the feature
     features = bspread(features, radius=radius, spread=spread, first_axis=True)
