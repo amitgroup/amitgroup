@@ -1,5 +1,6 @@
 *.py[co]
 .*.sw*
+.nfs*
 .DS_Store
 
 # pyx generated files
