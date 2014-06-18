@@ -47,6 +47,7 @@ setup(name='amitgroup',
         cython_extension("amitgroup.features.code_parts"),
         cython_extension("amitgroup.util.interp2d"),
         cython_extension("amitgroup.util.nn2d"),
+        cython_extension("amitgroup.plot.resample"),
     ], 
     include_dirs = [np.get_include()], 
 )

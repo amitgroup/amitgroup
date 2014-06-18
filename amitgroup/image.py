@@ -46,7 +46,7 @@ def asgray(im):
     """
     if im.ndim == 2:
         return im
-    if im.ndim == 4 and im.shape[2] in (3, 4):
+    elif im.ndim == 3 and im.shape[2] in (3, 4):
         return im[...,:3].mean(axis=-1)
     else:
         raise ValueError('Invalid image format')
