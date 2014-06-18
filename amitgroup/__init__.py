@@ -11,14 +11,14 @@ import amitgroup.util
 import amitgroup.plot
 from . import image
 
-VERSION = (0,0,0)
+VERSION = (0, 0, 0)
 ISRELEASED = False
 __version__ = '{0}.{1}.{2}'.format(*VERSION)
 if not ISRELEASED:
-    __version__ += '.dev' 
+    __version__ += '.dev'
+
 
 def test(verbose=False):
     import amitgroup.tests
     import unittest
     unittest.main()
-

@@ -7,6 +7,7 @@ import math
 import amitgroup as ag
 import amitgroup.util
 
+
 # TODO: Under development
 def hog(data, cell_size, block_size, num_bins=9):
     assert len(cell_size) == 2, "cell_size must be length 2"
@@ -14,13 +15,9 @@ def hog(data, cell_size, block_size, num_bins=9):
     gradkernel = np.array([[-1, 0, 1]])
 
     mode = 'same'
-    grad1, grad2 = sig.convolve(data, gradkernel, mode=mode), sig.convolve(data, gradkernel.T, mode=mode)
-    # not needed when mode is 'valid'
-    #grad1 = ag.util.border_value_pad(grad1[:,1:-1], (cell_size[0], cell_size[1]+1))
-    #grad2 = ag.util.border_value_pad(grad2[1:-1], (cell_size[0]+1, cell_size[1]))
-    
-    #assert grad1.shape == grad2.shape
-    
+    grad1 = sig.convolve(data, gradkernel, mode=mode)
+    grad2 = sig.convolve(data, gradkernel.T, mode=mode)
+
     grad1[:,0] = grad1[:,-1] = grad2[0] = grad2[-1] = 0
     
     offset = cell_size
