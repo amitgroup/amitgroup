@@ -7,6 +7,27 @@ API Reference
 
 .. _features:
 
+Core package (:mod:`amitgroup`)
+-------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   AbortException
+   bytesize
+   humanize_bytesize
+
+Printing
+~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
+   info
+   memsize
+   set_verbose
+   warning
+
 Feature extraction (:mod:`amitgroup.features`)
 ----------------------------------------------
 .. currentmodule:: amitgroup.features
