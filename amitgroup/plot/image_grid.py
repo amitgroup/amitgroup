@@ -8,7 +8,9 @@ import amitgroup as ag
 try:
     from skimage.io import Image
 except ImportError:
-    def Image(x): x
+    def Image(x):
+        return x
+
 
 class ImageGrid:
     """
@@ -17,16 +19,30 @@ class ImageGrid:
 
     Parameters
     ----------
-    rows, cols : int
-        Rows and columns of the grid.
-    shape : tuple, (height, width)
-        Shape of each patch in the grid.
-    border_color : array_like, length 3 or int/float
-        Specify the color of the border between each entry as RGB values
-        between 0 and 1. If a scalar is provided, it is interpreted as a
-        grayscale intensity.
-    border_width : int
-        Pixel width of border.
+    data : ndarray, ndim=3
+        The first dimension should index the image and the rest are spatial
+        dimensions. If data is set to None, then an empty image grid will
+        be initialized. In this case, rows and cols are both required.
+    rows, cols : int or None
+        The number of rows and columns for the grid. If both are None, the
+        minimal square grid that holds all images will be used. If one is
+        specified, the other will adapt to hold all images. If both are
+        specified, then it possible that the grid will be vacuous or that
+        some images will be omitted.
+    shape : tuple
+        Shape of the each grid image. Only use if ``data`` is set to `None`,
+        since it should otherwise be inferred from the data.
+    border_color, border_width :
+        See `ImageGrid`.
+    cmap, vmin, vmax, vsym :
+        See `ImageGrid.set_image`.
+    global_bounds : bool
+        If this is set to True and either `vmin` or `vmax` is not
+        specified, it will infer it globally for the data. If `vsym` is
+        True, the global bounds will be symmetric around zero. If it is set
+        to False, it determines range per image, which would be the
+        equivalent of calling `set_image` manually with `vmin`, `vmax` and
+        `vsym` set the same.
 
     Examples
     --------
@@ -37,16 +53,15 @@ class ImageGrid:
     >>> from matplotlib.pylab import cm
     >>> rs = np.random.RandomState(0)
 
-    Let's generate a set of 100 8x8 image patches. 
+    Let's generate a set of 100 8x8 image patches.
 
     >>> shape = (100, 8, 8)
-    >>> images = np.arange(np.prod(shape)).reshape(shape)
-    >>> images += rs.uniform(0, np.prod(shape), size=shape)
+    >>> data = np.arange(np.prod(shape)).reshape(shape)
+    >>> data += rs.uniform(0, np.prod(shape), size=shape)
 
-    The most convenient way of using `ImageGrid` is through
-    `ImageGrid.fromarray`:
+    Creating the image grid:
 
-    >>> grid = ag.plot.ImageGrid.fromarray(images, cmap=cm.hsv)
+    >>> grid = ag.plot.ImageGrid(data, cmap=cm.hsv)
     >>> img = grid.scaled_image(scale=5)
     >>> plt.imshow(img)
     >>> plt.show()
@@ -54,78 +69,88 @@ class ImageGrid:
     If you are working in an IPython notebook, you can display
     ``img`` simply by adding it to the end of a cell.
     """
-    def __init__(self, rows, cols, shape, border_color=None, border_width=1):
-        if border_color is None:
-            self._border_color = np.array([0.5, 0.5, 0.5])
-        elif isinstance(border_color, (int, float)): 
-            self._border_color = np.array([border_color]*3)
-        else:
-            self._border_color = np.array(border_color)
+    def __init__(self, data=None, rows=None, cols=None, shape=None,
+                 border_color=1, border_width=1, cmap=None, vmin=None,
+                 vmax=None, vsym=False, global_bounds=True):
+
+        assert data is None or np.ndim(data) in (2, 3, 4)
+        if data is not None:
+            data = np.asanyarray(data)
+
+        if data is None:
+            assert rows is not None and cols is not None, \
+                "Must specify rows and cols if no data is specified"
+            shape = shape
+
+        elif data.ndim == 2:
+            N = 1
+            rows = 1
+            cols = 1
+            data = data[np.newaxis]
+            shape = data.shape[1:3]
+
+        elif data.ndim == 3:
+            N = data.shape[0]
+
+            if rows is None and cols is None:
+                cols = int(np.ceil(np.sqrt(N)))
+                rows = int(np.ceil(N / cols))
+            elif rows is None:
+                rows = int(np.ceil(N / cols))
+            elif cols is None:
+                cols = int(np.ceil(N / rows))
+            shape = data.shape[1:3]
+
+        elif data.ndim == 4:
+            assert rows is None and cols is None
+            rows = data.shape[0]
+            cols = data.shape[1]
+            data = data.reshape((-1,) + data.shape[2:])
+            N = data.shape[0]
+            shape = data.shape[1:3]
+
+        self._border_color = self._prepare_color(border_color)
         self._rows = rows
         self._cols = cols
-        self._shape = shape 
+        self._shape = shape
         self._border = border_width
 
-        self._fullsize = (self._border + (shape[0] + self._border) * self._rows,
-                          self._border + (shape[1] + self._border) * self._cols)
+        b = self._border
+        self._fullsize = (b + (shape[0] + b) * self._rows,
+                          b + (shape[1] + b) * self._cols)
 
         self._data = np.ones(self._fullsize + (3,), dtype=np.float64)
 
-    @classmethod
-    def fromarray(cls, images, rows=None, cols=None, border_color=None,
-            border_width=1, cmap=None, vmin=None, vmax=None,
-            global_bounds=True):
-        """
-        Constructs an image grid from an array of images. The images will be
-        layed out row by row starting from the top (as English is written).
-
-        Parameters
-        ----------
-        images : ndarray, ndim=3
-            The first dimension should index the image and the rest are spatial
-            dimensions.
-        rows, cols : int or None
-            The number of rows and columns for the grid. If both are None, the
-            minimal square grid that holds all images will be used. If one is
-            specified, the other will adapt to hold all images. If both are
-            specified, then it possible that the grid will be vacuous or that
-            some images will be omitted.
-        border_color, border_width :
-            See `ImageGrid`.
-        cmap, vmin, vmax :
-            See `ImageGrid.set_image`.
-        global_bounds : bool
-            If this is set to True and either `vmin` or `vmax` is not specified, it
-            will infer it globally for the data. If it is set to False, it does
-            it per image, which would be the equivalent of calling `set_image`
-            manually with `vmin` and `vmax` set as such.
-
-        """
-        assert images.ndim == 3
-        N = images.shape[0]
-
-        if rows is None and cols is None:
-            rows = cols = int(np.ceil(np.sqrt(N)))
-        elif rows is None:
-            rows = int(np.ceil(N / cols))
-        elif cols is None:
-            cols = int(np.ceil(N / rows))
-
-        grid = cls(rows, cols, images.shape[1:3],
-                   border_color=border_color, border_width=border_width)
-
         if global_bounds:
             if vmin is None:
-                vmin = images.min()
+                vmin = np.nanmin(data)
             if vmax is None:
-                vmax = images.max()
+                vmax = np.nanmax(data)
 
-        # Populate with images
+            if vsym:
+                mx = max(abs(vmin), abs(vmax))
+                vmin = -mx
+                vmax = mx
+
+        # Populate with data
         for i in range(min(N, rows * cols)):
-            grid.set_image(images[i], i // cols, i % cols,
-                           cmap=cmap, vmin=vmin, vmax=vmax)
+            self.set_image(data[i], i // cols, i % cols,
+                           cmap=cmap, vmin=vmin, vmax=vmax, vsym=vsym)
 
-        return grid
+    @classmethod
+    def _prepare_color(self, color):
+        if color is None:
+            return np.array([1.0, 1.0, 1.0])
+        elif isinstance(color, (int, float)):
+            return np.array([color]*3)
+        else:
+            return np.array(color)
+
+    @classmethod
+    def fromarray(cls, *args, **kwargs):
+        ag.info('Deprecation warning: Use ImageGrid(...) instead of '
+                'ImageGrid.fromarray(...)')
+        return cls(*args, **kwargs)
 
     @property
     def image(self):
@@ -134,7 +159,8 @@ class ImageGrid:
         """
         return Image(self._data)
 
-    def set_image(self, image, row, col, cmap=None, vmin=None, vmax=None):
+    def set_image(self, image, row, col, cmap=None, vmin=None, vmax=None,
+                  vsym=False):
         """
         Sets the data for a single window.
 
@@ -150,10 +176,19 @@ class ImageGrid:
         vmin, vmax : numerical or None
             Defines the range of the color palette. None, which is default,
             takes the range of the data.
+        vsym : bool
+            If True, this means that the color palette will always be centered
+            around 0. Even if you have specified both `vmin` and `vmax`, this
+            will override that and extend the shorter one. Good practice is to
+            specify neither `vmin` or `vmax` or only `vmax` together with this
+            option.
         """
         import matplotlib as mpl
         import matplotlib.pylab as plt
         from amitgroup.plot.resample import resample_and_arrange_image
+
+        if np.isnan(image).any():
+            return
 
         if cmap is None:
             cmap = plt.cm.gray
@@ -161,6 +196,11 @@ class ImageGrid:
             vmin = image.min()
         if vmax is None:
             vmax = image.max()
+
+        if vsym and -vmin != vmax:
+            mx = max(abs(vmin), abs(vmax))
+            vmin = -mx
+            vmax = mx
 
         if vmin == vmax:
             diff = 1
@@ -186,6 +226,34 @@ class ImageGrid:
         self._data[anchor[0]:anchor[0] + rgb.shape[0],
                    anchor[1]:anchor[1] + rgb.shape[1]] = rgb
 
+    def highlight(self, col=None, row=None, color=None):
+        # TODO: This function is not done yet and needs more work
+
+        bw = self._border
+        M = np.ones(tuple(np.add(self._shape, 2 * bw)) + (1,), dtype=np.bool)
+        M[bw:-bw, bw:-bw] = 0
+
+        def setup_axis(axis, count):
+            if axis is None:
+                return list(range(count))
+            elif isinstance(axis, int):
+                return [axis]
+            else:
+                return axis
+
+        # TODO: This is temporary
+        cols = [col] * self._rows
+        rows = list(range(self._rows))
+
+        color = self._prepare_color(color)
+        for c, r in zip(cols, rows):
+            r0 = (self._border + self._shape[0]) * r
+            c0 = (self._border + self._shape[1]) * c
+
+            sel = [slice(r0, r0+M.shape[0]), slice(c0, c0+M.shape[1])]
+
+            self._data[sel] = M * color + ~M * self._data[sel]
+
     def scaled_image(self, scale=1):
         """
         Returns a nearest-neighbor upscaled scaled version of the image.
@@ -204,18 +272,12 @@ class ImageGrid:
             it in `Image`, is so that it will be automatically displayed in
             IPython notebook, without having to issue any drawing calls.
         """
-
         if scale == 1:
             return self._data
         else:
             from skimage.transform import resize
             data = resize(self._data, tuple([self._data.shape[i] * scale
                                              for i in range(2)]), order=0)
-            # Make sure the borders stay the same color
-            data[:scale * self._border] = self._border_color
-            data[-scale * self._border:] = self._border_color
-            data[:, :scale * self._border] = self._border_color
-            data[:, -scale * self._border:] = self._border_color
             return Image(data)
 
     def save(self, path, scale=1):
@@ -230,12 +292,11 @@ class ImageGrid:
             Upscaling using nearest neighbor, e.g. a scale of 5 will make each
             pixel a 5x5 rectangle in the output.
         """
-
         data = self.scaled_image(scale)
         ag.image.save(path, data)
 
     def __repr__(self):
         return 'ImageGrid(rows={rows}, cols={cols}, shape={shape})'.format(
-                    rows=self._rows,
-                    cols=self._cols,
-                    shape=self._shape)
+               rows=self._rows,
+               cols=self._cols,
+               shape=self._shape)
