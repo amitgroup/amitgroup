@@ -2,6 +2,7 @@ from __future__ import division, print_function, absolute_import
 import itertools as itr
 import numpy as np
 
+
 def resize_by_factor(im, factor):
     """
     Resizes the image according to a factor. The image is pre-filtered
@@ -14,10 +15,10 @@ def resize_by_factor(im, factor):
 
     Parameters
     ----------
-    im : ndarray, ndim=2 or 3 
+    im : ndarray, ndim=2 or 3
         Image. Either 2D or 3D with 3 or 4 channels.
     factor : float
-        Resize factor, e.g. a factor of 0.5 will halve both sides. 
+        Resize factor, e.g. a factor of 0.5 will halve both sides.
     """
     from skimage.transform.pyramids import pyramid_reduce, pyramid_expand
     if factor < 1:
@@ -47,14 +48,14 @@ def asgray(im):
     if im.ndim == 2:
         return im
     elif im.ndim == 3 and im.shape[2] in (3, 4):
-        return im[...,:3].mean(axis=-1)
+        return im[..., :3].mean(axis=-1)
     else:
         raise ValueError('Invalid image format')
 
 
 def crop(im, size):
     """
-    Crops an image in the center. 
+    Crops an image in the center.
 
     Parameters
     ----------
@@ -87,12 +88,13 @@ def load(path, asfloat=True):
     path : str
         Path to image file.
     asfloat : bool
-        Defaults to True, which means the image will be returned as a float with values between 0 and 1.
+        Defaults to True, which means the image will be returned as a float
+        with values between 0 and 1.
     """
     import skimage.io
     im = skimage.io.imread(path)
     if asfloat:
-        return im.astype(np.float64)/255.0
+        return im.astype(np.float64) / 255
     else:
         return im
 
@@ -106,12 +108,15 @@ def save(path, im):
     Parameters
     ----------
     path : str
-        Path to which the image will be saved. 
+        Path to which the image will be saved.
     im : ndarray (image)
-        Image.       
+        Image.
     """
     from PIL import Image
-    pil_im = Image.fromarray((im*255).astype(np.uint8))
+    if im.dtype == np.uint8:
+        pil_im = Image.fromarray(im)
+    else:
+        pil_im = Image.fromarray((im*255).astype(np.uint8))
     pil_im.save(path)
 
 
@@ -135,7 +140,7 @@ def integrate(ii, r0, c0, r1, c1):
 
     """
     # This line is modified
-    S = np.zeros(ii.shape[-1]) 
+    S = np.zeros(ii.shape[-1])
 
     S += ii[r1, c1]
 
@@ -155,28 +160,27 @@ def offset(img, offset, fill_value=0):
     """
     Moves the contents of image without changing the image size. The missing
     values are given a specified fill value.
-     
-    
+
     Parameters
     ----------
     img : array
         Image.
     offset : (vertical_offset, horizontal_offset)
-        Tuple of length 2, specifying the offset along the two axes. 
+        Tuple of length 2, specifying the offset along the two axes.
     fill_value : dtype of img
-        Fill value. Defaults to 0. 
+        Fill value. Defaults to 0.
     """
-    
+
     sh = img.shape
     if sh == (0, 0):
         return img
     else:
         x = np.empty(sh)
         x[:] = fill_value
-        x[max(off[0], 0):min(sh[0]+off[0], sh[0]), \
-          max(off[1], 0):min(sh[1]+off[1], sh[1])] = \
-            img[max(-off[0], 0):min(sh[0]-off[0], sh[0]), \
-                max(-off[1], 0):min(sh[1]-off[1], sh[1])]
+        x[max(offset[0], 0):min(sh[0]+offset[0], sh[0]),
+          max(offset[1], 0):min(sh[1]+offset[1], sh[1])] = \
+            img[max(-offset[0], 0):min(sh[0]-offset[0], sh[0]),
+                max(-offset[1], 0):min(sh[1]-offset[1], sh[1])]
         return x
 
 
@@ -187,7 +191,7 @@ def bounding_box(alpha, threshold=0.1):
     Parameters
     ----------
     alpha : ndarray, ndim=2
-        Any one-channel image where the background has zero or low intensity. 
+        Any one-channel image where the background has zero or low intensity.
     threshold : float
         The threshold that divides background from foreground.
 
@@ -203,7 +207,7 @@ def bounding_box(alpha, threshold=0.1):
     supp_axs = [alpha.max(axis=1-i) for i in range(2)]
 
     # Check first and last value of that threshold
-    bb = [np.where(supp_axs[i] > threshold)[0][[0,-1]] for i in range(2)]
+    bb = [np.where(supp_axs[i] > threshold)[0][[0, -1]] for i in range(2)]
 
     return (bb[0][0], bb[1][0], bb[0][1], bb[1][1])
 
@@ -224,18 +228,19 @@ def bounding_box_as_binary_map(alpha, threshold=0.1):
     bb = bounding_box(alpha)
     x = np.zeros(alpha.shape, dtype=np.bool_)
     x[bb[0]:bb[2], bb[1]:bb[3]] = 1
-    return x 
+    return x
 
 
-def extract_patches(images, patch_shape, samples_per_image=40, seed=0, cycle=True):
+def extract_patches(images, patch_shape, samples_per_image=40, seed=0,
+                    cycle=True):
     """
     Takes a set of images and yields randomly chosen patches of specified size.
 
     Parameters
     ----------
-    images : iterable 
+    images : iterable
         The images have to be iterable, and each element must be a Numpy array
-        with at least two spatial 2 dimensions as the first and second axis. 
+        with at least two spatial 2 dimensions as the first and second axis.
     patch_shape : tuple, length 2
         The spatial shape of the patches that should be extracted. If the
         images have further dimensions beyond the spatial, the patches will
@@ -245,11 +250,11 @@ def extract_patches(images, patch_shape, samples_per_image=40, seed=0, cycle=Tru
     seed : int
         Seed with which to select the patches.
     cycle : bool
-        If True, then the function will produce patches indefinitely, by going back to
-        the first image when all are done. If False, the iteration will stop when there
-        are no more images.
+        If True, then the function will produce patches indefinitely, by going
+        back to the first image when all are done. If False, the iteration will
+        stop when there are no more images.
 
-    Returns 
+    Returns
     -------
     patch_generator
         This function returns a generator that will produce patches.
@@ -262,12 +267,10 @@ def extract_patches(images, patch_shape, samples_per_image=40, seed=0, cycle=Tru
     >>> images = ag.io.load_example('mnist')
 
     Now, let us say we want to exact patches from the these, where each patch
-    has at least some activity. If you are using Python 2, you need to replace
-    ``filter`` with ``itertools.ifilter``, since we are filtering an infinite
-    generator:
+    has at least some activity.
 
     >>> gen = ag.image.extract_patches(images, (5, 5))
-    >>> gen = filter(lambda x: x.mean() > 0.1, gen)
+    >>> gen = (x for x in gen if x.mean() > 0.1)
     >>> patches = np.array(list(itertools.islice(gen, 25)))
     >>> patches.shape
     (25, 5, 5)
@@ -286,4 +289,3 @@ def extract_patches(images, patch_shape, samples_per_image=40, seed=0, cycle=Tru
 
         for x, y in indices:
             yield Xi[x:x+patch_shape[0], y:y+patch_shape[1]]
-
