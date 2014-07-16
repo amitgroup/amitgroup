@@ -1,7 +1,15 @@
 from __future__ import absolute_import
 
 # Load the following modules by default
-from .core import set_verbose, info, warning, AbortException
+from .core import (set_verbose,
+                   info,
+                   warning,
+                   AbortException,
+                   bytesize,
+                   humanize_bytesize,
+                   memsize,
+                   apply_once_over_axes)
+
 
 # Lazy load these?
 import amitgroup.io
