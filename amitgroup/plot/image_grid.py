@@ -227,8 +227,6 @@ class ImageGrid:
                      slice(anchor[1], anchor[1] + rgb.shape[1])]
 
         nan_data = np.isnan(rgb)
-        #if np.isnan(image).any():
-            #import pdb; pdb.set_trace()
 
         rgb[nan_data] = 0.0
 
