@@ -187,15 +187,12 @@ class ImageGrid:
         import matplotlib.pylab as plt
         from amitgroup.plot.resample import resample_and_arrange_image
 
-        if np.isnan(image).any():
-            return
-
         if cmap is None:
             cmap = plt.cm.gray
         if vmin is None:
-            vmin = image.min()
+            vmin = np.nanmin(image)
         if vmax is None:
-            vmax = image.max()
+            vmax = np.nanmax(image)
 
         if vsym and -vmin != vmax:
             mx = max(abs(vmin), abs(vmax))
@@ -210,8 +207,11 @@ class ImageGrid:
         image_indices = np.clip((image - vmin) / diff, 0, 1) * 255
         image_indices = image_indices.astype(np.uint8)
 
+        nan_mask = np.isnan(image).astype(np.uint8)
+
         lut = mpl.colors.makeMappingArray(256, cmap)
-        rgb = resample_and_arrange_image(image_indices, self._shape, lut)
+        rgb = resample_and_arrange_image(image_indices, nan_mask, self._shape,
+                                         lut)
 
         x0 = row * (self._shape[0] + self._border)
         x1 = (row + 1) * (self._shape[0] + self._border) + self._border
@@ -223,8 +223,17 @@ class ImageGrid:
         anchor = (self._border + row * (self._shape[0] + self._border),
                   self._border + col * (self._shape[1] + self._border))
 
-        self._data[anchor[0]:anchor[0] + rgb.shape[0],
-                   anchor[1]:anchor[1] + rgb.shape[1]] = rgb
+        selection = [slice(anchor[0], anchor[0] + rgb.shape[0]),
+                     slice(anchor[1], anchor[1] + rgb.shape[1])]
+
+        nan_data = np.isnan(rgb)
+        #if np.isnan(image).any():
+            #import pdb; pdb.set_trace()
+
+        rgb[nan_data] = 0.0
+
+        self._data[selection] = (rgb * ~nan_data +
+                                 self._border_color * nan_data)
 
     def highlight(self, col=None, row=None, color=None):
         # TODO: This function is not done yet and needs more work
