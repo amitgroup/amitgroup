@@ -2,6 +2,7 @@ from __future__ import division, print_function, absolute_import
 _is_verbose = False
 _is_silent = False
 
+import time
 import warnings
 import numpy as np
 warnings.simplefilter("ignore", np.ComplexWarning)
@@ -145,3 +146,15 @@ def apply_once_over_axes(func, arr, axes, remove_axes=False):
         return collapsed.reshape(new_shape2)
     else:
         return collapsed
+
+
+class Timer(object):
+    def __init__(self, name='(no name)'):
+        self.name = name
+
+    def __enter__(self):
+        self.start = time.time()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.end = time.time()
+        print(("TIMER {0}: {1} s".format(self.name, self.end - self.start)))

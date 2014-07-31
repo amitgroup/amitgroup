@@ -8,7 +8,8 @@ from .core import (set_verbose,
                    bytesize,
                    humanize_bytesize,
                    memsize,
-                   apply_once_over_axes)
+                   apply_once_over_axes,
+                   Timer)
 
 
 # Lazy load these?
