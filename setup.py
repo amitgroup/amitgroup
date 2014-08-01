@@ -5,9 +5,15 @@ from distutils.extension import Extension
 import numpy as np
 import os.path
 
-import Cython
 from Cython.Distutils import build_ext
-import re
+
+CLASSIFIERS = """\
+Development Status :: 4 - Beta
+Intended Audience :: Science/Research
+License :: OSI Approved :: BSD License
+Programming Language :: Python
+Programming Language :: Python :: 3
+"""
 
 
 def cython_extension(modpath, mp=False):
@@ -21,11 +27,14 @@ def cython_extension(modpath, mp=False):
                      extra_compile_args=extra_compile_args,
                      extra_link_args=extra_link_args)
 
-setup(name='amitgroup',
+setup(
+    name='amitgroup',
     cmdclass={'build_ext': build_ext},
-    version='0',
+    version='0.9.1',
     url="https://github.com/amitgroup/amitgroup",
-    description="Code for Yali Amit's Research Group",
+    description="Code for Yali Amit's Research Group.",
+    maintainer='Gustav Larsson',
+    maintainer_email='gustav.m.larsson@gmail.com',
     packages=[
         'amitgroup',
         'amitgroup.features',
@@ -44,4 +53,6 @@ setup(name='amitgroup',
         cython_extension("amitgroup.plot.resample"),
     ],
     include_dirs=[np.get_include()],
+    license='BSD',
+    classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
 )
