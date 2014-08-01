@@ -227,7 +227,6 @@ class ImageGrid:
                      slice(anchor[1], anchor[1] + rgb.shape[1])]
 
         nan_data = np.isnan(rgb)
-
         rgb[nan_data] = 0.0
 
         self._data[selection] = (rgb * ~nan_data +

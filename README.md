@@ -14,13 +14,15 @@ Requirements
 Installation
 ------------
 
-    [sudo] make install 
+    pip install amitgroup
 
 ### For developers
 
-If you are planning to develop for `amitgroup`, it might be nicer to run it in place. For this, compile the Cython-driven code by 
+If you are planning to develop for `amitgroup`, it might be nicer to run it in
+place. For this, compile the Cython-driven code by 
 
-    make inplace 
+    python setup.py build_ext --inplace
 
-and then of course don't forget to add the top `amitgroup` directory to your `PYTHONPATH`.
+and then of course don't forget to add the top `amitgroup` directory to your
+`PYTHONPATH`.
 
