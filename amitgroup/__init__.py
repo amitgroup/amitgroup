@@ -20,8 +20,8 @@ import amitgroup.util
 import amitgroup.plot
 from . import image
 
-VERSION = (0, 9, 0)
-ISRELEASE = True
+VERSION = (0, 9, 1)
+ISRELEASE = False
 __version__ = '{0}.{1}.{2}'.format(*VERSION)
 if not ISRELEASE:
     __version__ += '.dev'
