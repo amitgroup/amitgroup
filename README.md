@@ -11,6 +11,11 @@ Requirements
  * [Numpy](https://github.com/numpy/numpy)
  * [Scipy](https://github.com/scipy/scipy)
 
+Documentation
+-------------
+
+* http://people.cs.uchicago.edu/~larsson/docs/
+
 Installation
 ------------
 
