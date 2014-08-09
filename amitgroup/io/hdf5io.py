@@ -20,7 +20,7 @@ def _save_level(handler, group, level, name=None):
     if isinstance(level, dict):
         # First create a new group
         new_group = handler.create_group(group, name,
-                                        "dict:{}".format(len(level)))
+                                         "dict:{}".format(len(level)))
         for k, v in level.items():
             _save_level(handler, new_group, v, name=k)
     elif isinstance(level, list):
@@ -28,7 +28,7 @@ def _save_level(handler, group, level, name=None):
         # want to serialize them. Instead, we will store each entry as i0, i1,
         # etc.
         new_group = handler.create_group(group, name,
-                                        "list:{}".format(len(level)))
+                                         "list:{}".format(len(level)))
 
         for i, entry in enumerate(level):
             level_name = 'i{}'.format(i)
@@ -37,8 +37,8 @@ def _save_level(handler, group, level, name=None):
     elif isinstance(level, np.ndarray):
         atom = tables.Atom.from_dtype(level.dtype)
         node = handler.create_carray(group, name, atom=atom, shape=level.shape,
-                                    chunkshape=level.shape,
-                                    filters=COMPRESSION)
+                                     chunkshape=level.shape,
+                                     filters=COMPRESSION)
         node[:] = level
     elif isinstance(level, ATTR_TYPES):
         setattr(group._v_attrs, name, level)
