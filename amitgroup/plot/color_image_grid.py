@@ -12,14 +12,18 @@ except ImportError:
         return x
 
 
-class ImageGrid:
+# TODO: ImageGrid and ColorImageGrid need to be integrated more. Since both
+# represent the data as an RGB image, ColorImageGrid should be a suitable
+# base class.
+class ColorImageGrid:
     """
-    An image grid used for combining equally-sized intensity images into a
-    single larger image.
+    An image grid used for combining equally-sized RGB images into a
+    single larger image. It is similar to `ImageGrid`, except it only
+    works for RGB images with color channels scaled in [0, 1].
 
     Parameters
     ----------
-    data : ndarray, ndim in [2, 3, 4]
+    data : ndarray, ndim in [3, 4, 5]
         The last two axes should be spatial dimensions of an intensity patch.
         The rest are used to index them. If `ndim` is 2, then a single image is
         shown. If `ndim` is 3, then `rows` and `cols` will determine its
@@ -42,46 +46,12 @@ class ImageGrid:
     border_width :
         Border with in pixels. If you rescale the image, the border will be
         rescaled with it.
-    cmap, vmin, vmax, vsym :
-        See `ImageGrid.set_image`.
-    global_bounds : bool
-        If this is set to True and either `vmin` or `vmax` is not
-        specified, it will infer it globally for the data. If `vsym` is
-        True, the global bounds will be symmetric around zero. If it is set
-        to False, it determines range per image, which would be the
-        equivalent of calling `set_image` manually with `vmin`, `vmax` and
-        `vsym` set the same.
-
-    Examples
-    --------
-
-    >>> import amitgroup as ag
-    >>> import numpy as np
-    >>> import matplotlib.pylab as plt
-    >>> from matplotlib.pylab import cm
-    >>> rs = np.random.RandomState(0)
-
-    Let's generate a set of 100 8x8 image patches.
-
-    >>> shape = (100, 8, 8)
-    >>> data = np.arange(np.prod(shape)).reshape(shape)
-    >>> data += rs.uniform(0, np.prod(shape), size=shape)
-
-    Creating the image grid:
-
-    >>> grid = ag.plot.ImageGrid(data, cmap=cm.hsv)
-    >>> img = grid.scaled_image(scale=5)
-    >>> plt.imshow(img)
-    >>> plt.show()
-
-    If you are working in an IPython notebook, you can display
-    ``img`` simply by adding it to the end of a cell.
     """
     def __init__(self, data=None, rows=None, cols=None, shape=None,
-                 border_color=1, border_width=1, cmap=None, vmin=None,
-                 vmax=None, vsym=False, global_bounds=True):
+                 border_color=1, border_width=1):
 
-        assert data is None or np.ndim(data) in (2, 3, 4)
+        assert data is None or (np.ndim(data) in (3, 4, 5) and
+                                data.shape[-1] == 3)
         if data is not None:
             data = np.asanyarray(data)
 
@@ -90,14 +60,14 @@ class ImageGrid:
                 "Must specify rows and cols if no data is specified"
             shape = shape
 
-        elif data.ndim == 2:
+        elif data.ndim == 3:
             N = 1
             rows = 1
             cols = 1
             data = data[np.newaxis]
             shape = data.shape[1:3]
 
-        elif data.ndim == 3:
+        elif data.ndim == 4:
             N = data.shape[0]
 
             if rows is None and cols is None:
@@ -109,7 +79,7 @@ class ImageGrid:
                 cols = int(np.ceil(N / rows))
             shape = data.shape[1:3]
 
-        elif data.ndim == 4:
+        elif data.ndim == 5:
             assert rows is None and cols is None
             rows = data.shape[0]
             cols = data.shape[1]
@@ -129,21 +99,9 @@ class ImageGrid:
 
         self._data = np.ones(self._fullsize + (3,), dtype=np.float64)
 
-        if global_bounds:
-            if vmin is None:
-                vmin = np.nanmin(data)
-            if vmax is None:
-                vmax = np.nanmax(data)
-
-            if vsym:
-                mx = max(abs(vmin), abs(vmax))
-                vmin = -mx
-                vmax = mx
-
         # Populate with data
         for i in range(min(N, rows * cols)):
-            self.set_image(data[i], i // cols, i % cols,
-                           cmap=cmap, vmin=vmin, vmax=vmax, vsym=vsym)
+            self.set_image(data[i], i // cols, i % cols)
 
     @classmethod
     def _prepare_color(self, color):
@@ -154,12 +112,6 @@ class ImageGrid:
         else:
             return np.array(color)
 
-    @classmethod
-    def fromarray(cls, *args, **kwargs):
-        ag.info('Deprecation warning: Use ImageGrid(...) instead of '
-                'ImageGrid.fromarray(...)')
-        return cls(*args, **kwargs)
-
     @property
     def image(self):
         """
@@ -167,59 +119,22 @@ class ImageGrid:
         """
         return Image(self._data)
 
-    def set_image(self, image, row, col, cmap=None, vmin=None, vmax=None,
-                  vsym=False):
+    def set_image(self, image, row, col):
         """
         Sets the data for a single window.
 
         Parameters
         ----------
-        image : ndarray, ndim=2
+        image : ndarray, ndim=3
             The shape should be the same as the `shape` specified when
-            constructing the image grid.
+            constructing the image grid, plus an axis of length 3 for
+            the color channels.
         row, col : int
             The zero-index of the row and column to set.
-        cmap : cmap (from matplotlib.pylab.cm)
-            The color palette to use. Default is grayscale.
-        vmin, vmax : numerical or None
-            Defines the range of the color palette. None, which is default,
-            takes the range of the data.
-        vsym : bool
-            If True, this means that the color palette will always be centered
-            around 0. Even if you have specified both `vmin` and `vmax`, this
-            will override that and extend the shorter one. Good practice is to
-            specify neither `vmin` or `vmax` or only `vmax` together with this
-            option.
         """
         import matplotlib as mpl
         import matplotlib.pylab as plt
         from amitgroup.plot.resample import resample_and_arrange_image
-
-        if cmap is None:
-            cmap = plt.cm.gray
-        if vmin is None:
-            vmin = np.nanmin(image)
-        if vmax is None:
-            vmax = np.nanmax(image)
-
-        if vsym and -vmin != vmax:
-            mx = max(abs(vmin), abs(vmax))
-            vmin = -mx
-            vmax = mx
-
-        if vmin == vmax:
-            diff = 1
-        else:
-            diff = vmax - vmin
-
-        image_indices = np.clip((image - vmin) / diff, 0, 1) * 255
-        image_indices = image_indices.astype(np.uint8)
-
-        nan_mask = np.isnan(image).astype(np.uint8)
-
-        lut = mpl.colors.makeMappingArray(256, cmap)
-        rgb = resample_and_arrange_image(image_indices, nan_mask, self._shape,
-                                         lut)
 
         x0 = row * (self._shape[0] + self._border)
         x1 = (row + 1) * (self._shape[0] + self._border) + self._border
@@ -231,14 +146,10 @@ class ImageGrid:
         anchor = (self._border + row * (self._shape[0] + self._border),
                   self._border + col * (self._shape[1] + self._border))
 
-        selection = [slice(anchor[0], anchor[0] + rgb.shape[0]),
-                     slice(anchor[1], anchor[1] + rgb.shape[1])]
+        selection = [slice(anchor[0], anchor[0] + image.shape[0]),
+                     slice(anchor[1], anchor[1] + image.shape[1])]
 
-        nan_data = np.isnan(rgb)
-        rgb[nan_data] = 0.0
-
-        self._data[selection] = (rgb * ~nan_data +
-                                 self._border_color * nan_data)
+        self._data[selection] = image
 
     def highlight(self, col=None, row=None, color=None):
         # TODO: This function is not done yet and needs more work
@@ -310,7 +221,7 @@ class ImageGrid:
         ag.image.save(path, data)
 
     def __repr__(self):
-        return 'ImageGrid(rows={rows}, cols={cols}, shape={shape})'.format(
+        return 'ColorImageGrid(rows={rows}, cols={cols}, shape={shape})'.format(
                rows=self._rows,
                cols=self._cols,
                shape=self._shape)
