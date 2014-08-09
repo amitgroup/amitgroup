@@ -166,6 +166,7 @@ Classes
 .. autosummary::
    :toctree: generated/
 
+   ColorImageGrid
    ImageGrid
    PlottingWindow
 
