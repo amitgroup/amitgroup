@@ -287,5 +287,5 @@ def extract_patches(images, patch_shape, samples_per_image=40, seed=0,
         indices = list(itr.product(range(w), range(h)))
         rs.shuffle(indices)
 
-        for x, y in indices:
+        for x, y in indices[:samples_per_image]:
             yield Xi[x:x+patch_shape[0], y:y+patch_shape[1]]
