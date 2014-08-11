@@ -4,14 +4,8 @@ import struct
 import numpy as np
 
 
-def _load_norb_setup(section, path=None, selection=None):
+def _load_norb_setup(section, path=None):
     assert section in ('training', 'testing')
-    if selection is not None:
-        if selection.start is not None:
-            assert selection.start % 2 == 0
-        if selection.stop is not None:
-            assert selection.stop % 2 == 0
-
     if path is None:
         path = os.environ['NORB_DIR']
 
@@ -20,11 +14,11 @@ def _load_norb_setup(section, path=None, selection=None):
         'testing': 'smallnorb-5x01235x9x18x6x2x96x96-testing',
     }[section]
 
-    return selection, path, name
+    return path, name
 
 
-def _load_small_norb_labels(section, path=None, selection=None):
-    selection, path, name = _load_norb_setup(section, path, selection)
+def _load_small_norb_labels(section, path=None, offset=0, count=None):
+    path, name = _load_norb_setup(section, path)
     cat_fn = os.path.join(path, name + '-cat.mat')
 
     with open(cat_fn, 'rb') as f:
@@ -35,28 +29,54 @@ def _load_small_norb_labels(section, path=None, selection=None):
         # The two latter values are ignored as per specifications
         dim0 = struct.unpack('<III', f.read(4 * 3))[0]
 
-        if selection is not None and selection.start is not None:
-            f.seek(selection.start * np.dtype(np.int32).itemsize // 2, 1)
+        f.seek(offset * np.dtype(np.int32).itemsize, 1)
 
-        count = np.prod(dim0) * 2
-        if selection is not None and selection.stop is not None:
-            count = selection.stop
+        max_count = dim0 - offset
+        if count is None:
+            count = max_count
+        else:
+            count = min(count, max_count)
 
-        if selection is not None and selection.start is not None:
-            count -= selection.start
+        if count > 0:
+            y0 = np.fromfile(f, dtype=np.int32, count=count)
+        else:
+            count = 0
+            y0 = np.empty(0)
 
-        count //= 2
-
-        y0 = np.fromfile(f, dtype=np.int32, count=count)
-
-    y = np.empty(y0.size * 2, dtype=np.int32)
-    y[0::2] = y0
-    y[1::2] = y0
-    return y
+        return y0
 
 
-def _load_small_norb_data(section, path=None, selection=None):
-    selection, path, name = _load_norb_setup(section, path, selection)
+def _load_small_norb_info(section, path=None, offset=0, count=None):
+    path, name = _load_norb_setup(section, path)
+    dat_fn = os.path.join(path, name + '-info.mat')
+
+    with open(dat_fn, 'rb') as f:
+        byte_matrix = struct.unpack('<I', f.read(4))[0]
+        assert byte_matrix == 0x1e3d4c54, "Only supports int matrix for now"
+
+        d = struct.unpack('<I', f.read(4))[0]
+        # The two latter values are ignored as per specifications
+        dim0, dim1 = struct.unpack('<III', f.read(4 * 3))[:2]
+
+        f.seek(offset * dim1 * np.dtype(np.int32).itemsize, 1)
+
+        max_count = dim0 - offset
+        if count is None:
+            count = max_count
+        else:
+            count = min(count, max_count)
+
+        if count > 0:
+            y0 = np.fromfile(f, dtype=np.int32, count=count * dim1)
+        else:
+            count = 0
+            y0 = np.empty(0)
+
+        return y0.reshape((count, dim1))
+
+
+def _load_small_norb_data(section, path=None, offset=0, count=None):
+    path, name = _load_norb_setup(section, path)
     dat_fn = os.path.join(path, name + '-dat.mat')
 
     with open(dat_fn, 'rb') as f:
@@ -66,28 +86,24 @@ def _load_small_norb_data(section, path=None, selection=None):
         struct.unpack('<I', f.read(4))[0]
         dims = struct.unpack('<IIII', f.read(4 * 4))
 
-        if selection is not None and selection.start is not None:
-            f.seek(selection.start * dims[2] * dims[3] *
-                   np.dtype(np.uint8).itemsize, 1)
+        f.seek(offset * dims[2] * dims[3] * np.dtype(np.uint8).itemsize, 1)
 
-        N = np.prod(dims[:2])
-        if selection is not None and selection.stop is not None:
-            N = min(N, selection.stop)
-        if selection is not None and selection.start is not None:
-            N -= selection.start
+        max_count = dims[0] - offset
+        if count is None:
+            count = max_count
+        else:
+            count = min(count, max_count)
 
-        count = N * dims[2] * dims[3]
+        if count > 0:
+            X = np.fromfile(f, dtype=np.uint8, count=count * np.prod(dims[1:]))
+        else:
+            count = 0
+            X = np.empty(0)
 
-        if count < 0:
-            return np.empty((0, dims[2], dims[3]), dtype=np.uint8)
-
-        X = np.fromfile(f, dtype=np.uint8, count=count)\
-              .reshape((N, dims[2], dims[3]))
-
-    return X
+        return X.reshape((count,) + dims[1:])
 
 
-def load_small_norb(section, path=None, selection=None, ret='xy'):
+def load_small_norb(section, ret='xy', offset=0, count=None, path=None):
     """
     Loads the small NORB dataset [NORB]_.
 
@@ -95,18 +111,17 @@ def load_small_norb(section, path=None, selection=None, ret='xy'):
     ----------
     section : ('training', 'testing')
         Select between the training and testing data.
+    offset : int
+        Samples to skip.
+    count : int
+        Samples to load. Default is `None`, which loads until the end.
+    ret : str
+        What to return, `'x'` for data, `'y'` for labels and `'i'` for info.
+        For instance, `'xy'` returns data and labels. If only one thing is
+        selected, it is returned directly, instead of in a tuple of one.
     path : str
         Specifies the path in which you have your NORB files. Default is None,
         in which case the environment variable ``NORB_DIR`` is used.
-    selection : slice
-        Using a `slice` object, specify what subset of the dataset to load. An
-        example is ``slice(50, 150)``, which would load 100 samples starting
-        with the 50th. Currently does not support strides other than 1 and
-        since the dataset come in twin pairs, your offsets and counts should be
-        multiples of 2.
-    ret : str
-        What to return, `'x'` for data, `'y'` for labels and `'xy'` for data
-        and labels.
 
     Returns
     -------
@@ -114,16 +129,27 @@ def load_small_norb(section, path=None, selection=None, ret='xy'):
         The images (if `ret` specifies data)
     y : ndarray
         The labels (if `ret` specifies labels)
-    """
-    assert ret in ['xy', 'x', 'y']
+    info : ndarray (int32)
+        Array of shape ``(N, 4)``, where `N` is the number of samples and 4 are
+        the four pieces of information for each sample:
+        * the instance in the category (0 to 9)
+        * the elevation (0 to 8, which mean cameras are 30, 35, 40, 45, 50, 55,
+          60, 65, 70 degrees from the horizontal respectively)
+        * the azimuth (0,2,4,...,34, multiply by 10 to get the azimuth in 
+          degrees)
+        * the lighting condition (0 to 5)
 
+    """
     returns = []
     if 'x' in ret:
-        X = _load_small_norb_data(section, path, selection)
+        X = _load_small_norb_data(section, path, offset=offset, count=count)
         returns.append(X)
     if 'y' in ret:
-        y = _load_small_norb_labels(section, path, selection)
+        y = _load_small_norb_labels(section, path, offset=offset, count=count)
         returns.append(y)
+    if 'i' in ret:
+        info = _load_small_norb_info(section, path, offset=offset, count=count)
+        returns.append(info)
 
     if len(returns) == 1:
         return returns[0]
