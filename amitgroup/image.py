@@ -283,9 +283,10 @@ def extract_patches(images, patch_shape, samples_per_image=40, seed=0,
         # How many patches could we extract?
         w, h = [Xi.shape[i]-patch_shape[i] for i in range(2)]
 
-        # Maybe shuffle an iterator of the indices?
-        indices = list(itr.product(range(w), range(h)))
-        rs.shuffle(indices)
+        assert w > 0 and h > 0
 
+        # Maybe shuffle an iterator of the indices?
+        indices = np.asarray(list(itr.product(range(w), range(h))))
+        rs.shuffle(indices)
         for x, y in indices[:samples_per_image]:
             yield Xi[x:x+patch_shape[0], y:y+patch_shape[1]]
