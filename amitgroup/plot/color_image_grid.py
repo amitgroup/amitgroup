@@ -51,7 +51,7 @@ class ColorImageGrid:
                  border_color=1, border_width=1):
 
         assert data is None or (np.ndim(data) in (3, 4, 5) and
-                                data.shape[-1] == 3)
+                                data.shape[-1] <= 3)
         if data is not None:
             data = np.asanyarray(data)
 
@@ -149,7 +149,14 @@ class ColorImageGrid:
         selection = [slice(anchor[0], anchor[0] + image.shape[0]),
                      slice(anchor[1], anchor[1] + image.shape[1])]
 
-        self._data[selection] = image
+        C = image.shape[-1]
+        if C == 1:
+            self._data[selection] = image
+        elif C == 2:
+            nimage = np.concatenate([image, image.mean(-1)[...,np.newaxis]], axis=-1)
+            self._data[selection] = nimage
+        elif C == 3:
+            self._data[selection] = image
 
     def highlight(self, col=None, row=None, color=None):
         # TODO: This function is not done yet and needs more work
