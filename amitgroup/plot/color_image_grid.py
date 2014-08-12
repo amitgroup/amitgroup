@@ -48,7 +48,8 @@ class ColorImageGrid:
         rescaled with it.
     """
     def __init__(self, data=None, rows=None, cols=None, shape=None,
-                 border_color=1, border_width=1):
+                 border_color=1, border_width=1, vmin=0.0,
+                 vmax=1.0, vsym=False, global_bounds=True):
 
         assert data is None or (np.ndim(data) in (3, 4, 5) and
                                 data.shape[-1] <= 3)
@@ -99,9 +100,21 @@ class ColorImageGrid:
 
         self._data = np.ones(self._fullsize + (3,), dtype=np.float64)
 
+        if global_bounds:
+            if vmin is None:
+                vmin = np.nanmin(data)
+            if vmax is None:
+                vmax = np.nanmax(data)
+
+            if vsym:
+                mx = max(abs(vmin), abs(vmax))
+                vmin = -mx
+                vmax = mx
+
         # Populate with data
         for i in range(min(N, rows * cols)):
-            self.set_image(data[i], i // cols, i % cols)
+            self.set_image(data[i], i // cols, i % cols,
+                           vmin=vmin, vmax=vmax, vsym=vsym)
 
     @classmethod
     def _prepare_color(self, color):
@@ -119,7 +132,7 @@ class ColorImageGrid:
         """
         return Image(self._data)
 
-    def set_image(self, image, row, col):
+    def set_image(self, image, row, col, vmin=0.0, vmax=1.0, vsym=False):
         """
         Sets the data for a single window.
 
@@ -131,10 +144,38 @@ class ColorImageGrid:
             the color channels.
         row, col : int
             The zero-index of the row and column to set.
+        vmin, vmax : numerical or None
+            Defines the range of the color palette. None, takes the range of
+            the data. Default is vmin=0 and vmax=1, for plotting normal RGB
+            images.
+        vsym : bool
+            If True, this means that the color palette will always be centered
+            around 0. Even if you have specified both `vmin` and `vmax`, this
+            will override that and extend the shorter one. Good practice is to
+            specify neither `vmin` or `vmax` or only `vmax` together with this
+            option.
         """
         import matplotlib as mpl
         import matplotlib.pylab as plt
         from amitgroup.plot.resample import resample_and_arrange_image
+
+        if vmin is None:
+            vmin = np.nanmin(image)
+        if vmax is None:
+            vmax = np.nanmax(image)
+
+        if vsym and -vmin != vmax:
+            mx = max(abs(vmin), abs(vmax))
+            vmin = -mx
+            vmax = mx
+
+        if vmin == vmax:
+            diff = 1
+        else:
+            diff = vmax - vmin
+
+
+        img_scaled = np.clip((image - vmin) / diff, 0, 1)
 
         x0 = row * (self._shape[0] + self._border)
         x1 = (row + 1) * (self._shape[0] + self._border) + self._border
@@ -151,12 +192,17 @@ class ColorImageGrid:
 
         C = image.shape[-1]
         if C == 1:
-            self._data[selection] = image
+            # Grayscale image
+            self._data[selection] = img_scaled
         elif C == 2:
-            nimage = np.concatenate([image, image.mean(-1)[...,np.newaxis]], axis=-1)
+            # If two color channels, use only the first two and fill the third
+            # with the average of the two.
+            #nimage = np.concatenate([img_scaled, img_scaled.mean(-1)[...,np.newaxis]], axis=-1)
+            # Create a red-cyan 3D image representation from the two color channels
+            nimage = np.concatenate([img_scaled, img_scaled[...,[1]]], axis=-1)
             self._data[selection] = nimage
         elif C == 3:
-            self._data[selection] = image
+            self._data[selection] = img_scaled
 
     def highlight(self, col=None, row=None, color=None):
         # TODO: This function is not done yet and needs more work
