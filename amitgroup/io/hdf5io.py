@@ -1,3 +1,5 @@
+from __future__ import division, print_function, absolute_import 
+
 import numpy as np
 import tables
 import warnings
@@ -56,7 +58,10 @@ def _load_level(level):
 
         # Load attributes
         for name in level._v_attrs._f_list():
-            dct[name] = level._v_attrs[name]
+            v = level._v_attrs[name]
+            if isinstance(v, np.string_):
+                v = v.decode('utf-8')
+            dct[name] = v
 
         if level._v_title.startswith('list:'):
             N = int(level._v_title[len('list:'):])
