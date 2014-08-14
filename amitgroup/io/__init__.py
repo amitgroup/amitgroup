@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from .mnist import load_mnist
 from .casia import load_casia
 from .norb import load_small_norb
+from .cifar import load_cifar_10
 from .examples import load_example
 
 __all__ = ['load_mnist',
