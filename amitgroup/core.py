@@ -84,10 +84,10 @@ def memsize(arr):
     return humanize_bytesize(bytesize(arr))
 
 
-def apply_once_over_axes(func, arr, axes, remove_axes=False):
+def apply_once_over_axes(func, arr, axes, keepdims=True):
     """
     Similar to `numpy.apply_over_axes`, except this performs the operation over
-    a flattened version of all the axes, meaning the function will only be
+    a flattened version of all the axes, meaning that the function will only be
     called once. This only makes a difference for non-linear functions.
 
     Parameters
@@ -100,13 +100,40 @@ def apply_once_over_axes(func, arr, axes, remove_axes=False):
     axes : int or iterable
         Specifies the axes to perform the operation. Only one call will be made
         to `func`, with all values flattened.
-    remove_axes : bool
-        By default, this is False, so the collapsed dimensions remain with
-        length 1. This is simlar to `numpy.apply_over_axes`.  If this is set to
-        True, the dimensions are removed, just like when using for instance
-        `numpy.sum` over a single axis. Note that this is safer than
-        subsequently calling squeeze, since this option will preserve length-1
-        dimensions that were not operated on.
+    keepdims : bool
+        By default, this is True, so the collapsed dimensions remain with
+        length 1. This is simlar to `numpy.apply_over_axes` in that regard.  If
+        this is set to False, the dimensions are removed, just like when using
+        for instance `numpy.sum` over a single axis. Note that this is safer
+        than subsequently calling squeeze, since this option will preserve
+        length-1 dimensions that were not operated on.
+
+    Examples
+    --------
+    >>> import amitgroup as ag
+    >>> import numpy as np
+    >>> rs = np.random.RandomState(0)
+    >>> x = rs.uniform(size=(10, 3, 3))
+
+    Image that you have ten 3x3 images and you want to calculate each image's
+    intensity standard deviation:
+
+    >>> np.apply_over_axes(np.std, x, [1, 2]).ravel()
+    array([ 0.06056838,  0.08230712,  0.08135083,  0.09938963,  0.08533604,
+            0.07830725,  0.066148  ,  0.07983019,  0.08134123,  0.01839635])
+
+    This is the same as ``x.std(1).std(1)``, which is not the standard
+    deviation of all 9 pixels together. To fix this we can flatten the pixels
+    and try again:
+
+    >>> x.reshape(10, 9).std(axis=1)
+    array([ 0.17648981,  0.32849108,  0.29409526,  0.25547501,  0.23649064,
+            0.26928468,  0.20081239,  0.33052397,  0.29950855,  0.26535717])
+
+    This is exactly what this function does for you:
+    >>> ag.apply_once_over_axes(np.std, x, [1, 2], keepdims=False)
+    array([ 0.17648981,  0.32849108,  0.29409526,  0.25547501,  0.23649064,
+            0.26928468,  0.20081239,  0.33052397,  0.29950855,  0.26535717])
     """
 
     all_axes = np.arange(arr.ndim)
@@ -120,13 +147,12 @@ def apply_once_over_axes(func, arr, axes, remove_axes=False):
     for i, axis in enumerate(axes):
         axis0 = principal_axis + i
         if axis != axis0:
-            print('swapping', axis, axis0)
             all_axes[axis0], all_axes[axis] = all_axes[axis], all_axes[axis0]
 
     transposed_arr = arr.transpose(all_axes)
 
     new_shape = []
-    new_shape2 = []
+    new_shape_keepdims = []
     for axis, dim in enumerate(arr.shape):
         if axis == principal_axis:
             new_shape.append(-1)
@@ -134,16 +160,16 @@ def apply_once_over_axes(func, arr, axes, remove_axes=False):
             new_shape.append(dim)
 
         if axis in axes:
-            new_shape2.append(1)
+            new_shape_keepdims.append(1)
         else:
-            new_shape2.append(dim)
+            new_shape_keepdims.append(dim)
 
     collapsed = np.apply_along_axis(func,
                                     principal_axis,
                                     transposed_arr.reshape(new_shape))
 
-    if not remove_axes:
-        return collapsed.reshape(new_shape2)
+    if keepdims:
+        return collapsed.reshape(new_shape_keepdims)
     else:
         return collapsed
 
