@@ -84,6 +84,26 @@ def memsize(arr):
     return humanize_bytesize(bytesize(arr))
 
 
+def span(arr):
+    """
+    Calculate and return the min and max of an array.
+
+    Parameters
+    ----------
+    arr : ndarray
+        Numpy array.
+
+    Returns
+    -------
+    min : float
+        Minimum of array.
+    max : float
+        Maximum of array.
+    """
+    # TODO: This could be made faster with a custom ufunc
+    return (np.min(arr), np.max(arr))
+
+
 def apply_once_over_axes(func, arr, axes, keepdims=True):
     """
     Similar to `numpy.apply_over_axes`, except this performs the operation over

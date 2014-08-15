@@ -8,6 +8,7 @@ from .core import (set_verbose,
                    bytesize,
                    humanize_bytesize,
                    memsize,
+                   span,
                    apply_once_over_axes,
                    Timer)
 
