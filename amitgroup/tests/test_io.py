@@ -1,6 +1,7 @@
+from __future__ import division, print_function, absolute_import
 import amitgroup as ag
-import amitgroup.io
 import unittest
+
 
 class TestIO(unittest.TestCase):
     def setUp(self):
@@ -12,13 +13,6 @@ class TestIO(unittest.TestCase):
 
         data2 = ag.io.load_example('mnist')
         self.assertEqual(data2.shape, (10, 28, 28))
-    
-    @unittest.skip("Mnist is optional")
-    def test_mnist(self):
-        try:
-            digits, _ = ag.io.load_mnist('training')
-        except IOError:
-            assert 0, "No MNIST data files" 
 
 
 if __name__ == '__main__':

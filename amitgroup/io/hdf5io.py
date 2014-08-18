@@ -1,5 +1,6 @@
 from __future__ import division, print_function, absolute_import 
 
+import amitgroup as ag
 import numpy as np
 import tables
 import warnings
@@ -14,7 +15,7 @@ ATTR_TYPES = (int, float, bool, str,
 try:
     COMPRESSION = tables.Filters(complevel=9, complib='blosc', shuffle=True)
 except Exception:
-    warnings.warn("Missing BLOSC; no compression will used.")
+    warnings.warn("Missing BLOSC: no compression will be used.")
     COMPRESSION = tables.Filters()
 
 
@@ -24,13 +25,42 @@ def _save_level(handler, group, level, name=None):
         new_group = handler.create_group(group, name,
                                          "dict:{}".format(len(level)))
         for k, v in level.items():
-            _save_level(handler, new_group, v, name=k)
+            if isinstance(k, str):
+                _save_level(handler, new_group, v, name=k)
+            else:
+                # Key is not string, so it gets a bit more complicated.
+                # If the key is not a string, we will store it as a tuple instead,
+                # inside a new group
+                hsh = hash(k)
+                if hsh < 0:
+                    hname = 'm{}'.format(-hsh)
+                else:
+                    hname = '{}'.format(hsh)
+                new_group2 = handler.create_group(new_group, '__pair_{}'.format(hname),
+                                                 "keyvalue_pair")
+                new_name = '__pair_{}'.format(hname)
+                _save_level(handler, new_group2, k, name='key')
+                _save_level(handler, new_group2, v, name='value')
+
+                #new_name = '__keyvalue_pair_{}'.format(hash(name))
+                #setattr(group._v_attrs, new_name, (name, level))
     elif isinstance(level, list):
         # Lists can contain other dictionaries and numpy arrays, so we don't
         # want to serialize them. Instead, we will store each entry as i0, i1,
         # etc.
         new_group = handler.create_group(group, name,
                                          "list:{}".format(len(level)))
+
+        for i, entry in enumerate(level):
+            level_name = 'i{}'.format(i)
+            _save_level(handler, new_group, entry, name=level_name)
+
+    elif isinstance(level, tuple):
+        # Lists can contain other dictionaries and numpy arrays, so we don't
+        # want to serialize them. Instead, we will store each entry as i0, i1,
+        # etc.
+        new_group = handler.create_group(group, name,
+                                         "tuple:{}".format(len(level)))
 
         for i, entry in enumerate(level):
             level_name = 'i{}'.format(i)
@@ -45,16 +75,26 @@ def _save_level(handler, group, level, name=None):
     elif isinstance(level, ATTR_TYPES):
         setattr(group._v_attrs, name, level)
     else:
+        ag.warning('(amitgroup.io.save) Pickling', level, ': '
+                   'This may cause incompatiblities (for instance between'
+                   'Python 2 and 3) and should ideally be avoided')
         node = handler.create_vlarray(group, name, tables.ObjectAtom())
         node.append(level)
 
 
 def _load_level(level):
     if isinstance(level, tables.Group):
+        print('here:', level._v_title)
         dct = {}
         # Load sub-groups
         for grp in level:
-            dct[grp._v_name] = _load_level(grp)
+            lev = _load_level(grp)
+            n = grp._v_name
+            # Check if it's a complicated pair or a string-value pair
+            if n.startswith('__pair'):
+                dct[lev['key']] = lev['value']
+            else:
+                dct[n] = lev
 
         # Load attributes
         for name in level._v_attrs._f_list():
@@ -69,8 +109,15 @@ def _load_level(level):
             for i in range(N):
                 lst.append(dct['i{}'.format(i)])
             return lst
+        elif level._v_title.startswith('tuple:'):
+            N = int(level._v_title[len('tuple:'):])
+            lst = []
+            for i in range(N):
+                lst.append(dct['i{}'.format(i)])
+            return tuple(lst)
         else:
             return dct
+
     elif isinstance(level, tables.VLArray):
         if level.shape == (1,):
             return level[0]

@@ -1,11 +1,13 @@
-import amitgroup as ag
+from __future__ import division, print_function, absolute_import
 import numpy as np
 import unittest
 import os
-import amitgroup.util.wavelet
-import amitgroup as ag
+import amitgroup.util.wavelet as wv
 
-def rel(x): return os.path.join(os.path.abspath(os.path.dirname(__file__)), x)
+
+def rel(x):
+    return os.path.join(os.path.abspath(os.path.dirname(__file__)), x)
+
 
 class TestWavelet(unittest.TestCase):
     def setUp(self):
@@ -17,9 +19,10 @@ class TestWavelet(unittest.TestCase):
         A = np.arange(length)
 
         coefs = pywt.wavedec(A, wavelet, mode='per', level=ll)
-        u_ref = ag.util.wavelet.structured_to_contiguous(coefs[:levels+1]) # including 0th level as one
+        # including 0th level as one
+        u_ref = wv.structured_to_contiguous(coefs[:levels+1])
 
-        wavedec, waverec = ag.util.wavelet.daubechies_factory(length, wavelet=wavelet)
+        wavedec, waverec = wv.daubechies_factory(length, wavelet=wavelet)
         u = wavedec(A, levels=levels)
 
         np.testing.assert_array_almost_equal(u_ref, u)
@@ -43,23 +46,24 @@ class TestWavelet(unittest.TestCase):
 
         N = 1 << levels
         # This assumes wavedec is working
-        u = self._test_wavedec(wavelet, length, levels)  
+        u = self._test_wavedec(wavelet, length, levels)
 
         u_zeros = np.zeros(len(u))
         u_zeros[:N] = u[:N]
 
         # Reconstruction
-        wavedec, waverec = ag.util.wavelet.daubechies_factory(length, wavelet=wavelet)
-    
+        wavedec, waverec = wv.daubechies_factory(length, wavelet=wavelet)
+
         A_rec_ref = waverec(u_zeros)
         A_rec = waverec(u)
 
         if levels == ll:
             np.testing.assert_array_almost_equal(A, A_rec)
         else:
-            # They should not be equal, since the image will have lost integrity
+            # They should not be equal, since the image will have lost
+            # integrity
             assert not (A == A_rec).all()
-            np.testing.assert_array_almost_equal(A_rec_ref, A_rec) 
+            np.testing.assert_array_almost_equal(A_rec_ref, A_rec)
 
     def test_waverec_8(self):
         for i in range(0, 4):
@@ -90,9 +94,10 @@ class TestWavelet(unittest.TestCase):
         A = np.arange(np.prod(shape)).reshape(shape)
 
         coefs = pywt.wavedec2(A, wavelet, mode='per', level=ll)
-        u_ref = ag.util.wavelet.structured_to_contiguous(coefs[:levels+1]) # including 0th level as one
+        # including 0th level as one
+        u_ref = wv.structured_to_contiguous(coefs[:levels+1])
 
-        wavedec2, waverec2 = ag.util.wavelet.daubechies_factory(shape, wavelet=wavelet)
+        wavedec2, waverec2 = wv.daubechies_factory(shape, wavelet=wavelet)
         u = wavedec2(A, levels=levels)
 
         np.testing.assert_array_almost_equal(u_ref, u)
@@ -110,35 +115,35 @@ class TestWavelet(unittest.TestCase):
         for i in range(0, 7):
             self._test_wavedec2('db2', (64, 64), i)
 
-
     def _test_waverec2(self, wavelet, shape, levels):
         A = np.arange(np.prod(shape)).reshape(shape)
         ll = int(np.log2(max(shape)))
 
         N = 1 << levels
         # This assumes wavedec2 is working
-        u = self._test_wavedec2(wavelet, shape, levels)  
+        u = self._test_wavedec2(wavelet, shape, levels)
 
         u_zeros = np.zeros(u.shape)
-        u_zeros[:N,:N] = u[:N,:N]
+        u_zeros[:N, :N] = u[:N, :N]
 
         # Reconstruction
-        wavedec2, waverec2 = ag.util.wavelet.daubechies_factory(A.shape, wavelet=wavelet)
-    
+        wavedec2, waverec2 = wv.daubechies_factory(A.shape, wavelet=wavelet)
+
         A_rec_ref = waverec2(u_zeros)
         A_rec = waverec2(u)
 
         if levels == ll:
             np.testing.assert_array_almost_equal(A, A_rec)
         else:
-            # They should not be equal, since the image will have lost integrity
+            # They should not be equal, since the image will have lost
+            # integrity
             assert not (A == A_rec).all()
-            np.testing.assert_array_almost_equal(A_rec_ref, A_rec) 
-        
+            np.testing.assert_array_almost_equal(A_rec_ref, A_rec)
+
     def test_waverec2_16(self):
         for i in range(0, 5):
             self._test_waverec2('db2', (16, 16), i)
-        
+
     def test_waverec2_32(self):
         for i in range(0, 6):
             self._test_waverec2('db2', (32, 32), i)
@@ -169,14 +174,16 @@ class TestWavelet(unittest.TestCase):
 
     def _test_cache(self, shape, wavelet, levels):
         A = np.arange(np.prod(shape)).reshape(shape)
-        wavedec2, waverec2 = ag.util.wavelet.daubechies_factory(shape, wavelet)
-        np.testing.assert_array_equal(ag.util.wavelet.wavedec2(A, wavelet, levels), wavedec2(A, levels))
-        np.testing.assert_array_equal(ag.util.wavelet.waverec2(A, wavelet), waverec2(A))
+        wavedec2, waverec2 = wv.daubechies_factory(shape, wavelet)
+        np.testing.assert_array_equal(wv.wavedec2(A, wavelet,
+                                      levels), wavedec2(A, levels))
+        np.testing.assert_array_equal(wv.waverec2(A, wavelet),
+                                      waverec2(A))
 
     def test_wavelet_cache(self):
         for shape in [(8, 8), (16, 16), (8, 8)]:
             self._test_cache(shape, 'db4', 2)
 
+
 if __name__ == '__main__':
     unittest.main()
-

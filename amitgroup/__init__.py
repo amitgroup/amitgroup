@@ -14,11 +14,11 @@ from .core import (set_verbose,
 
 
 # Lazy load these?
-import amitgroup.io
-import amitgroup.features
-import amitgroup.stats
-import amitgroup.util
-import amitgroup.plot
+from amitgroup import io
+from amitgroup import features
+from amitgroup import stats
+from amitgroup import util
+from amitgroup import plot
 from . import image
 
 VERSION = (0, 9, 1)
@@ -27,8 +27,23 @@ __version__ = '{0}.{1}.{2}'.format(*VERSION)
 if not ISRELEASE:
     __version__ += '.dev'
 
+# Modules
+__all__ = ['io', 'features', 'stats', 'util', 'plot', 'image']
+
+# Core functions
+__all__ += ['set_verbose',
+            'info',
+            'warning',
+            'AbortException',
+            'bytesize',
+            'humanize_bytesize',
+            'memsize',
+            'span',
+            'apply_once_over_axes',
+            'Timer']
+
 
 def test(verbose=False):
-    import amitgroup.tests
+    from amitgroup import tests
     import unittest
     unittest.main()
