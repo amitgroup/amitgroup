@@ -1,13 +1,17 @@
 from __future__ import division, print_function, absolute_import
 from amitgroup import io
 
+_ERR_STR = "Must override load_from_dict for Saveable interface"
+
+
 class Saveable(object):
     """
-    Key-value coding interface for classes. Generally, this is an interface that make it possible to
-    access instance members through keys (strings), instead of through named variables. What this
-    interface enables, is to save and load an instance of the class to file. This is done by encoding
-    it into a dictionary, or decoding it from a dictionary. The dictionary is then saved/loaded using
-    `amitgroup.io.save`. 
+    Key-value coding interface for classes. Generally, this is an interface
+    that make it possible to access instance members through keys (strings),
+    instead of through named variables. What this interface enables, is to save
+    and load an instance of the class to file. This is done by encoding it into
+    a dictionary, or decoding it from a dictionary. The dictionary is then
+    saved/loaded using `amitgroup.io.save`.
     """
     @classmethod
     def load(cls, path):
@@ -17,12 +21,13 @@ class Saveable(object):
         Parameters
         ----------
         path : str
-            Path to an HDF5 file. 
+            Path to an HDF5 file.
 
         Examples
         --------
-        This is an abstract data type, but let us say that ``Foo`` inherits from ``Saveable``. To construct
-        an object of this class from a file, we do:
+        This is an abstract data type, but let us say that ``Foo`` inherits
+        from ``Saveable``. To construct an object of this class from a file, we
+        do:
 
         >>> foo = Foo.load('foo.h5') #doctest: +SKIP
         """
@@ -31,10 +36,10 @@ class Saveable(object):
         else:
             d = io.load(path)
             return cls.load_from_dict(d)
-        
+
     def save(self, path):
         """
-        Saves an instance of the class using `amitgroup.io.save`. 
+        Saves an instance of the class using `amitgroup.io.save`.
 
         Parameters
         ----------
@@ -46,9 +51,11 @@ class Saveable(object):
     @classmethod
     def load_from_dict(cls, d):
         """
-        Overload this function in your subclass. It takes a dictionary and should return a constructed object.
+        Overload this function in your subclass. It takes a dictionary and
+        should return a constructed object.
 
-        When overloading, you have to decorate this function with ``@classmethod``.
+        When overloading, you have to decorate this function with
+        ``@classmethod``.
 
         Parameters
         ----------
@@ -58,24 +65,25 @@ class Saveable(object):
         Returns
         -------
         obj : object
-            Returns an object that has been constructed based on the dictionary.
+            Returns an object that has been constructed based on the
+            dictionary.
         """
-        raise NotImplementedError("Must override load_from_dict for Saveable interface")
+        raise NotImplementedError(_ERR_STR)
 
     def save_to_dict(self):
         """
-        Overload this function in your subclass. It should return a dictionary representation of
-        the current instance. 
+        Overload this function in your subclass. It should return a dictionary
+        representation of the current instance.
 
-        If you member variables that are objects, it is best to convert them to dictionaries
-        before they are entered into your dictionary hierarchy.
+        If you member variables that are objects, it is best to convert them to
+        dictionaries before they are entered into your dictionary hierarchy.
 
         Returns
         -------
-        d : dict 
-            Returns a dictionary representation of the current instance. 
+        d : dict
+            Returns a dictionary representation of the current instance.
         """
-        raise NotImplementedError("Must override save_to_dict for Saveable interface")
+        raise NotImplementedError(_ERR_STR)
 
 
 class NamedRegistry(object):
@@ -85,7 +93,7 @@ class NamedRegistry(object):
     def name(self):
         """Returns the name of the registry entry"""
         # Automatically overloaded by 'register'
-        return "noname" 
+        return "noname"
 
     @classmethod
     def register(cls, name):
@@ -94,7 +102,8 @@ class NamedRegistry(object):
             def name_func(self):
                 return name
             reg_cls.name = property(name_func)
-            assert issubclass(reg_cls, cls), "Must be subclass matching your NamedRegistry class"
+            assert issubclass(reg_cls, cls), \
+                "Must be subclass matching your NamedRegistry class"
             cls.REGISTRY[name] = reg_cls
             return reg_cls
         return register_decorator
@@ -118,7 +127,7 @@ class NamedRegistry(object):
         a new registry for it
         """
         reg_cls.REGISTRY = {}
-        return reg_cls 
+        return reg_cls
 
 
 class SaveableRegistry(Saveable, NamedRegistry):
@@ -137,6 +146,5 @@ class SaveableRegistry(Saveable, NamedRegistry):
 
     def save(self, path):
         d = self.save_to_dict()
-        d['name'] = self.name 
+        d['name'] = self.name
         io.save(path, d)
-     
