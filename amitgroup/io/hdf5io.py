@@ -87,7 +87,6 @@ def _save_level(handler, group, level, name=None):
 
 def _load_level(level):
     if isinstance(level, tables.Group):
-        print('here:', level._v_title)
         dct = {}
         # Load sub-groups
         for grp in level:
@@ -104,8 +103,6 @@ def _load_level(level):
             v = level._v_attrs[name]
             if isinstance(v, np.string_):
                 v = v.decode('utf-8')
-            #elif name.endswith('__nonetype') and v == 0:
-                #v = None
             dct[name] = v
 
         if level._v_title.startswith('list:'):
@@ -147,8 +144,8 @@ def save(path, data):
     which are:
 
     * Dictionaries
-    * Lists
-    * Basic data types (including strings)
+    * Lists and tuples
+    * Basic data types (including strings and None)
     * Numpy arrays
 
     A recommendation is to always convert your data to using only these four
@@ -174,7 +171,7 @@ def save(path, data):
     if not isinstance(path, str):
         path = path.name
 
-    h5file = tables.open_file(path, mode='w', title='Test file')
+    h5file = tables.open_file(path, mode='w')
     group = h5file.root
     _save_level(h5file, group, data, name='top')
     h5file.close()
