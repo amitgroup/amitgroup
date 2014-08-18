@@ -74,6 +74,9 @@ def _save_level(handler, group, level, name=None):
         node[:] = level
     elif isinstance(level, ATTR_TYPES):
         setattr(group._v_attrs, name, level)
+    elif level is None:
+        # Store a None as an empty group
+        new_group = handler.create_group(group, name, "nonetype:")
     else:
         ag.warning('(amitgroup.io.save) Pickling', level, ': '
                    'This may cause incompatiblities (for instance between'
@@ -101,6 +104,8 @@ def _load_level(level):
             v = level._v_attrs[name]
             if isinstance(v, np.string_):
                 v = v.decode('utf-8')
+            #elif name.endswith('__nonetype') and v == 0:
+                #v = None
             dct[name] = v
 
         if level._v_title.startswith('list:'):
@@ -115,6 +120,8 @@ def _load_level(level):
             for i in range(N):
                 lst.append(dct['i{}'.format(i)])
             return tuple(lst)
+        elif level._v_title.startswith('nonetype:'):
+            return None
         else:
             return dct
 

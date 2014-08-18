@@ -20,7 +20,8 @@ class TestHDF5(unittest.TestCase):
                  b=12.31,
                  c=[12, [1, subdict], 14],
                  d=(1.2, 20),
-                 e=subdict)
+                 e=subdict,
+                 f=None)
         y = self._reconstruct(x)
         assert x == y, (x, y)
 
