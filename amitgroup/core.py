@@ -5,6 +5,8 @@ _is_silent = False
 import time
 import warnings
 import numpy as np
+import sys
+from contextlib import contextmanager
 warnings.simplefilter("ignore", np.ComplexWarning)
 
 
@@ -38,7 +40,7 @@ def info(*args, **kwargs):
 
 def warning(*args, **kwargs):
     """
-    Output warning, such as numerical instabilities.
+    Output warning message.
     """
     if not _is_silent:
         print("WARNING: " + args[0], *args[1:], **kwargs)
@@ -194,13 +196,45 @@ def apply_once_over_axes(func, arr, axes, keepdims=True):
         return collapsed
 
 
-class Timer(object):
-    def __init__(self, name='(no name)'):
-        self.name = name
+@contextmanager
+def Timer(name='(no name)', file=sys.stdout):
+    """
+    Context manager to make it easy to time the execution of a piece of code.
+    This timer will never run your code several times and is meant more for
+    simple in-production timing, instead of benchmarking.
 
-    def __enter__(self):
-        self.start = time.time()
+    Parameters
+    ----------
+    name : str
+        Name of the timing block, to identify it.
+    file : file  handler
+        Which file handler to print the results to. Default is standard output.
+        If a numpy array and size 1 is given, the time in seconds will be
+        stored inside it.
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.end = time.time()
-        print(("TIMER {0}: {1} s".format(self.name, self.end - self.start)))
+    Examples
+    --------
+    >>> import amitgroup as ag
+    >>> import time
+
+    The Timer is a context manager, so everything inside the ``with`` block
+    will be timed. The results will be printed to standard output.
+
+    >>> with ag.Timer('Sleep'):  # doctest: +SKIP
+            time.sleep(1)
+    TIMER Sleep: 1.001035451889038 s
+
+    >>> x = np.empty(1)
+    >>> with ag.Timer('Sleep', file=x):  # doctest: +SKIP
+            time.sleep(1)
+    >>> x[0]  # doctest: +SKIP
+    1.0010406970977783
+    """
+    start = time.time()
+    yield
+    end = time.time()
+    delta = end - start
+    if isinstance(file, np.ndarray) and len(file) == 1:
+        file[0] = delta
+    else:
+        print(("TIMER {0}: {1} s".format(name, delta)), file=file)
