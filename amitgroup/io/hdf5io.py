@@ -1,12 +1,15 @@
-from __future__ import division, print_function, absolute_import 
+from __future__ import division, print_function, absolute_import
 
 import amitgroup as ag
 import numpy as np
 import tables
 import warnings
+import sys
+
+from amitgroup import six
 
 # Types that should be saved as pytables attribute
-ATTR_TYPES = (int, float, bool, str,
+ATTR_TYPES = (int, float, bool, six.string_types,
               np.int8, np.int16, np.int32, np.int64,
               np.uint8, np.uint16, np.uint32, np.uint64,
               np.float16, np.float32, np.float64,
@@ -25,7 +28,7 @@ def _save_level(handler, group, level, name=None):
         new_group = handler.create_group(group, name,
                                          "dict:{}".format(len(level)))
         for k, v in level.items():
-            if isinstance(k, str):
+            if isinstance(k, six.string_types):
                 _save_level(handler, new_group, v, name=k)
             else:
                 # Key is not string, so it gets a bit more complicated.
@@ -72,14 +75,17 @@ def _save_level(handler, group, level, name=None):
                                      chunkshape=level.shape,
                                      filters=COMPRESSION)
         node[:] = level
+
     elif isinstance(level, ATTR_TYPES):
         setattr(group._v_attrs, name, level)
+
     elif level is None:
         # Store a None as an empty group
         new_group = handler.create_group(group, name, "nonetype:")
+
     else:
         ag.warning('(amitgroup.io.save) Pickling', level, ': '
-                   'This may cause incompatiblities (for instance between'
+                   'This may cause incompatiblities (for instance between '
                    'Python 2 and 3) and should ideally be avoided')
         node = handler.create_vlarray(group, name, tables.ObjectAtom())
         node.append(level)
