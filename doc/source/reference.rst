@@ -14,8 +14,11 @@ Core package (:mod:`amitgroup`)
    :toctree: generated/
 
    AbortException
+   Timer
+   apply_once
    bytesize
    humanize_bytesize
+   span
 
 Printing
 ~~~~~~~~

@@ -106,7 +106,7 @@ def span(arr):
     return (np.min(arr), np.max(arr))
 
 
-def apply_once_over_axes(func, arr, axes, keepdims=True):
+def apply_once(func, arr, axes, keepdims=True):
     """
     Similar to `numpy.apply_over_axes`, except this performs the operation over
     a flattened version of all the axes, meaning that the function will only be
@@ -153,7 +153,7 @@ def apply_once_over_axes(func, arr, axes, keepdims=True):
             0.26928468,  0.20081239,  0.33052397,  0.29950855,  0.26535717])
 
     This is exactly what this function does for you:
-    >>> ag.apply_once_over_axes(np.std, x, [1, 2], keepdims=False)
+    >>> ag.apply_once(np.std, x, [1, 2], keepdims=False)
     array([ 0.17648981,  0.32849108,  0.29409526,  0.25547501,  0.23649064,
             0.26928468,  0.20081239,  0.33052397,  0.29950855,  0.26535717])
     """
@@ -194,6 +194,11 @@ def apply_once_over_axes(func, arr, axes, keepdims=True):
         return collapsed.reshape(new_shape_keepdims)
     else:
         return collapsed
+
+
+def apply_once_over_axes(*args, **kwargs):
+    ag.warning('Deprecated: Used apply_once')
+    return apply_once(*args, **kwargs)
 
 
 @contextmanager

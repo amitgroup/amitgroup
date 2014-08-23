@@ -9,6 +9,7 @@ from .core import (set_verbose,
                    humanize_bytesize,
                    memsize,
                    span,
+                   apply_once,
                    apply_once_over_axes,
                    Timer)
 
