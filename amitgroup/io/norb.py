@@ -75,7 +75,8 @@ def _load_small_norb_info(section, path=None, offset=0, count=None):
         return y0.reshape((count, dim1))
 
 
-def _load_small_norb_data(section, path=None, offset=0, count=None):
+def _load_small_norb_data(section, path=None, offset=0, count=None,
+                          dtype=np.float64):
     path, name = _load_norb_setup(section, path)
     dat_fn = os.path.join(path, name + '-dat.mat')
 
@@ -100,10 +101,19 @@ def _load_small_norb_data(section, path=None, offset=0, count=None):
             count = 0
             X = np.empty(0)
 
-        return X.reshape((count,) + dims[1:])
+        X = X.reshape((count,) + dims[1:])
+
+        if dtype in [np.float16, np.float32, np.float64]:
+            X = X.astype(dtype) / 255
+        elif dtype == np.uint8:
+            pass  # Do nothing
+        else:
+            raise ValueError('Unsupported value for x_dtype in NORB loader')
+
+        return X
 
 
-def load_small_norb(section, ret='xy', offset=0, count=None, path=None):
+def load_small_norb(section, ret='xy', offset=0, count=None, path=None, TMP_modifier=None, x_dtype=np.float64):
     """
     Loads the small NORB dataset [NORB]_.
 
@@ -140,9 +150,26 @@ def load_small_norb(section, ret='xy', offset=0, count=None, path=None):
         * the lighting condition (0 to 5)
 
     """
+    #if section == 'training':
+        #section = 'testing'
+    #else:
+        #section = 'training'
+
+    y0 = _load_small_norb_labels(section, path, offset=offset, count=count)
     returns = []
     if 'x' in ret:
-        X = _load_small_norb_data(section, path, offset=offset, count=count)
+        X = _load_small_norb_data(section, path, offset=offset, count=count,
+                                  dtype=x_dtype)
+
+        # TODO: Temporary. This modifier is just temporary stuff
+        #TMP_modifier='separate'
+        if TMP_modifier == 'noise':
+            rs = np.random.RandomState(0)
+            X += rs.normal(scale=0.01, size=X.shape)
+            X = X.clip(0, 1)
+        elif TMP_modifier == 'separate':
+            X[:,[1]] = np.diff(X, axis=1)
+
         returns.append(X)
     if 'y' in ret:
         y = _load_small_norb_labels(section, path, offset=offset, count=count)
