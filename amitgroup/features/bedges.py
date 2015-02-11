@@ -129,9 +129,13 @@ def bedges(images, k=6, spread='box', radius=1, minimum_contrast=0.0,
         diagonal direction. Note that if `first_axis` is True, this shape will
         change.
     """
-    single = len(images.shape) == 2
+    single = images.ndim == 2
     if single:
         images = images[np.newaxis]
+
+    if images.ndim == 4:
+        assert images.shape[3] == 1, "bedges does not handle multiple color channels"
+        images = images[...,0]
 
     # TODO: Temporary stuff
     if pre_blurring is not None and pre_blurring != 0.0:
